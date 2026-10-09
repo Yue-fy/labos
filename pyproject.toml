@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "labos-mvp"
+version = "0.1.0"
+description = "Central planning and outbound lab agents for traceable experiments"
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.10,<3", "httpx>=0.28,<1", "PyYAML>=6,<7"]
+
+[project.optional-dependencies]
+central = ["fastapi>=0.115,<1", "uvicorn>=0.34,<1", "h5py>=3.12,<4"]
+ai = ["openai>=1.68,<3"]
+dev = ["pytest>=8,<10", "ruff>=0.11,<1", "build>=1.2,<2"]
+
+[project.scripts]
+labos = "labos.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+labos = ["static/*.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
