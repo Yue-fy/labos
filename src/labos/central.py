@@ -29,6 +29,10 @@ class Result(Session):
     result: dict
 
 
+class DraftRequest(Model):
+    prompt: str
+
+
 def create_app(config: CentralConfig):
     store = Store(config.data_dir)
     for agent_id, enrollment in config.agents.items():
@@ -100,6 +104,18 @@ def create_app(config: CentralConfig):
     def preflight(plan: Plan):
         return checked(runtime.preflight, plan)
 
+    @app.post("/api/plan", dependencies=[Depends(operator)])
+    async def ai_plan(body: DraftRequest):
+        from .planner import draft_plan
+        if not body.prompt.strip() or len(body.prompt) > 8000:
+            raise HTTPException(422, "prompt must contain 1–8000 characters")
+        try:
+            return await draft_plan(body.prompt, config)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(502, "AI provider request failed; no experiment was started") from exc
+
     @app.post("/api/runs", dependencies=[Depends(operator)])
     async def start(plan: Plan):
         return checked(runtime.start, plan)
@@ -131,6 +147,11 @@ def create_app(config: CentralConfig):
     def register(agent_id: str, session: Session):
         checked(store.register, agent_id, session.boot_id, offline_after=config.offline_after_s)
         return {"registered": True, "simulated": True}
+
+    @app.get("/api/agents/{agent_id}/health", dependencies=[Depends(agent)])
+    def agent_health(agent_id: str):
+        return {"agent_id": agent_id, "enrolled": True,
+                "instrument_ids": [d.id for d in config.agents[agent_id].instruments]}
 
     @app.post("/api/agents/{agent_id}/heartbeat", dependencies=[Depends(agent)])
     def heartbeat(agent_id: str, body: Heartbeat):
