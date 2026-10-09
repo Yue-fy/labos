@@ -39,7 +39,7 @@ def write_package(package: zipfile.ZipFile, role: str):
                 package.write(path, path.name)
 
 
-def build_agent_bundle(config_path: Path, output: Path) -> Path:
+def build_agent_bundle(config_path: Path, output: Path, runtime_archive: Path | None = None) -> Path:
     config = load_config(config_path, AgentConfig)
     # Paths must resolve on the destination PC, not the provisioning machine.
     values = config.model_dump(mode="json")
@@ -55,5 +55,11 @@ def build_agent_bundle(config_path: Path, output: Path) -> Path:
         package.writestr("config.yaml", yaml.safe_dump(values, allow_unicode=True, sort_keys=False))
         if config.ca_file:
             package.write(config.ca_file, "central-ca.pem")
+        if runtime_archive:
+            with zipfile.ZipFile(runtime_archive) as runtime:
+                for name in runtime.namelist():
+                    if name.startswith("/") or ".." in name.split("/") or not name.startswith("python/"):
+                        raise ValueError("unsafe runtime archive path")
+                    package.writestr(name, runtime.read(name))
     output.chmod(0o600)
     return output

@@ -97,6 +97,17 @@ def test_nonfinite_measurement_is_rejected(tmp_path):
         store.accept_artifact("pc-b", content, hashlib.sha256(content).hexdigest())
 
 
+@pytest.mark.parametrize("field,value", [("simulated", False), ("driver_version", "unapproved"),
+                                         ("workflow_version", "invented")])
+def test_artifact_cannot_claim_a_different_driver_or_real_hardware(tmp_path, field, value):
+    store = ready_store(tmp_path)
+    _, data = artifact(store)
+    data[field] = value
+    content = json.dumps(data).encode()
+    with pytest.raises(ValueError):
+        store.accept_artifact("pc-b", content, hashlib.sha256(content).hexdigest())
+
+
 def test_old_session_and_duplicate_live_agent_are_rejected(tmp_path):
     store = ready_store(tmp_path)
     store.register("pc-a", "boot1", now=100)

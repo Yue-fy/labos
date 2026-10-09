@@ -103,6 +103,7 @@ def main(argv=None):
     bundle = sub.add_parser("bundle", help="create one PC ZIP with only that PC's credential")
     bundle.add_argument("--config", type=Path, required=True)
     bundle.add_argument("--output", type=Path, required=True)
+    bundle.add_argument("--windows-runtime", type=Path)
     demo = sub.add_parser("demo", help="run central and two agents as separate TCP processes")
     demo.add_argument("--directory", type=Path, default=Path("runtime/acceptance"))
     demo.add_argument("--full", action="store_true", help="run 399-point scan")
@@ -129,7 +130,7 @@ def main(argv=None):
             print(json.dumps(doctor(load_config(args.config, AgentConfig)), indent=2))
         elif args.command == "bundle":
             from .delivery import build_agent_bundle
-            print(build_agent_bundle(args.config, args.output))
+            print(build_agent_bundle(args.config, args.output, args.windows_runtime))
         elif args.command == "demo":
             from .demo import acceptance
             print(json.dumps(acceptance(args.directory, full=args.full), indent=2))

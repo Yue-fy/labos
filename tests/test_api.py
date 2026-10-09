@@ -34,3 +34,9 @@ def test_start_rejects_offline_and_unconfirmed_setup(central_config):
     with TestClient(create_app(central_config)) as client:
         assert client.post("/api/runs", headers=headers("O" * 40), json={}).status_code == 409
 
+
+def test_agent_named_operator_does_not_gain_operator_permissions(central_config):
+    central_config.agents["operator"] = central_config.agents.pop("pc-a")
+    with TestClient(create_app(central_config)) as client:
+        assert client.get("/api/status", headers=headers("A" * 40)).status_code == 403
+

@@ -55,18 +55,18 @@ def create_app(config: CentralConfig):
             raise HTTPException(401, "bearer credential required")
         token = authorization[7:]
         if hmac.compare_digest(token, config.admin_token):
-            return "operator"
+            return ("operator", None)
         for agent_id, enrollment in config.agents.items():
             if hmac.compare_digest(token, enrollment.token):
-                return agent_id
+                return ("agent", agent_id)
         raise HTTPException(401, "invalid credential")
 
     def operator(identity=Depends(principal)):
-        if identity != "operator":
+        if identity != ("operator", None):
             raise HTTPException(403, "operator credential required")
 
     def agent(agent_id: str, identity=Depends(principal)):
-        if agent_id not in config.agents or identity != agent_id:
+        if agent_id not in config.agents or identity != ("agent", agent_id):
             raise HTTPException(403, "agent credential does not match this PC")
 
     def checked(function, *args, **kwargs):

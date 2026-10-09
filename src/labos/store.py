@@ -279,6 +279,12 @@ class Store:
         if (command["op"] != "acquire_and_store" or command["state"] in {"QUEUED", "CANCELLED"}
                 or measurement.experiment_id != command["run_id"]):
             raise ValueError("artifact does not belong to a dispatched acquisition")
+        with self.transaction() as db:
+            spec = json.loads(db.execute("SELECT spec FROM instruments WHERE id=?",
+                                         (measurement.instrument_id,)).fetchone()[0])
+        if (measurement.simulated is not True or measurement.driver_version != spec["driver_version"]
+                or measurement.workflow_version != "polarization-0.1.0"):
+            raise ValueError("artifact mode/driver/workflow is not approved")
         for field in ("point_index", "sample_id", "wavelength_nm", "angle_deg", "exposure_ms",
                       "power_percent", "readbacks"):
             if getattr(measurement, field) != command["parameters"].get(field):
