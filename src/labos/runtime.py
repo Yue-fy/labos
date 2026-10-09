@@ -27,7 +27,7 @@ class Runtime:
                 return setup
         raise ValueError("unknown setup")
 
-    def preflight(self, plan: Plan, ignore_reservation=False):
+    def preflight(self, plan: Plan, ignore_reservation=False, allow_faults=False):
         setup = self.setup(plan.setup_id)
         if not setup.operator_confirmed:
             raise ValueError("physical setup needs operator confirmation")
@@ -45,6 +45,8 @@ class Runtime:
                 raise ValueError(f"{instrument_id}: unapproved driver/mode")
             if not status.get("stable"):
                 raise ValueError(f"{instrument_id}: not ready")
+            if status.get("fault_latched") and not allow_faults:
+                raise ValueError(f"{instrument_id}: local watchdog fault requires reconciliation")
             if instrument["lock_run"] and not ignore_reservation:
                 raise ValueError(f"{instrument_id}: already reserved")
             if role == "laser":
@@ -85,8 +87,9 @@ class Runtime:
             self.store.transition(run_id, {"RUNNING", "PAUSING", "PAUSED"}, "STOPPING")
             self.store.cancel_queued(run_id)
         elif action == "reconcile":
-            self.preflight(Plan.model_validate(run["plan"]), ignore_reservation=True)
-            self.store.transition(run_id, {"FAILED", "INTERRUPTED"}, "RECONCILING")
+            self.preflight(Plan.model_validate(run["plan"]), ignore_reservation=True,
+                           allow_faults=True)
+            self.store.begin_reconcile(run_id)
             self.tasks[run_id] = asyncio.create_task(self.reconcile(run_id))
         else:
             raise ValueError("unknown control action")
@@ -158,6 +161,8 @@ class Runtime:
                 rotator = await self.call(run_id, f"{point_index}-angle", devices["rotator"],
                                           "set_angle", {"angle_deg": angle})
                 if (not laser.get("stable") or laser.get("actual_wavelength_nm") != wavelength
+                        or laser.get("power_percent") != plan.power_percent
+                        or laser.get("shutter_open") is not True
                         or not rotator.get("stable") or rotator.get("actual_angle_deg") != angle):
                     raise ValueError("position readback did not verify the requested point")
                 result = await self.call(run_id, f"{point_index}-capture", devices["spectrometer"],

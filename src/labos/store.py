@@ -179,6 +179,20 @@ class Store:
             db.execute("UPDATE runs SET status=? WHERE id=?", (target, run_id))
             self.event_db(db, "USER_ACTION", {"status": target}, run_id)
 
+    def begin_reconcile(self, run_id):
+        with self.transaction() as db:
+            run = self.decode_run(db.execute("SELECT * FROM runs WHERE id=?", (run_id,)).fetchone())
+            if run["status"] not in {"FAILED", "INTERRUPTED"}:
+                raise ValueError("invalid run state transition")
+            for instrument_id in run["setup"]["devices"].values():
+                row = db.execute("SELECT lock_run FROM instruments WHERE id=?", (instrument_id,)).fetchone()
+                if not row or row["lock_run"] not in {None, run_id}:
+                    raise ValueError("reconciliation device is reserved by another run")
+            for instrument_id in run["setup"]["devices"].values():
+                db.execute("UPDATE instruments SET lock_run=? WHERE id=?", (run_id, instrument_id))
+            db.execute("UPDATE runs SET status='RECONCILING' WHERE id=?", (run_id,))
+            self.event_db(db, "USER_ACTION", {"status": "RECONCILING"}, run_id)
+
     def recover(self):
         with self.transaction() as db:
             db.execute("UPDATE runs SET status='INTERRUPTED',error='central restarted; reconcile before reuse' WHERE status IN ('RUNNING','PAUSING','PAUSED','STOPPING','RECONCILING')")
@@ -208,6 +222,8 @@ class Store:
             instrument = db.execute("SELECT * FROM instruments WHERE id=?", (instrument_id,)).fetchone()
             if not instrument:
                 raise ValueError("unknown instrument")
+            if instrument["lock_run"] != run_id:
+                raise ValueError("command resource ownership mismatch")
             command_id = "cmd_" + uuid.uuid4().hex
             db.execute("""INSERT INTO commands(id,unique_key,agent_id,instrument_id,run_id,op,parameters,state,created)
             VALUES(?,?,?,?,?,?,?,'QUEUED',?)""", (command_id, unique_key, instrument["agent_id"],

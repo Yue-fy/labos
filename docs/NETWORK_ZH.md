@@ -12,6 +12,8 @@ Windows PC 不启动入站 HTTP 服务，不需要开放 22/8000 等入站端口
 
 默认任务轮询 0.3 秒、独立心跳 2 秒、中央离线判断 10 秒、本地 watchdog 15 秒。心跳与 watchdog 分开运行；网络请求阻塞不应阻塞本地监控。失联后取消活动动作并请求本地安全状态。重连退避 1→2→4→8→15 秒，附带抖动。服务器端命令超时默认 20 秒，不自动重发已派发操作。
 
+活动实验触发 watchdog 后，Agent 将受影响仪器的故障标记保存进 SQLite；恢复网络或重启 PC 不会自动清除。后续普通操作被拒绝，只有经中央恢复流程确认的新安全关闭命令能解除标记。中央每次采集前验证光源功率、快门及位置读回，避免将断光后的扫描记录为正常完成。恢复旧实验时会原子检查设备归属，不会操作新实验占用的仪器。
+
 ## 方案 A：专用 LAN
 
 最简单的初始部署：中央与 PC 位于允许互访的 Ethernet/VLAN。中央监听 `0.0.0.0:8000`，PC 配置中央实际 IP，例如 `http://192.168.1.10:8000`。配置显式 `allow_insecure_http: true`，仅用于受信 LAN 或加密 VPN。
@@ -38,6 +40,8 @@ labos.example.org {
 ```
 
 模板域名需替换并满足 DNS、证书签发和组织策略。TLS/反向代理部署由操作者或 IT 完成；本项目未申请域名、证书或开放公网。正式 PC 设置 `server_url: https://labos.example.org`，无需 allow_insecure_http。
+
+配置语法参考 [Caddy request_body 官方文档](https://caddyserver.com/docs/caddyfile/directives/request_body)。Windows 重启任务设置参考 [Microsoft ScheduledTasks 文档](https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/new-scheduledtasksettingsset)。
 
 机构自签/内部 CA：将 CA 文件放入 Agent 包，配置 `ca_file: central-ca.pem`，bundle 自动复制。始终验证 HTTPS 证书，没有 `verify=False` 配置。
 

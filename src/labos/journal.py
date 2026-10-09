@@ -20,6 +20,8 @@ class Journal:
               state TEXT NOT NULL, result TEXT NOT NULL DEFAULT '{}', acked INTEGER DEFAULT 0);
             CREATE TABLE IF NOT EXISTS artifacts (
               id TEXT PRIMARY KEY, path TEXT NOT NULL, sha TEXT NOT NULL, acked INTEGER DEFAULT 0);
+            CREATE TABLE IF NOT EXISTS devices (
+              id TEXT PRIMARY KEY, run_id TEXT, fault TEXT);
             """)
             db.execute("UPDATE commands SET state='UNKNOWN', result=? WHERE state='STARTED'",
                        (json.dumps({"error": "agent restarted during command; not replayed"}),))
@@ -87,3 +89,20 @@ class Journal:
     def ack_artifact(self, command_id):
         with self.connect() as db:
             db.execute("UPDATE artifacts SET acked=1 WHERE id=?", (command_id,))
+
+    def claim_device(self, instrument_id, run_id):
+        with self.connect() as db:
+            db.execute("INSERT INTO devices(id,run_id) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET run_id=excluded.run_id",
+                       (instrument_id, run_id))
+
+    def device_faults(self):
+        with self.connect() as db:
+            return {r["id"]: r["fault"] for r in db.execute("SELECT id,fault FROM devices WHERE fault IS NOT NULL")}
+
+    def latch_watchdog(self):
+        with self.connect() as db:
+            db.execute("UPDATE devices SET fault='watchdog interrupted active experiment' WHERE run_id IS NOT NULL")
+
+    def clear_device(self, instrument_id):
+        with self.connect() as db:
+            db.execute("UPDATE devices SET run_id=NULL,fault=NULL WHERE id=?", (instrument_id,))

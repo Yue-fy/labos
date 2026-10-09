@@ -32,7 +32,7 @@ class Agent:
         self.current_run = None
         self.last_contact = time.monotonic()
         self.registered = False
-        self.watchdog_tripped = False
+        self.watchdog_tripped = bool(self.journal.device_faults())
         tls = ssl.create_default_context(cafile=str(config.ca_file)) if config.ca_file else True
         self.client = httpx.AsyncClient(base_url=config.server_url, timeout=config.request_timeout_s,
                                        headers={"Authorization": f"Bearer {config.token}"},
@@ -46,7 +46,10 @@ class Agent:
                                       hashlib.sha256(content).hexdigest())
 
     def statuses(self):
-        return {instrument_id: driver.status() for instrument_id, driver in self.devices.items()}
+        faults = self.journal.device_faults()
+        return {instrument_id: {**driver.status(), "fault_latched": instrument_id in faults,
+                                "fault_reason": faults.get(instrument_id)}
+                for instrument_id, driver in self.devices.items()}
 
     async def request(self, endpoint, **kwargs):
         response = await self.client.post(f"/api/agents/{self.config.agent_id}/{endpoint}", **kwargs)
@@ -54,7 +57,6 @@ class Agent:
             self.registered = False
         response.raise_for_status()
         self.last_contact = time.monotonic()
-        self.watchdog_tripped = False
         return response.json()
 
     async def register(self):
@@ -72,6 +74,7 @@ class Agent:
     async def watchdog_once(self):
         if time.monotonic() - self.last_contact > self.config.watchdog_s:
             self.cancel.set()
+            self.journal.latch_watchdog()
             for device in self.devices.values():
                 await device.safe_shutdown()
             if not self.watchdog_tripped:
@@ -105,10 +108,14 @@ class Agent:
             device = self.devices.get(command["instrument_id"])
             if not device:
                 raise ValueError("instrument not configured on this PC")
+            if command["op"] != "safe_shutdown" and command["instrument_id"] in self.journal.device_faults():
+                raise ValueError("local watchdog fault is latched; explicit safe recovery required")
             if command["op"] != "safe_shutdown" and self.current_run in self.cancelled_runs:
                 raise ValueError("run cancelled; stale command refused")
             if command.get("remaining_s", 1) <= 0:
                 raise ValueError("expired command refused")
+            if command["op"] != "safe_shutdown":
+                self.journal.claim_device(command["instrument_id"], command["run_id"])
             result = await asyncio.wait_for(
                 device.execute(command["op"], command["parameters"], self.cancel),
                 timeout=command.get("remaining_s", 30))
@@ -132,6 +139,9 @@ class Agent:
                 result = {"measurement_id": command["id"], "sha256": sha,
                           "locally_saved": True, "simulated": True}
             state = "COMPLETED"
+            if command["op"] == "safe_shutdown":
+                self.journal.clear_device(command["instrument_id"])
+                self.watchdog_tripped = bool(self.journal.device_faults())
         except (asyncio.CancelledError, TimeoutError):
             for driver in self.devices.values():
                 await driver.safe_shutdown()

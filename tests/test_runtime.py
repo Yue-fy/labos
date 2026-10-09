@@ -10,7 +10,8 @@ from labos.runtime import Runtime
 from labos.store import Store
 
 
-async def run_with_local_pump(config, tmp_path, plan, pause=False, stop=False):
+async def run_with_local_pump(config, tmp_path, plan, pause=False, stop=False, trip_watchdog=False,
+                              drop_light=False):
     store = Store(config.data_dir)
     agents = {}
     for agent_id, enrollment in config.agents.items():
@@ -25,11 +26,19 @@ async def run_with_local_pump(config, tmp_path, plan, pause=False, stop=False):
     run = runtime.start(plan)
     run_id = run["id"]
     paused_once = False
+    tripped = False
     for _ in range(1000):
         for agent_id, agent in agents.items():
             store.heartbeat(agent_id, agent.boot_id, agent.statuses())
             cmd = store.claim(agent_id, agent.boot_id)
             if cmd:
+                if agent_id == "pc-a" and cmd["op"] == "set_wavelength" and not tripped:
+                    if trip_watchdog:
+                        agent.last_contact = 0
+                        await agent.watchdog_once()
+                    if drop_light:
+                        await agent.devices["superk_01"].safe_shutdown()
+                    tripped = trip_watchdog or drop_light
                 result = await agent.execute(cmd)
                 for item in agent.journal.pending_artifacts():
                     store.accept_artifact(agent_id, Path(item["path"]).read_bytes(), item["sha"])
@@ -108,3 +117,17 @@ def test_dispatch_timeout_retains_resources_and_never_requeues(central_config):
         assert all(i["lock_run"] == run["id"] for i in store.registry()["instruments"])
         assert store.measurements(run["id"]) == []
     asyncio.run(check())
+
+
+def test_watchdog_cannot_silently_continue_dark_scan(central_config, tmp_path):
+    store, run_id = asyncio.run(run_with_local_pump(
+        central_config, tmp_path, Plan(angle_stop_deg=10, exposure_ms=1), trip_watchdog=True))
+    assert store.run(run_id)["status"] == "FAILED"
+    assert store.measurements(run_id) == []
+
+
+def test_capture_requires_verified_power_and_open_shutter(central_config, tmp_path):
+    store, run_id = asyncio.run(run_with_local_pump(
+        central_config, tmp_path, Plan(angle_stop_deg=10, exposure_ms=1), drop_light=True))
+    assert store.run(run_id)["status"] == "FAILED"
+    assert store.measurements(run_id) == []

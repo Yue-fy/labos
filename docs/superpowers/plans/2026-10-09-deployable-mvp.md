@@ -23,40 +23,40 @@
 ### Task 1: Typed protocol and simulated devices
 **Files:** `src/labos/models.py`, `src/labos/drivers.py`, `src/labos/config.py`, `tests/test_models.py`, `tests/test_drivers.py`.
 **Interfaces:** `Plan.points()`, `SetupProfile.devices`, `SimulatedInstrument.execute(command, parameters, cancel)` and `safe_shutdown()`; finite values and local limits enforced before execution.
-- [ ] Write tests for inclusive 399-point grids, invalid/nonfinite values, empty limit intersections, unknown capabilities and cancellation-safe simulated devices.
-- [ ] Run `pytest tests/test_models.py tests/test_drivers.py` and observe missing-module failure.
-- [ ] Implement typed models/config and three simulated instrument adapters.
-- [ ] Run the same command; expected all PASS. Commit task.
+- [x] Write tests for inclusive 399-point grids, invalid/nonfinite values, empty limit intersections, unknown capabilities and cancellation-safe simulated devices.
+- [x] Run `pytest tests/test_models.py tests/test_drivers.py` and observe missing-module failure.
+- [x] Implement typed models/config and three simulated instrument adapters.
+- [x] Run the same command; expected all PASS. Commit task.
 
 ### Task 2: Durable central/agent storage
 **Files:** `src/labos/store.py`, `src/labos/journal.py`, `src/labos/files.py`, `tests/test_storage.py`.
 **Interfaces:** `Store` exposes transactional registry/run/command/measurement operations; `Journal` de-duplicates commands and persists results; atomic JSON/HDF5 utilities.
-- [ ] Write tests for exclusive resources, conflicting duplicate payloads, interrupted commands/runs, hash-verified measurement deduplication and finite data rejection.
-- [ ] Run `pytest tests/test_storage.py`; expected missing-module FAIL.
-- [ ] Implement SQLite transactions and artifact validation; stale commands never requeue.
-- [ ] Run tests; expected PASS. Commit task.
+- [x] Write tests for exclusive resources, conflicting duplicate payloads, interrupted commands/runs, hash-verified measurement deduplication and finite data rejection.
+- [x] Run `pytest tests/test_storage.py`; expected missing-module FAIL.
+- [x] Implement SQLite transactions and artifact validation; stale commands never requeue.
+- [x] Run tests; expected PASS. Commit task.
 
 ### Task 3: Authenticated central API/runtime and outbound agents
 **Files:** `src/labos/central.py`, `src/labos/runtime.py`, `src/labos/agent.py`, `tests/test_api.py`, `tests/test_runtime.py`, `tests/test_agent.py`.
 **Interfaces:** `create_app(config)`, `Runtime`, `Agent.run()`; registered boot session, role-scoped bearer tokens, heartbeat/poll/result/upload, explicit Start/Pause/Resume/Stop/Reconcile.
-- [ ] Write tests for 401/403, instrument ownership, stale sessions, local-first capture and restart replay, run point counts, timeout UNKNOWN and safe reconciliation.
-- [ ] Run these tests; expected missing-module FAIL.
-- [ ] Implement worker lifecycle with bounded timeouts, agent watchdog/cancellation and persistent uploads.
-- [ ] Run tests; expected PASS. Commit task.
+- [x] Write tests for 401/403, instrument ownership, stale sessions, local-first capture and restart replay, run point counts, timeout UNKNOWN and safe reconciliation.
+- [x] Run these tests; expected missing-module FAIL.
+- [x] Implement worker lifecycle with bounded timeouts, agent watchdog/cancellation and persistent uploads.
+- [x] Run tests; expected PASS. Commit task.
 
 ### Task 4: CLI, preparation dashboard and optional AI drafts
 **Files:** `src/labos/cli.py`, `src/labos/planner.py`, `src/labos/static/index.html`, `tests/test_cli.py`, `tests/test_planner.py`.
 **Interfaces:** `python -m labos init|central|agent|doctor|submit|export|demo`; optional planner returns only validated draft plans using configured model.
-- [ ] Write tests for provisioning secret isolation, unsupported real mode, authenticated doctor, draft-only planner and strict response handling.
-- [ ] Run tests; expected missing-module FAIL.
-- [ ] Implement CLI/UI and optional AI integration; no automatic execution.
-- [ ] Run tests; expected PASS. Commit task.
+- [x] Write tests for provisioning secret isolation, unsupported real mode, authenticated doctor, draft-only planner and strict response handling.
+- [x] Run tests; expected missing-module FAIL.
+- [x] Implement CLI/UI and optional AI integration; no automatic execution.
+- [x] Run tests; expected PASS. Commit task.
 
 ### Task 5: Delivery packages and deployment documentation
 **Files:** `scripts/build_delivery.py`, Windows/Linux launch/install scripts, `docs/DEPLOYMENT_ZH.md`, `docs/NETWORK_ZH.md`, `docs/HARDWARE_ZH.md`, `tests/test_delivery.py`, `scripts/acceptance.py`.
 **Interfaces:** Role ZIPs contain wheel/source, pinned requirements, instructions and executable scripts; per-agent bundles include only assigned token/config.
-- [ ] Write package tests for safe paths, no secrets, complete entrypoints and extractability.
-- [ ] Run tests; expected missing build module FAIL.
-- [ ] Build delivery ZIPs; provide LAN/VPN/TLS recipes, offline wheelhouse and startup troubleshooting.
-- [ ] Run full pytest, Ruff, three-process TCP acceptance and extracted-package acceptance; expected PASS and confirmed HDF5 point count. Commit task.
-- [ ] Fresh reviewer checks runtime/auth/storage/delivery; fix material findings with reproducing tests and rerun relevant acceptance.
+- [x] Write package tests for safe paths, no secrets, complete entrypoints and extractability.
+- [x] Run tests; expected missing build module FAIL.
+- [x] Build delivery ZIPs; provide LAN/VPN/TLS recipes, offline wheelhouse and startup troubleshooting.
+- [x] Run full pytest, Ruff, three-process TCP acceptance and extracted-package acceptance; expected PASS and confirmed HDF5 point count. Commit task.
+- [x] Fresh reviewer checks runtime/auth/storage/delivery; fix material findings with reproducing tests and rerun relevant acceptance.

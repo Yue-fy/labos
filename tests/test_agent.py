@@ -62,6 +62,7 @@ def test_watchdog_is_independent_of_blocked_heartbeat(tmp_path):
                              data_dir=tmp_path, heartbeat_s=0.1, watchdog_s=1,
                              instruments=[InstrumentSpec(id="superk_01", kind="laser")])
         agent = Agent(config, transport=httpx.MockTransport(blocked))
+        agent.journal.claim_device("superk_01", "exp_test")
         await agent.devices["superk_01"].execute("open_shutter", {}, asyncio.Event())
         agent.registered = True
         tasks = [asyncio.create_task(agent.background()), asyncio.create_task(agent.watchdog_loop())]
@@ -74,4 +75,28 @@ def test_watchdog_is_independent_of_blocked_heartbeat(tmp_path):
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
             await agent.close()
+    asyncio.run(check())
+
+
+def test_watchdog_fault_survives_contact_and_agent_restart_until_safe_recovery(tmp_path):
+    async def check():
+        config = AgentConfig(agent_id="pc-a", token="A" * 40, server_url="http://localhost:8000",
+                             data_dir=tmp_path, heartbeat_s=0.1, watchdog_s=1,
+                             instruments=[InstrumentSpec(id="superk_01", kind="laser")])
+        agent = Agent(config)
+        cmd = {"id": "cmd_power", "run_id": "exp_active", "instrument_id": "superk_01",
+               "op": "set_power", "parameters": {"percent": 5}}
+        assert (await agent.execute(cmd))["state"] == "COMPLETED"
+        agent.last_contact = 0
+        await agent.watchdog_once()
+        assert agent.statuses()["superk_01"]["fault_latched"]
+        await agent.close()
+        restarted = Agent(config)
+        move = {**cmd, "id": "cmd_move", "op": "set_wavelength", "parameters": {"nm": 650}}
+        assert (await restarted.execute(move))["state"] == "FAILED"
+        assert restarted.statuses()["superk_01"]["fault_latched"]
+        safe = {**cmd, "id": "cmd_safe", "op": "safe_shutdown", "parameters": {}}
+        assert (await restarted.execute(safe))["state"] == "COMPLETED"
+        assert not restarted.statuses()["superk_01"]["fault_latched"]
+        await restarted.close()
     asyncio.run(check())

@@ -31,10 +31,11 @@ def test_resource_reservation_and_interrupted_runs(tmp_path):
 def test_command_idempotency_and_ambiguous_dispatch(tmp_path):
     store = ready_store(tmp_path)
     store.register("pc-a", "boot-a", now=100)
-    cmd = store.new_command("run1", "point0", "superk_01", "set_wavelength", {"nm": 650})
-    assert store.new_command("run1", "point0", "superk_01", "set_wavelength", {"nm": 650})["id"] == cmd["id"]
+    run_id = store.create_run(Plan(), SetupProfile(), {})["id"]
+    cmd = store.new_command(run_id, "point0", "superk_01", "set_wavelength", {"nm": 650})
+    assert store.new_command(run_id, "point0", "superk_01", "set_wavelength", {"nm": 650})["id"] == cmd["id"]
     with pytest.raises(ValueError, match="different"):
-        store.new_command("run1", "point0", "superk_01", "set_wavelength", {"nm": 700})
+        store.new_command(run_id, "point0", "superk_01", "set_wavelength", {"nm": 700})
     assert store.claim("pc-a", "boot-a")["id"] == cmd["id"]
     store.recover()
     assert store.command(cmd["id"])["state"] == "UNKNOWN"
@@ -116,3 +117,25 @@ def test_old_session_and_duplicate_live_agent_are_rejected(tmp_path):
     store.register("pc-a", "boot2", now=111, offline_after=10)
     with pytest.raises(ValueError, match="session"):
         store.heartbeat("pc-a", "boot1", {}, now=112)
+
+
+def test_old_run_cannot_reconcile_or_queue_commands_on_new_run_resources(tmp_path):
+    store = ready_store(tmp_path)
+    old = store.create_run(Plan(), SetupProfile(), {})
+    store.set_run(old["id"], "FAILED", "previous error", release=True)
+    new = store.create_run(Plan(), SetupProfile(), {})
+    with pytest.raises(ValueError, match="reserved"):
+        store.begin_reconcile(old["id"])
+    with pytest.raises(ValueError, match="ownership"):
+        store.new_command(old["id"], "unsafe-recovery", "superk_01", "safe_shutdown", {})
+    assert store.run(old["id"])["status"] == "FAILED"
+    assert all(i["lock_run"] == new["id"] for i in store.registry()["instruments"])
+
+
+def test_reconciliation_atomically_reserves_previously_released_resources(tmp_path):
+    store = ready_store(tmp_path)
+    run = store.create_run(Plan(), SetupProfile(), {})
+    store.set_run(run["id"], "FAILED", release=True)
+    store.begin_reconcile(run["id"])
+    assert store.run(run["id"])["status"] == "RECONCILING"
+    assert all(i["lock_run"] == run["id"] for i in store.registry()["instruments"])
