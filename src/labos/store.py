@@ -331,3 +331,11 @@ class Store:
             rows = db.execute("SELECT * FROM events WHERE (? IS NULL OR run_id=?) ORDER BY sequence DESC LIMIT 200",
                               (run_id, run_id)).fetchall()
             return [{**dict(r), "detail": json.loads(r["detail"])} for r in rows]
+
+    def adaptive_history(self, run_id):
+        """Complete bounded-round provenance, independent of the UI's log tail."""
+        with self.transaction() as db:
+            rows = db.execute(
+                "SELECT * FROM events WHERE run_id=? AND category LIKE 'ADAPTIVE_%' "
+                "ORDER BY sequence", (run_id,)).fetchall()
+            return [{**dict(r), "detail": json.loads(r["detail"])} for r in rows]

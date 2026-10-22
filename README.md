@@ -6,6 +6,8 @@
 
 真实仪器驱动尚未启用；型号、SDK、连接方式和装置验证齐备后再接入。模拟数据均有显式标记。
 
+新增：**纯模拟自适应共振扫描闭环**。两个 Lab Agent 先执行 500–800 nm 粗扫描，中央策略根据实际上传的光谱选峰，再自动缩小范围、依次用 5 nm 和 1 nm 步长扫描。沿用原有预检查、资源独占、watchdog、日志、缓存上传及 HDF5。策略为确定性算法，无需 OpenAI/API key。详见 [运行与审批边界](docs/ADAPTIVE_DEMO_ZH.md)。
+
 ## 开发环境与本机验收
 
 ```bash
@@ -15,6 +17,12 @@ uv pip install --python .venv/bin/python -e '.[central,ai,dev]'
 .venv/bin/python -m labos demo --directory runtime/demo-01
 # 完整 399 点实验；使用新的输出目录
 .venv/bin/python -m labos demo --directory runtime/full-demo-01 --full
+# 自适应模拟；每次使用新的输出目录
+.venv/bin/python -m labos adaptive-demo --directory runtime/adaptive-01
+# 将隐藏的模拟峰移到 707 nm，观察后续范围随数据改变
+.venv/bin/python -m labos adaptive-demo --directory runtime/adaptive-02 --resonance-nm 707
+# 自动验收：两次相同种子的实验 + 一次移动共振峰（自动创建新目录）
+.venv/bin/python scripts/adaptive_acceptance.py
 ```
 
 ## 部署
@@ -51,3 +59,5 @@ uv pip install --python .venv/bin/python -e '.[central,ai,dev]'
 中央 SQLite 与执行器要求单实例；不使用 uvicorn 多 worker/reload。中断的实验需要核对，不自动续跑未知物理动作。本地 watchdog 不能替代硬件联锁或断电保护。此版本没有通用 YAML 执行器、自动生成生产驱动、任意 Python/SCPI 接口和硬件快速同步。
 
 OpenAI 可选：中央配置 `openai_model` 并设置 `OPENAI_API_KEY`，界面才能生成自然语言计划草稿。模型名称由部署者配置；草稿仍需预检查及 Start。实测与自动测试无需 API key。
+
+自适应运行要求显式的 `adaptive.simulation_approved: true`；`adaptive-demo` 命令代表批准本地模拟闭环。范围和分辨率的选择、已批准范围内的后续模拟扫描自动执行。真实仪器不在本次功能范围内，未增加任何真实驱动、仪器发现或硬件控制路径；故障恢复仍需操作者显式 reconcile。GitHub Actions 自动运行单元测试、Ruff 和三次 TCP 自适应验收。

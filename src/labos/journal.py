@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 
 from .files import json_bytes
@@ -26,12 +27,19 @@ class Journal:
             db.execute("UPDATE commands SET state='UNKNOWN', result=? WHERE state='STARTED'",
                        (json.dumps({"error": "agent restarted during command; not replayed"}),))
 
+    @contextmanager
     def connect(self):
         db = sqlite3.connect(self.path, timeout=10)
-        db.row_factory = sqlite3.Row
-        db.execute("PRAGMA journal_mode=WAL")
-        db.execute("PRAGMA synchronous=FULL")
-        return db
+        try:
+            db.row_factory = sqlite3.Row
+            db.execute("PRAGMA journal_mode=WAL")
+            db.execute("PRAGMA synchronous=FULL")
+            with db:
+                yield db
+        finally:
+            # A sqlite Connection's own context manager commits/rolls back but
+            # does not close it. Polling must not accumulate WAL connections.
+            db.close()
 
     def get(self, command_id):
         with self.connect() as db:
@@ -103,6 +111,8 @@ class Journal:
         with self.connect() as db:
             db.execute("UPDATE devices SET fault='watchdog interrupted active experiment' WHERE run_id IS NOT NULL")
 
-    def clear_device(self, instrument_id):
+    def clear_device(self, instrument_id, preserve_fault=False):
         with self.connect() as db:
-            db.execute("UPDATE devices SET run_id=NULL,fault=NULL WHERE id=?", (instrument_id,))
+            db.execute("UPDATE devices SET run_id=NULL WHERE id=?", (instrument_id,))
+            if not preserve_fault:
+                db.execute("UPDATE devices SET fault=NULL WHERE id=?", (instrument_id,))

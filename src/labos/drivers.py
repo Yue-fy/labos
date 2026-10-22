@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import math
+import random
 from abc import ABC, abstractmethod
 
 from .models import InstrumentSpec
@@ -79,6 +81,17 @@ class SimulatedInstrument(InstrumentDriver):
             contrast = 0.2 + 0.8 * math.cos(math.radians(angle)) ** 2
             counts = [round(exposure * contrast * math.exp(-((x-wavelength) / 25) ** 2)
                             + 2, 6) for x in axis]
+            response = self.spec.simulation_response
+            if response is not None:
+                # Stable per acquisition settings, across processes and Python hash seeds.
+                seed = hashlib.sha256(
+                    f"{response.seed}:{wavelength}:{angle}:{exposure}".encode()).digest()
+                rng = random.Random(seed)
+                excitation = math.exp(-0.5 * ((wavelength-response.peak_nm)/response.width_nm)**2)
+                counts = [round(max(0, 2 + exposure * contrast * response.amplitude * (
+                    (0.02 + excitation) * math.exp(-((x-680)/25)**2)
+                    + rng.uniform(-response.relative_noise, response.relative_noise))), 6)
+                    for x in axis]
             return {"spectrum_axis_nm": axis, "counts": counts,
                     "exposure_ms": exposure, "simulated": True}
         return self.status()

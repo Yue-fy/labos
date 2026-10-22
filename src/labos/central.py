@@ -134,6 +134,13 @@ def create_app(config: CentralConfig):
         checked(store.run, run_id)
         return store.measurements(run_id)
 
+    @app.get("/api/runs/{run_id}/adaptive", dependencies=[Depends(operator)])
+    def adaptive_history(run_id: str):
+        run = checked(store.run, run_id)
+        if not run["plan"].get("adaptive"):
+            raise HTTPException(409, "this is not an adaptive simulation run")
+        return {"simulated": True, "history": store.adaptive_history(run_id)}
+
     @app.get("/api/runs/{run_id}/export", dependencies=[Depends(operator)])
     def export(run_id: str):
         path = checked(export_hdf5, store, run_id)

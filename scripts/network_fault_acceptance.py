@@ -80,7 +80,10 @@ try:
         old = client.get(f"/api/runs/{run_id}").json()
         assert old["status"] == "INTERRUPTED"
         assert old["points"] >= 1
-        assert any(i["status"].get("fault_latched") for i in status()["instruments"])
+        # Persisted pre-restart heartbeats may still be within the online TTL.
+        # Wait for the fault-bearing heartbeat, not merely the old online flag.
+        wait_until(lambda: any(i["status"].get("fault_latched")
+                               for i in status()["instruments"]))
         response = client.post(f"/api/runs/{run_id}/reconcile")
         response.raise_for_status()
         wait_until(lambda: client.get(f"/api/runs/{run_id}").json()["status"] == "ABORTED")

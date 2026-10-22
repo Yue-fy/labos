@@ -107,6 +107,10 @@ def main(argv=None):
     demo = sub.add_parser("demo", help="run central and two agents as separate TCP processes")
     demo.add_argument("--directory", type=Path, default=Path("runtime/acceptance"))
     demo.add_argument("--full", action="store_true", help="run 399-point scan")
+    adaptive_demo = sub.add_parser("adaptive-demo", help="approve and run a LOCAL SIMULATED adaptive scan")
+    adaptive_demo.add_argument("--directory", type=Path, default=Path("runtime/adaptive-demo"))
+    adaptive_demo.add_argument("--resonance-nm", type=float, default=635)
+    adaptive_demo.add_argument("--seed", type=int, default=0)
     args = parser.parse_args(argv)
     try:
         if args.command == "init":
@@ -134,6 +138,10 @@ def main(argv=None):
         elif args.command == "demo":
             from .demo import acceptance
             print(json.dumps(acceptance(args.directory, full=args.full), indent=2))
+        elif args.command == "adaptive-demo":
+            from .demo import acceptance
+            print(json.dumps(acceptance(args.directory, adaptive=True,
+                resonance_nm=args.resonance_nm, seed=args.seed), indent=2))
         else:
             with operator_client(args.config, args.server_url) as client:
                 if args.command == "status":

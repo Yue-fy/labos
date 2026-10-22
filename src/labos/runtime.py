@@ -5,6 +5,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 
+from .adaptive import POLICY_VERSION, analyze_peak, refine_plan
 from .config import CentralConfig
 from .files import export_hdf5
 from .models import Plan
@@ -69,8 +70,16 @@ class Runtime:
                 "note": "Exposure-only lower bound; movement, network and storage add time."}
 
     def start(self, plan):
+        # Revalidate mutable model instances before any reservation or command.
+        plan = Plan.model_validate(plan.model_dump())
         snapshot = self.preflight(plan)
         run = self.store.create_run(plan, self.setup(plan.setup_id), snapshot)
+        if plan.adaptive is not None:
+            self.store.event("ADAPTIVE_APPROVED", {
+                "simulation_approved": True, "simulation_only": True,
+                "policy_version": POLICY_VERSION, "settings": plan.adaptive.model_dump(),
+                "approved_envelope": plan.model_dump(),
+                "authorization": "operator explicitly submitted an approved simulation plan"}, run["id"])
         self.tasks[run["id"]] = asyncio.create_task(self.execute(run["id"]))
         return run
 
@@ -111,11 +120,12 @@ class Runtime:
         self.store.timeout_command(command["id"])
         raise ValueError(f"{op}: command timeout; outcome must be reconciled")
 
-    async def safe_shutdown(self, run_id):
+    async def safe_shutdown(self, run_id, *, reconcile=False):
         run = self.store.run(run_id)
         nonce = uuid.uuid4().hex
         results = await asyncio.gather(*[
-            self.call(run_id, f"safe-{nonce}-{role}", instrument_id, "safe_shutdown", {}, cleanup=True)
+            self.call(run_id, f"safe-{nonce}-{role}", instrument_id, "safe_shutdown",
+                      {} if reconcile else {"preserve_fault": True}, cleanup=True)
             for role, instrument_id in run["setup"]["devices"].items()
         ], return_exceptions=True)
         failures = [str(r) for r in results if isinstance(r, BaseException)]
@@ -124,6 +134,8 @@ class Runtime:
         for role, result in zip(run["setup"]["devices"], results):
             if role == "laser" and (result.get("shutter_open") or result.get("power_percent") != 0):
                 raise ValueError("laser safe state unconfirmed")
+            if result.get("fault_latched") and not reconcile:
+                raise ValueError("local watchdog fault requires explicit operator reconciliation")
 
     async def prepare_light(self, run_id, devices, plan):
         nonce = uuid.uuid4().hex
@@ -136,7 +148,10 @@ class Runtime:
         if status == "STOPPING":
             raise RunStopped()
         if status == "PAUSING":
-            await self.call(run_id, f"pause-{uuid.uuid4().hex}", devices["laser"], "safe_shutdown", {})
+            dark = await self.call(run_id, f"pause-{uuid.uuid4().hex}", devices["laser"],
+                                   "safe_shutdown", {"preserve_fault": True})
+            if dark.get("fault_latched"):
+                raise ValueError("local watchdog fault requires explicit operator reconciliation")
             status = self.store.run(run_id)["status"]
             if status == "STOPPING":
                 raise RunStopped()
@@ -147,45 +162,101 @@ class Runtime:
                 raise RunStopped()
             await self.prepare_light(run_id, devices, plan)
 
+    async def scan(self, run_id, plan, point_offset=0):
+        devices = self.store.run(run_id)["setup"]["devices"]
+        # A pause requested during the preceding round must precede new light.
+        await self.boundary(run_id, devices, plan)
+        await self.prepare_light(run_id, devices, plan)
+        for point_index, (wavelength, angle) in enumerate(plan.points(), start=point_offset):
+            await self.boundary(run_id, devices, plan)
+            laser = await self.call(run_id, f"{point_index}-wavelength", devices["laser"],
+                                    "set_wavelength", {"nm": wavelength})
+            rotator = await self.call(run_id, f"{point_index}-angle", devices["rotator"],
+                                      "set_angle", {"angle_deg": angle})
+            if (not laser.get("stable") or laser.get("actual_wavelength_nm") != wavelength
+                    or laser.get("power_percent") != plan.power_percent
+                    or laser.get("shutter_open") is not True
+                    or not rotator.get("stable") or rotator.get("actual_angle_deg") != angle):
+                raise ValueError("position readback did not verify the requested point")
+            result = await self.call(run_id, f"{point_index}-capture", devices["spectrometer"],
+                                     "acquire_and_store", {
+                "point_index": point_index, "sample_id": plan.sample_id,
+                "wavelength_nm": wavelength, "angle_deg": angle,
+                "power_percent": plan.power_percent, "exposure_ms": plan.exposure_ms,
+                "readbacks": {"laser": laser, "rotator": rotator}})
+            deadline = time.monotonic() + self.config.command_timeout_s
+            while result.get("measurement_id") not in {m["measurement_id"] for m in self.store.measurements(run_id)}:
+                if self.store.run(run_id)["status"] == "STOPPING":
+                    raise RunStopped()
+                if time.monotonic() >= deadline:
+                    raise ValueError("capture saved locally but central synchronization timed out")
+                await asyncio.sleep(0.03)
+
+    async def execute_adaptive(self, run_id, plan):
+        settings = plan.adaptive
+        scan = Plan.model_validate({**plan.model_dump(), "adaptive": None})
+        offset = 0
+        for round_index in range(1 + len(settings.refinement_steps_nm)):
+            if self.store.run(run_id)["status"] == "STOPPING":
+                raise RunStopped()
+            snapshot = self.preflight(scan, ignore_reservation=True)
+            count = len(scan.points())
+            if offset + count > settings.max_total_points:
+                raise ValueError("adaptive total point budget exhausted before next round")
+            self.store.event("ADAPTIVE_ROUND_STARTED", {
+                "round_index": round_index, "point_offset": offset, "point_count": count,
+                "plan": scan.model_dump(), "preflight": snapshot}, run_id)
+            await self.scan(run_id, scan, point_offset=offset)
+            # Keep light off during analysis while retaining central resource ownership.
+            laser_id = self.store.run(run_id)["setup"]["devices"]["laser"]
+            dark = await self.call(run_id, f"round-{round_index}-dark", laser_id,
+                                   "safe_shutdown", {"preserve_fault": True})
+            if dark.get("fault_latched"):
+                raise ValueError("local watchdog fault requires explicit operator reconciliation")
+            if dark.get("shutter_open") is not False or dark.get("power_percent") != 0:
+                raise ValueError("safe state before adaptive analysis was not confirmed")
+            data = self.store.measurements(run_id)[offset:offset+count]
+            if [m["point_index"] for m in data] != list(range(offset, offset+count)):
+                raise ValueError("adaptive round has incomplete or duplicate point indices")
+            analysis = analyze_peak(scan, data, settings.min_contrast)
+            self.store.event("ADAPTIVE_ROUND_COMPLETED", {
+                "round_index": round_index, "point_offset": offset, "point_count": count,
+                "plan": scan.model_dump(), "analysis": analysis}, run_id)
+            offset += count
+            if round_index < len(settings.refinement_steps_nm):
+                next_scan = refine_plan(scan, analysis["peak_nm"],
+                                        settings.refinement_steps_nm[round_index])
+                if offset + len(next_scan.points()) > settings.max_total_points:
+                    raise ValueError("adaptive total point budget exhausted before next round")
+                self.store.event("ADAPTIVE_NEXT_SCAN", {
+                    "after_round": round_index, "observed_peak_nm": analysis["peak_nm"],
+                    "next_plan": next_scan.model_dump(), "automatic_decision": True,
+                    "authorization": "previously approved simulation only",
+                    "reason": "refine two prior steps around the measured interior maximum",
+                    "policy_version": POLICY_VERSION}, run_id)
+                scan = next_scan
+
     async def execute(self, run_id):
         run = self.store.run(run_id)
         plan = Plan.model_validate(run["plan"])
-        devices = run["setup"]["devices"]
         final, error = "COMPLETED", None
         try:
-            await self.prepare_light(run_id, devices, plan)
-            for point_index, (wavelength, angle) in enumerate(plan.points()):
-                await self.boundary(run_id, devices, plan)
-                laser = await self.call(run_id, f"{point_index}-wavelength", devices["laser"],
-                                        "set_wavelength", {"nm": wavelength})
-                rotator = await self.call(run_id, f"{point_index}-angle", devices["rotator"],
-                                          "set_angle", {"angle_deg": angle})
-                if (not laser.get("stable") or laser.get("actual_wavelength_nm") != wavelength
-                        or laser.get("power_percent") != plan.power_percent
-                        or laser.get("shutter_open") is not True
-                        or not rotator.get("stable") or rotator.get("actual_angle_deg") != angle):
-                    raise ValueError("position readback did not verify the requested point")
-                result = await self.call(run_id, f"{point_index}-capture", devices["spectrometer"],
-                                         "acquire_and_store", {
-                    "point_index": point_index, "sample_id": plan.sample_id,
-                    "wavelength_nm": wavelength, "angle_deg": angle,
-                    "power_percent": plan.power_percent, "exposure_ms": plan.exposure_ms,
-                    "readbacks": {"laser": laser, "rotator": rotator}})
-                deadline = time.monotonic() + self.config.command_timeout_s
-                while result.get("measurement_id") not in {m["measurement_id"] for m in self.store.measurements(run_id)}:
-                    if self.store.run(run_id)["status"] == "STOPPING":
-                        raise RunStopped()
-                    if time.monotonic() >= deadline:
-                        raise ValueError("capture saved locally but central synchronization timed out")
-                    await asyncio.sleep(0.03)
+            if plan.adaptive is not None:
+                await self.execute_adaptive(run_id, plan)
+            else:
+                await self.scan(run_id, plan)
         except RunStopped:
             final, error = "ABORTED", "stopped by operator; synchronized data preserved"
+            if plan.adaptive is not None:
+                self.store.event("ADAPTIVE_HALTED", {"reason": error}, run_id)
         except asyncio.CancelledError:
             self.store.cancel_queued(run_id)
             self.store.set_run(run_id, "INTERRUPTED", "runtime stopped; local watchdog protects devices")
             raise
         except Exception as exc:
             final, error = "FAILED", str(exc)
+            if plan.adaptive is not None:
+                self.store.event("ADAPTIVE_HALTED", {"reason": error}, run_id)
         self.store.cancel_queued(run_id)
         try:
             await self.safe_shutdown(run_id)
@@ -202,7 +273,7 @@ class Runtime:
     async def reconcile(self, run_id):
         self.store.cancel_queued(run_id)
         try:
-            await self.safe_shutdown(run_id)
+            await self.safe_shutdown(run_id, reconcile=True)
             self.store.set_run(run_id, "ABORTED", "operator reconciliation completed", release=True)
         except Exception as exc:
             self.store.set_run(run_id, "FAILED", str(exc))

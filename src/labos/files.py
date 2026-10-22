@@ -106,6 +106,7 @@ def export_hdf5(store, run_id: str) -> Path:
     measurements = store.measurements(run_id)
     if not measurements:
         raise ValueError("no synchronized measurements to export")
+    adaptive_history = store.adaptive_history(run_id) if run["plan"].get("adaptive") else []
     path = store.root / "exports" / f"{run_id}.h5"
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f"{run_id}.{uuid.uuid4().hex}.tmp")
@@ -114,7 +115,8 @@ def export_hdf5(store, run_id: str) -> Path:
             h5.attrs["experiment_id"] = run_id
             h5.attrs["status_at_export"] = run["status"]
             h5.attrs["simulated"] = all(m["simulated"] for m in measurements)
-            h5.attrs["workflow_version"] = "polarization-0.1.0"
+            h5.attrs["workflow_version"] = ("adaptive-resonance-0.1.0" if adaptive_history
+                                            else "polarization-0.1.0")
             raw = h5.create_group("raw")
             for name in ("wavelength_nm", "angle_deg", "power_percent", "exposure_ms",
                          "point_index"):
@@ -123,6 +125,21 @@ def export_hdf5(store, run_id: str) -> Path:
             raw.create_dataset("spectrum_axis_nm", data=np.array(axes))
             raw.create_dataset("counts", data=np.array([m["counts"] for m in measurements]))
             text_type = h5py.string_dtype("utf-8")
+            if adaptive_history:
+                adaptive = h5.create_group("adaptive")
+                adaptive.create_dataset("events_json", data=json.dumps(adaptive_history,
+                    ensure_ascii=False, allow_nan=False), dtype=text_type)
+                adaptive.attrs["policy_version"] = adaptive_history[0]["detail"]["policy_version"]
+                adaptive.attrs["execution_authorization"] = "explicit simulation approval"
+                round_for_point = {}
+                for event in adaptive_history:
+                    if event["category"] == "ADAPTIVE_ROUND_STARTED":
+                        detail = event["detail"]
+                        for point in range(detail["point_offset"],
+                                           detail["point_offset"] + detail["point_count"]):
+                            round_for_point[point] = detail["round_index"]
+                raw.create_dataset("round_index", data=[round_for_point[m["point_index"]]
+                                                       for m in measurements])
             metadata = h5.create_group("metadata")
             for name in ("plan", "setup", "preflight"):
                 metadata.create_dataset(name, data=json.dumps(run[name], ensure_ascii=False),
