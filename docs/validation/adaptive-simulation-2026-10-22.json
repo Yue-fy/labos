@@ -1,0 +1,171 @@
+{
+  "date": "2026-10-22",
+  "timezone": "Europe/Helsinki",
+  "simulated": true,
+  "python": "3.12.14",
+  "sqlite": "3.53.1",
+  "pytest": {
+    "passed": 87,
+    "baseline_passed": 44,
+    "warnings": 1,
+    "warning": "Pre-existing FastAPI/Starlette TestClient httpx deprecation"
+  },
+  "ruff": "PASS",
+  "transport": "HTTP over loopback TCP",
+  "processes_per_run": 3,
+  "agents_per_run": 2,
+  "instruments": 3,
+  "reproducibility": "identical spectra and decisions",
+  "moved_peak": "635 -> 707 nm changed subsequent scan ranges",
+  "runs": [
+    {
+      "run_id": "exp_077dddaa05764becb2f005dbee3a2071",
+      "seed": 42,
+      "hidden_resonance_nm": 635,
+      "detected_peak_nm": 635.0,
+      "points": 54,
+      "counts_sha256": "fa327d70eb65308cb172d1f6c0bb803a3f1fa18a8f53d04114c1ca35ca4f7f6a",
+      "safe_shutdown_verified": true,
+      "local_cache_verified": true,
+      "rounds": [
+        {
+          "round_index": 0,
+          "point_offset": 0,
+          "point_count": 16,
+          "start_nm": 500.0,
+          "stop_nm": 800.0,
+          "step_nm": 20.0,
+          "observed_peak_nm": 640.0
+        },
+        {
+          "round_index": 1,
+          "point_offset": 16,
+          "point_count": 17,
+          "start_nm": 600.0,
+          "stop_nm": 680.0,
+          "step_nm": 5.0,
+          "observed_peak_nm": 635.0
+        },
+        {
+          "round_index": 2,
+          "point_offset": 33,
+          "point_count": 21,
+          "start_nm": 625.0,
+          "stop_nm": 645.0,
+          "step_nm": 1.0,
+          "observed_peak_nm": 635.0
+        }
+      ]
+    },
+    {
+      "run_id": "exp_92ceec51b77a428ea5abd196a587f94c",
+      "seed": 42,
+      "hidden_resonance_nm": 635,
+      "detected_peak_nm": 635.0,
+      "points": 54,
+      "counts_sha256": "fa327d70eb65308cb172d1f6c0bb803a3f1fa18a8f53d04114c1ca35ca4f7f6a",
+      "safe_shutdown_verified": true,
+      "local_cache_verified": true,
+      "rounds": [
+        {
+          "round_index": 0,
+          "point_offset": 0,
+          "point_count": 16,
+          "start_nm": 500.0,
+          "stop_nm": 800.0,
+          "step_nm": 20.0,
+          "observed_peak_nm": 640.0
+        },
+        {
+          "round_index": 1,
+          "point_offset": 16,
+          "point_count": 17,
+          "start_nm": 600.0,
+          "stop_nm": 680.0,
+          "step_nm": 5.0,
+          "observed_peak_nm": 635.0
+        },
+        {
+          "round_index": 2,
+          "point_offset": 33,
+          "point_count": 21,
+          "start_nm": 625.0,
+          "stop_nm": 645.0,
+          "step_nm": 1.0,
+          "observed_peak_nm": 635.0
+        }
+      ]
+    },
+    {
+      "run_id": "exp_0939ae925ba743949a9d3768d7aa08d7",
+      "seed": 42,
+      "hidden_resonance_nm": 707,
+      "detected_peak_nm": 707.0,
+      "points": 54,
+      "counts_sha256": "c394473e78cdae44c46978c0dd55432fb9b00d05a92030f274636b4f4da84964",
+      "safe_shutdown_verified": true,
+      "local_cache_verified": true,
+      "rounds": [
+        {
+          "round_index": 0,
+          "point_offset": 0,
+          "point_count": 16,
+          "start_nm": 500.0,
+          "stop_nm": 800.0,
+          "step_nm": 20.0,
+          "observed_peak_nm": 700.0
+        },
+        {
+          "round_index": 1,
+          "point_offset": 16,
+          "point_count": 17,
+          "start_nm": 660.0,
+          "stop_nm": 740.0,
+          "step_nm": 5.0,
+          "observed_peak_nm": 705.0
+        },
+        {
+          "round_index": 2,
+          "point_offset": 33,
+          "point_count": 21,
+          "start_nm": 695.0,
+          "stop_nm": 715.0,
+          "step_nm": 1.0,
+          "observed_peak_nm": 707.0
+        }
+      ]
+    }
+  ],
+  "review": {
+    "critical": 0,
+    "important_found": 1,
+    "important_fixed": 1,
+    "minor": 0,
+    "regressions_added": 4
+  },
+  "limitations": [
+    "Linux simulation only; no physical hardware connected or validated.",
+    "Deterministic single-resonance policy; no LLM in the automatic decision path.",
+    "Windows and hosted GitHub CI are not claimed as locally verified.",
+    "Earlier workspace-directory TCP runs encountered transient SQLite corruption or unreceived commands; safe aborts retained data. Exact underlying cause was not proven. Final successful TCP acceptance used isolated /tmp directories."
+  ],
+  "fixed_scan_regression": {
+    "status": "PASS",
+    "run_id": "exp_357ad72f1f144df4a8b7048220f54d63",
+    "points": 399,
+    "simulated": true,
+    "hdf5_counts_shape": [
+      399,
+      128
+    ]
+  },
+  "network_fault_regression": {
+    "status": "PASS",
+    "transport": "real loopback TCP",
+    "old_run": "exp_402bb924310242f79c3d7e1b37c35ae7",
+    "old_run_data_preserved": true,
+    "watchdog_fault_persisted": true,
+    "explicit_reconciliation": true,
+    "new_run_points": 2
+  }
+}

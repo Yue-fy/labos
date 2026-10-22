@@ -4,7 +4,7 @@ import math
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 Identifier = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$")]
 Finite = Annotated[float, Field(allow_inf_nan=False)]
@@ -29,6 +29,16 @@ def intersect_limits(limits: list[tuple[float, float]]) -> tuple[float, float]:
     return low, high
 
 
+class SimulationResponse(Model):
+    """Synthetic excitation response; its truth is never supplied to the policy."""
+
+    peak_nm: Annotated[float, Field(ge=450, le=800)] = 635
+    width_nm: Annotated[float, Field(gt=0, le=100)] = 18
+    amplitude: Annotated[float, Field(gt=0, le=1_000_000)] = 100
+    relative_noise: Annotated[float, Field(ge=0, le=0.1)] = 0
+    seed: Annotated[int, Field(ge=0, le=2**31-1)] = 0
+
+
 class InstrumentSpec(Model):
     id: Identifier
     kind: Literal["laser", "rotator", "spectrometer"]
@@ -40,6 +50,7 @@ class InstrumentSpec(Model):
     angle_max_deg: Finite = 180
     power_max_percent: Annotated[float, Field(ge=0, le=100)] = 10
     exposure_max_ms: Annotated[float, Field(gt=0, le=10000)] = 5000
+    simulation_response: SimulationResponse | None = None
 
     @model_validator(mode="after")
     def check_ranges(self):
@@ -47,6 +58,8 @@ class InstrumentSpec(Model):
             raise ValueError("reversed wavelength limits")
         if self.angle_min_deg > self.angle_max_deg:
             raise ValueError("reversed angle limits")
+        if self.simulation_response is not None and self.kind != "spectrometer":
+            raise ValueError("simulation response is only supported by the simulated spectrometer")
         return self
 
     @property
@@ -84,6 +97,28 @@ def grid(start: float, stop: float, step: float) -> list[float]:
     return [float(a + i * d) for i in range(int(count.to_integral_value()) + 1)]
 
 
+class AdaptiveScan(Model):
+    simulation_approved: Literal[True]
+    refinement_steps_nm: list[Annotated[float, Field(gt=0)]] = Field(
+        default_factory=lambda: [5, 1], min_length=1, max_length=4)
+    max_total_points: int = Field(default=200, ge=3, le=5000)
+    min_contrast: Annotated[float, Field(gt=0, le=1)] = 0.1
+
+    @field_validator("simulation_approved", mode="before")
+    @classmethod
+    def explicit_approval(cls, value):
+        if value is not True:
+            raise ValueError("explicit simulation approval is required")
+        return value
+
+    @model_validator(mode="after")
+    def decreasing_resolution(self):
+        if any(a <= b for a, b in zip(self.refinement_steps_nm,
+                                     self.refinement_steps_nm[1:])):
+            raise ValueError("refinement steps must strictly decrease")
+        return self
+
+
 class Plan(Model):
     setup_id: Identifier = "optics_demo"
     sample_id: Identifier = "demo_sample"
@@ -96,6 +131,7 @@ class Plan(Model):
     exposure_ms: Annotated[float, Field(gt=0, le=10000)] = 100
     power_percent: Annotated[float, Field(ge=0, le=100)] = 5
     sample_power_limit_percent: Annotated[float, Field(ge=0, le=100)] = 10
+    adaptive: AdaptiveScan | None = None
 
     @model_validator(mode="after")
     def check_grid(self):
@@ -103,6 +139,15 @@ class Plan(Model):
             raise ValueError("scan exceeds 5000 points")
         if self.power_percent > self.sample_power_limit_percent:
             raise ValueError("power exceeds sample limit")
+        if self.adaptive is not None:
+            if self.angle_start_deg != self.angle_stop_deg:
+                raise ValueError("adaptive scans require fixed polarization")
+            if self.power_percent <= 0:
+                raise ValueError("adaptive scans require positive power")
+            if len(self.points()) < 3 or len(self.points()) > self.adaptive.max_total_points:
+                raise ValueError("initial scan exceeds adaptive point budget or has fewer than 3 points")
+            if self.adaptive.refinement_steps_nm[0] >= self.wavelength_step_nm:
+                raise ValueError("refinement steps must be smaller than the coarse step")
         return self
 
     def points(self) -> list[tuple[float, float]]:

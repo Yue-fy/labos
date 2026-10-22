@@ -140,8 +140,11 @@ class Agent:
                           "locally_saved": True, "simulated": True}
             state = "COMPLETED"
             if command["op"] == "safe_shutdown":
-                self.journal.clear_device(command["instrument_id"])
+                self.journal.clear_device(command["instrument_id"],
+                    preserve_fault=command["parameters"].get("preserve_fault") is True)
                 self.watchdog_tripped = bool(self.journal.device_faults())
+                result = {**result, "fault_latched":
+                          command["instrument_id"] in self.journal.device_faults()}
         except (asyncio.CancelledError, TimeoutError):
             for driver in self.devices.values():
                 await driver.safe_shutdown()
