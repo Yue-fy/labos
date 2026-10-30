@@ -8,7 +8,8 @@ from pathlib import Path
 
 from pydantic import AwareDatetime, Field, model_validator
 
-from .models import Finite, Identifier, Model
+from .models import DetectorFlags, Finite, Identifier, Model
+from .quality import UNASSESSED
 
 
 def json_bytes(value: dict) -> bytes:
@@ -84,6 +85,8 @@ class Measurement(Model):
     driver_version: str
     workflow_version: str
     simulated: bool
+    detector_flags: DetectorFlags | None = None
+    provenance: dict[str, str] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def consistent(self):
@@ -103,8 +106,9 @@ def export_hdf5(store, run_id: str) -> Path:
     import numpy as np
 
     run = store.run(run_id)
-    measurements = store.measurements(run_id)
-    if not measurements:
+    all_measurements = store.measurements(run_id)
+    measurements = store.measurements(run_id, qualified_only=True)
+    if not all_measurements:
         raise ValueError("no synchronized measurements to export")
     path = store.root / "exports" / f"{run_id}.h5"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -113,15 +117,18 @@ def export_hdf5(store, run_id: str) -> Path:
         with h5py.File(temporary, "w") as h5:
             h5.attrs["experiment_id"] = run_id
             h5.attrs["status_at_export"] = run["status"]
-            h5.attrs["simulated"] = all(m["simulated"] for m in measurements)
-            h5.attrs["workflow_version"] = "polarization-0.1.0"
+            h5.attrs["simulated"] = all(m["simulated"] for m in all_measurements)
+            h5.attrs["workflow_version"] = "polarization-0.2.0"
+            h5.attrs["data_selection"] = "raw: qualified only; audit: all synchronized artifacts"
             raw = h5.create_group("raw")
             for name in ("wavelength_nm", "angle_deg", "power_percent", "exposure_ms",
                          "point_index"):
                 raw.create_dataset(name, data=[m[name] for m in measurements])
             axes = [m["spectrum_axis_nm"] for m in measurements]
-            raw.create_dataset("spectrum_axis_nm", data=np.array(axes))
-            raw.create_dataset("counts", data=np.array([m["counts"] for m in measurements]))
+            # Empty qualified sets still export the complete rejected-data audit trail.
+            width = len(all_measurements[0]["counts"])
+            raw.create_dataset("spectrum_axis_nm", data=np.array(axes).reshape((-1, width)))
+            raw.create_dataset("counts", data=np.array([m["counts"] for m in measurements]).reshape((-1, width)))
             text_type = h5py.string_dtype("utf-8")
             metadata = h5.create_group("metadata")
             for name in ("plan", "setup", "preflight"):
@@ -130,6 +137,14 @@ def export_hdf5(store, run_id: str) -> Path:
             metadata.create_dataset("measurements_json", data=[json.dumps(m, ensure_ascii=False)
                                                                for m in measurements],
                                     dtype=text_type)
+            audit = h5.create_group("audit")
+            audit.create_dataset("measurements_json", data=[json.dumps(m, ensure_ascii=False)
+                                                            for m in all_measurements], dtype=text_type)
+            audit.create_dataset("qualifications_json", data=[json.dumps(
+                store.qualification(m["measurement_id"]) or UNASSESSED,
+                ensure_ascii=False) for m in all_measurements], dtype=text_type)
+            audit.create_dataset("artifact_sha256", data=[store.artifact_sha(m["measurement_id"])
+                                                          for m in all_measurements], dtype=text_type)
             h5.flush()
         with temporary.open("rb") as handle:
             os.fsync(handle.fileno())

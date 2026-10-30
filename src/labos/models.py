@@ -4,7 +4,7 @@ import math
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
 Identifier = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$")]
 Finite = Annotated[float, Field(allow_inf_nan=False)]
@@ -40,6 +40,7 @@ class InstrumentSpec(Model):
     angle_max_deg: Finite = 180
     power_max_percent: Annotated[float, Field(ge=0, le=100)] = 10
     exposure_max_ms: Annotated[float, Field(gt=0, le=10000)] = 5000
+    detector_max_counts: Annotated[float, Field(gt=0)] | None = None
 
     @model_validator(mode="after")
     def check_ranges(self):
@@ -84,6 +85,14 @@ def grid(start: float, stop: float, step: float) -> list[float]:
     return [float(a + i * d) for i in range(int(count.to_integral_value()) + 1)]
 
 
+class QualityPolicy(Model):
+    max_counts: Annotated[float, Field(gt=0)] | None = None
+
+
+class DetectorFlags(Model):
+    overloaded: StrictBool
+
+
 class Plan(Model):
     setup_id: Identifier = "optics_demo"
     sample_id: Identifier = "demo_sample"
@@ -96,6 +105,7 @@ class Plan(Model):
     exposure_ms: Annotated[float, Field(gt=0, le=10000)] = 100
     power_percent: Annotated[float, Field(ge=0, le=100)] = 5
     sample_power_limit_percent: Annotated[float, Field(ge=0, le=100)] = 10
+    quality: QualityPolicy = Field(default_factory=QualityPolicy)
 
     @model_validator(mode="after")
     def check_grid(self):

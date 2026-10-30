@@ -79,7 +79,12 @@ class SimulatedInstrument(InstrumentDriver):
             contrast = 0.2 + 0.8 * math.cos(math.radians(angle)) ** 2
             counts = [round(exposure * contrast * math.exp(-((x-wavelength) / 25) ** 2)
                             + 2, 6) for x in axis]
+            ceiling = self.spec.detector_max_counts
+            overloaded = ceiling is not None and max(counts) >= ceiling
+            if ceiling is not None:
+                counts = [min(value, ceiling) for value in counts]
             return {"spectrum_axis_nm": axis, "counts": counts,
+                    "detector_flags": {"overloaded": overloaded},
                     "exposure_ms": exposure, "simulated": True}
         return self.status()
 

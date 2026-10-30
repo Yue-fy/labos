@@ -10,6 +10,8 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from .files import Measurement, atomic_write, json_bytes
+from .models import Plan
+from .quality import assess
 
 
 class Store:
@@ -39,6 +41,8 @@ class Store:
             CREATE TABLE IF NOT EXISTS events (
               sequence INTEGER PRIMARY KEY AUTOINCREMENT, time REAL NOT NULL,
               run_id TEXT, category TEXT NOT NULL, detail TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS qualifications (
+              measurement_id TEXT PRIMARY KEY, status TEXT NOT NULL, body TEXT NOT NULL);
             """)
 
     @contextmanager
@@ -142,12 +146,20 @@ class Store:
     def create_run(self, plan, setup, snapshot):
         run_id = "exp_" + uuid.uuid4().hex
         with self.transaction() as db:
+            specs = {}
             for instrument_id in setup.devices.values():
                 row = db.execute("SELECT lock_run FROM instruments WHERE id=?", (instrument_id,)).fetchone()
                 if not row:
                     raise ValueError("instrument not registered")
                 if row["lock_run"]:
                     raise ValueError("instrument already reserved")
+                enrolled = dict(db.execute("SELECT agent_id,spec FROM instruments WHERE id=?",
+                                           (instrument_id,)).fetchone())
+                specs[instrument_id] = {"agent_id": enrolled["agent_id"], "spec": json.loads(enrolled["spec"])}
+            snapshot = {**snapshot, "fingerprints": {
+                "plan_sha256": hashlib.sha256(json_bytes(plan.model_dump())).hexdigest(),
+                "configuration_sha256": hashlib.sha256(json_bytes({"setup": setup.model_dump(),
+                                                                   "instruments": specs})).hexdigest()}}
             db.execute("INSERT INTO runs(id,status,plan,setup,preflight,created) VALUES(?,'RUNNING',?,?,?,?)",
                        (run_id, plan.model_dump_json(), setup.model_dump_json(),
                         json_bytes(snapshot).decode(), time.time()))
@@ -155,6 +167,9 @@ class Store:
                 db.execute("UPDATE instruments SET lock_run=? WHERE id=?", (run_id, instrument_id))
             self.event_db(db, "RUN_STARTED", {"plan": plan.model_dump()}, run_id)
         return self.run(run_id)
+
+    def provenance(self, run_id):
+        return self.run(run_id)["preflight"].get("fingerprints", {})
 
     def run(self, run_id):
         with self.transaction() as db:
@@ -298,13 +313,22 @@ class Store:
         with self.transaction() as db:
             spec = json.loads(db.execute("SELECT spec FROM instruments WHERE id=?",
                                          (measurement.instrument_id,)).fetchone()[0])
+        expected_provenance = command["parameters"].get("provenance", {})
+        expected_workflow = "polarization-0.2.0" if expected_provenance else "polarization-0.1.0"
         if (measurement.simulated is not True or measurement.driver_version != spec["driver_version"]
-                or measurement.workflow_version != "polarization-0.1.0"):
+                or measurement.workflow_version != expected_workflow):
             raise ValueError("artifact mode/driver/workflow is not approved")
+        if (measurement.provenance != expected_provenance
+                or (expected_provenance and expected_provenance != self.provenance(command["run_id"]))):
+            raise ValueError("artifact provenance disagrees with immutable plan/configuration")
         for field in ("point_index", "sample_id", "wavelength_nm", "angle_deg", "exposure_ms",
                       "power_percent", "readbacks"):
             if getattr(measurement, field) != command["parameters"].get(field):
                 raise ValueError(f"artifact {field} disagrees with acquisition")
+        run = self.run(command["run_id"])
+        quality = assess(measurement, Plan.model_validate(run["plan"]).quality,
+                         run["preflight"].get("instruments", {}).get("spectrometer", {}).get("spec", spec)
+                         .get("detector_max_counts"))
         with self.transaction() as db:
             row = db.execute("SELECT sha FROM measurements WHERE id=?", (measurement.measurement_id,)).fetchone()
             if row:
@@ -315,16 +339,31 @@ class Store:
             db.execute("INSERT INTO measurements(id,run_id,point_index,sha,body) VALUES(?,?,?,?,?)",
                        (measurement.measurement_id, measurement.experiment_id, measurement.point_index,
                         sha, measurement.model_dump_json()))
-            db.execute("UPDATE runs SET points=(SELECT COUNT(*) FROM measurements WHERE run_id=?) WHERE id=?",
+            db.execute("INSERT INTO qualifications(measurement_id,status,body) VALUES(?,?,?)",
+                       (measurement.measurement_id, quality["status"], json_bytes(quality).decode()))
+            db.execute("""UPDATE runs SET points=(SELECT COUNT(*) FROM measurements m
+                       JOIN qualifications q ON m.id=q.measurement_id WHERE m.run_id=?
+                       AND q.status='accepted') WHERE id=?""",
                        (measurement.experiment_id, measurement.experiment_id))
             self.event_db(db, "DATA_SYNCHRONIZED", {"measurement_id": measurement.measurement_id,
-                                                   "sha256": sha}, measurement.experiment_id)
+                                                   "sha256": sha, "quality": quality}, measurement.experiment_id)
         return measurement.measurement_id
 
-    def measurements(self, run_id):
+    def measurements(self, run_id, qualified_only=False):
         with self.transaction() as db:
             return [json.loads(r[0]) for r in db.execute(
-                "SELECT body FROM measurements WHERE run_id=? ORDER BY point_index", (run_id,))]
+                """SELECT m.body FROM measurements m LEFT JOIN qualifications q ON m.id=q.measurement_id
+                   WHERE m.run_id=? AND (?=0 OR q.status='accepted') ORDER BY m.point_index""",
+                (run_id, int(qualified_only)))]
+
+    def qualification(self, measurement_id):
+        with self.transaction() as db:
+            row = db.execute("SELECT body FROM qualifications WHERE measurement_id=?", (measurement_id,)).fetchone()
+            return json.loads(row[0]) if row else None
+
+    def artifact_sha(self, measurement_id):
+        with self.transaction() as db:
+            return db.execute("SELECT sha FROM measurements WHERE id=?", (measurement_id,)).fetchone()[0]
 
     def events(self, run_id=None):
         with self.transaction() as db:

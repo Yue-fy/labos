@@ -124,6 +124,8 @@ class Runtime:
         for role, result in zip(run["setup"]["devices"], results):
             if role == "laser" and (result.get("shutter_open") or result.get("power_percent") != 0):
                 raise ValueError("laser safe state unconfirmed")
+        self.store.event("SHUTDOWN_VERIFIED", {"readbacks": dict(zip(run["setup"]["devices"], results)),
+                                               "scope": "Software readbacks; not physical inspection"}, run_id)
 
     async def prepare_light(self, run_id, devices, plan):
         nonce = uuid.uuid4().hex
@@ -170,7 +172,8 @@ class Runtime:
                     "point_index": point_index, "sample_id": plan.sample_id,
                     "wavelength_nm": wavelength, "angle_deg": angle,
                     "power_percent": plan.power_percent, "exposure_ms": plan.exposure_ms,
-                    "readbacks": {"laser": laser, "rotator": rotator}})
+                    "readbacks": {"laser": laser, "rotator": rotator},
+                    "provenance": self.store.provenance(run_id)})
                 deadline = time.monotonic() + self.config.command_timeout_s
                 while result.get("measurement_id") not in {m["measurement_id"] for m in self.store.measurements(run_id)}:
                     if self.store.run(run_id)["status"] == "STOPPING":
@@ -178,6 +181,10 @@ class Runtime:
                     if time.monotonic() >= deadline:
                         raise ValueError("capture saved locally but central synchronization timed out")
                     await asyncio.sleep(0.03)
+                quality = self.store.qualification(result["measurement_id"])
+                if not quality or quality["status"] != "accepted":
+                    raise ValueError("measurement quality rejected or unassessed: " +
+                                     ", ".join((quality or {}).get("reasons", ["missing assessment"])))
         except RunStopped:
             final, error = "ABORTED", "stopped by operator; synchronized data preserved"
         except asyncio.CancelledError:

@@ -56,7 +56,8 @@ def artifact(store):
     run = store.create_run(Plan(), SetupProfile(), {})
     store.register("pc-b", "boot-b")
     params = {"point_index": 0, "sample_id": "demo_sample", "wavelength_nm": 650,
-              "angle_deg": 0, "exposure_ms": 100, "power_percent": 5, "readbacks": {}}
+              "angle_deg": 0, "exposure_ms": 100, "power_percent": 5, "readbacks": {},
+              "provenance": store.provenance(run["id"])}
     cmd = store.new_command(run["id"], "capture0", "spectrometer_01", "acquire_and_store", params)
     store.claim("pc-b", "boot-b")
     data = {"schema_version": 1, "measurement_id": cmd["id"], "command_id": cmd["id"],
@@ -65,7 +66,8 @@ def artifact(store):
             "sample_id": "demo_sample", "wavelength_nm": 650, "angle_deg": 0,
             "power_percent": 5, "exposure_ms": 100, "readbacks": {},
             "spectrum_axis_nm": [500, 501], "counts": [1, 2],
-            "driver_version": "simulator-0.1.0", "workflow_version": "polarization-0.1.0",
+            "driver_version": "simulator-0.1.0", "workflow_version": "polarization-0.2.0",
+            "detector_flags": {"overloaded": False}, "provenance": store.provenance(run["id"]),
             "simulated": True}
     return run, data
 

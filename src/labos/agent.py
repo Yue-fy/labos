@@ -130,7 +130,10 @@ class Agent:
                     power_percent=parameters["power_percent"], exposure_ms=result["exposure_ms"],
                     readbacks=parameters["readbacks"], spectrum_axis_nm=result["spectrum_axis_nm"],
                     counts=result["counts"], driver_version=device.spec.driver_version,
-                    workflow_version="polarization-0.1.0", simulated=True)
+                    detector_flags=result.get("detector_flags"),
+                    provenance=parameters.get("provenance", {}),
+                    workflow_version=("polarization-0.2.0" if parameters.get("provenance")
+                                      else "polarization-0.1.0"), simulated=True)
                 content = json_bytes(measurement.model_dump(mode="json"))
                 path = self.config.data_dir / "cache" / f"{command['id']}.json"
                 atomic_write(path, content)
