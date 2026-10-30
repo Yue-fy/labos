@@ -17,15 +17,18 @@ from verify_english_deck import export_svg
 
 ROOT=Path(__file__).resolve().parent/"System_Architecture"
 ROOT.mkdir(exist_ok=True)
-W,H=2560,1680
+W,H=2560,1920
 C=g.C
 
 
 class Scene(g.Slide):
     def __init__(self):
         self.title="LabOS System Architecture"
-        self.section="Distributed laboratory architecture"
-        self.note=("One central LabOS server hosts scientific AI reasoning, specialist sub-agents, knowledge and memory, "
+        self.section="Skill-driven scientific runtime and distributed execution"
+        self.note=("This redesigned LabOS architecture uses three interchangeable PC symbols for an arbitrary fleet, "
+                   "with no fixed assignment of scientific functions to PCs. One central LabOS server hosts "
+                   "scientific AI reasoning, specialist sub-agents, knowledge and memory, a skill library, "
+                   "MCP host/client components and tool connectors, a capability registry, "
                    "and deterministic coordination. A server-side model router prefers a remote cloud model and falls back "
                    "to the server's local LLM when cloud connectivity, the API or its quota is unavailable. "
                    "The agents preserve experiment context and tool permissions across model changes. "
@@ -34,10 +37,11 @@ class Scene(g.Slide):
                    "a command journal, watchdog and artifact outbox. An operator computer can use only a browser. "
                    "All laboratory PCs initiate their HTTP(S) connections; command arrows represent payload flow, "
                    "not inbound network sessions. Physical device interfaces remain local to the instrument host. "
-                   "A/B retain the supplied optical and sample-lab inventory; C through N illustrate additional resource hosts. "
+                   "Skills package reusable scientific procedures and supporting references or scripts. MCP exposes tools, "
+                   "resources and prompts; the LabOS control connector routes instrument actions through the deterministic coordinator. "
                    "Hardware reference and trigger cables are separate from this control network. "
                    "This figure describes the scalable LabOS system design, rather than an inventory of currently commissioned drivers.")
-        self.source="Original LabOS architecture drawing, based on project design and the supplied laboratory scenario."
+        self.source="Original LabOS architecture; protocol references: https://agentskills.io/home and https://modelcontextprotocol.io/docs/learn/architecture"
         self.ops=[];self.errors=[];self.dark=False
         self.rect(0,0,W,H,C["white"])
 
@@ -94,151 +98,134 @@ def instrument(s,x,y,w,title,sub="",h=52):
 
 def build():
     s=Scene()
-    text(s,60,31,1570,66,"LabOS System Architecture",47,C["navy"],True)
-    text(s,62,102,1510,35,"One central server • many PCs • shared knowledge and experimental evidence",23,C["muted"])
+    text(s,60,31,2430,65,"LabOS | Scientific Skills, Connected Instruments",45,C["navy"],True)
+    text(s,62,99,2410,34,"Agents decide • skills guide workflows • MCP connects tools • local workers execute",24,C["muted"])
 
-    s.rect(1290,58,385,86,C["plum"],C["purple"],radius=13,lw=1.5,dash=True)
-    text(s,1311,72,343,34,"Cloud LLM API",26,C["purple"],True,align="center")
-    text(s,1311,112,343,27,"Remote model service",19,C["muted"],align="center")
-    s.arrow([(1468,190),(1468,144)],C["purple"],2.3,head=9)
-    s.arrow([(1496,144),(1496,190)],C["green"],2.3,head=9)
+    # Operator and remote inference service sit outside the one-server boundary.
+    s.rect(60,151,1010,61,C["sand"],C["amber"],radius=12,lw=1.6)
+    monitor(s,80,161,48,31,C["amber"])
+    text(s,151,164,894,34,"Operator workspace: objective, setup, review and authorization",24,C["amber"],True)
+    s.arrow([(565,212),(565,240)],C["amber"],2.4,head=9)
+    s.rect(2100,151,400,61,C["plum"],C["purple"],radius=12,lw=1.5,dash=True)
+    text(s,2118,168,364,33,"Cloud LLM API • remote",24,C["purple"],True,align="center")
+    s.arrow([(2284,240),(2284,212)],C["purple"],2.2,head=8)
+    s.arrow([(2314,212),(2314,240)],C["green"],2.2,head=8)
 
-    # The operator console has no instrument worker. It is a browser client.
-    s.rect(1725,64,775,88,C["sand"],C["amber"],radius=13,lw=1.8)
-    monitor(s,1747,78,67,44,C["amber"])
-    text(s,1840,76,637,35,"Human / operator computer",27,C["amber"],True)
-    text(s,1840,115,637,27,"Browser only • question, review and authorize",20)
-    s.arrow([(2112,152),(2112,190)],C["amber"],2.8,head=11)
+    s.rect(60,240,2440,1040,C["bg"],C["blue"],radius=20,lw=2.6)
+    server_icon(s,85,259)
+    text(s,171,262,1350,47,"ONE CENTRAL SERVER  /  LABOS RUNTIME",34,C["navy"],True)
+    text(s,172,307,2240,30,"Scientific reasoning, reusable methods, tool access, model routing and persistent execution state",22,C["muted"])
 
-    # Exactly one physical central server encloses all central logical services.
-    s.rect(60,190,2440,655,C["bg"],C["blue"],radius=21,lw=2.8)
-    server_icon(s,88,208)
-    text(s,172,211,870,48,"CENTRAL LABOS SERVER",35,C["navy"],True)
-    text(s,172,258,1740,29,"Scientific reasoning + deterministic control + durable evidence on one server",22,C["muted"])
-    text(s,2040,218,420,33,"ONE CENTRAL ENDPOINT",21,C["blue"],True,align="right")
+    # Four capability services surround a scientific agent kernel and its tool plane.
+    panel(s,100,370,560,280,"Knowledge & memory",C["green"],C["mint"],29)
+    database(s,558,389,72)
+    text(s,122,436,510,25,"SEMANTIC KNOWLEDGE",18,C["green"],True)
+    text(s,122,471,510,57,"Literature / manuals / local code\nSetup definitions + calibrations",22)
+    text(s,122,546,510,25,"EPISODIC EXPERIMENT MEMORY",18,C["green"],True)
+    text(s,122,581,510,57,"Runs / artifacts / faults / decisions\nVersioned evidence + provenance",21)
 
-    panel(s,95,310,560,495,"Knowledge / memory",C["green"],C["mint"],30)
-    database(s,548,330,74)
-    text(s,120,379,495,29,"SEMANTIC KNOWLEDGE",20,C["green"],True)
-    text(s,120,421,495,100,"Scientific literature + protocols\nInstrument manuals + local code\nCalibrations + setup definitions",22)
-    s.line(120,534,629,534,"BFDCCF",1.5)
-    text(s,120,552,495,29,"EXPERIMENT / EPISODIC MEMORY",20,C["green"],True)
-    text(s,120,593,495,113,"Prior runs + raw artifacts\nCommands, faults + recoveries\nAnalyses + provenance\nRun / setup / capability registry",22)
-    s.rect(117,719,516,64,C["white"],"BFDCCF",radius=7)
-    text(s,132,729,487,24,"Retrieve → cite → reuse",20,C["green"],True)
-    text(s,132,758,487,22,"Versioned records + configuration hashes",17,C["muted"])
+    panel(s,800,370,1040,280,"Scientific agent runtime",C["purple"],C["plum"],32)
+    s.rect(826,432,988,53,C["white"],C["purple"],radius=9,lw=1.6)
+    text(s,842,446,956,34,"LabOS control agent / task supervisor",26,C["purple"],True,align="center")
+    for i,t in enumerate(["Planning agent","Analysis agent","Diagnostics agent"]):
+        xx=826+i*337
+        s.rect(xx,513,314,45,C["white"],"C9B9EA",radius=7,lw=1.2)
+        text(s,xx+10,526,294,29,t,21,C["purple"],True,align="center")
+        s.arrow([(xx+157,485),(xx+157,513)],C["purple"],1.7,head=7)
+    text(s,827,590,986,33,"Observe → frame → select skills → delegate → review → update",23,C["purple"],True,align="center")
+    s.arrow([(660,493),(800,493)],C["green"],2.2,head=9)
+    s.arrow([(800,519),(660,519)],C["green"],2.2,head=9)
+    text(s,668,447,124,45,"Retrieve / persist",16,C["green"],True,align="center")
 
-    panel(s,720,310,1200,265,"Main AI agent / control system",C["purple"],C["plum"],32)
-    text(s,744,367,1150,31,"Scientific objective → measurement strategy → evidence-based next step",22,C["purple"])
-    titles=["Question + context","Review evidence","Build stage plan","Interpret + refine"]
-    for i,t in enumerate(titles):
-        xx=745+i*288
-        s.rect(xx,424,265,66,C["white"],C["purple"],radius=9,lw=1.5)
-        text(s,xx+12,444,241,31,t,22,C["purple"],True,align="center")
-        if i<3:s.arrow([(xx+265,457),(xx+283,457)],C["purple"],2,head=7)
-    text(s,746,520,1148,31,"Delegate specialist work • compare controls • propose the next scientific stage",21,C["purple"])
-    s.arrow([(655,447),(720,447)],C["green"],2.2,head=8)
-    s.arrow([(720,464),(655,464)],C["green"],2.2,head=8)
-    text(s,661,412,54,28,"RAG",18,C["green"],True,align="center")
+    panel(s,1900,370,560,280,"Model runtime / routing",C["purple"],C["plum"],28)
+    for yy,t,sub in [(435,"Cloud API • preferred","Remote inference backend"),(517,"Local LLM • on this server","Fallback inference backend")]:
+        s.rect(1922,yy,516,61,C["white"],C["purple"],radius=8,lw=1.3)
+        text(s,1937,yy+6,486,31,t,23,C["purple"],True)
+        text(s,1937,yy+37,486,24,sub,17,C["muted"])
+    s.arrow([(2180,496),(2180,517)],C["purple"],2,head=7)
+    text(s,1923,600,514,43,"Internet / API / quota failure → local model\nContext + tool permissions stay consistent",18,C["purple"])
+    s.arrow([(1840,464),(1900,464)],C["purple"],2.2,head=8)
+    s.arrow([(1900,489),(1840,489)],C["purple"],2.2,head=8)
+    text(s,1843,424,54,26,"LLM",17,C["purple"],True,align="center")
 
-    panel(s,1970,310,495,265,"Specialist sub-agents",C["purple"],C["plum"],27)
-    for i,t in enumerate(["Literature / protocols","Planning / sequencing","Analysis / fitting","Interpretation / controls","Troubleshooting","Code / adapter review"]):
-        yy=367+i*31
-        s.rect(1992,yy,451,26,C["white"],"C9B9EA",radius=5,lw=1)
-        text(s,2006,yy+2,424,25,t,18,C["purple"])
-    s.arrow([(1920,428),(1970,428)],C["purple"],2.2,head=8)
-    s.arrow([(1970,448),(1920,448)],C["purple"],2.2,head=8)
+    panel(s,100,755,560,275,"Skill library",C["amber"],C["sand"],30)
+    skill_names=["Brainstorming","Experiment design","Calibration + QC","Instrument integration","Analysis + reporting","Troubleshooting"]
+    for i,t in enumerate(skill_names):
+        xx=122+(i%2)*258;yy=825+(i//2)*48
+        s.rect(xx,yy,246,37,C["white"],"E3C995",radius=6,lw=1.1)
+        text(s,xx+8,yy+8,230,25,t,17,C["amber"],True,align="center")
+    text(s,122,981,511,41,"SKILL.md + references / scripts\nDiscover → load on demand → follow workflow",17,C["amber"])
+    s.arrow([(660,861),(728,861),(728,579),(800,579)],C["amber"],2.2,head=9)
+    text(s,664,698,58,48,"Load\nskill",16,C["amber"],True,align="center")
 
-    # Scientific proposals and observed evidence cross a deterministic boundary.
-    s.arrow([(1040,575),(1040,640)],C["purple"],2.8,head=11)
-    text(s,1063,594,393,31,"Stage proposal",21,C["purple"],True)
-    s.arrow([(1550,640),(1550,575)],C["green"],2.8,head=11)
-    text(s,1573,594,340,31,"Qualified evidence",21,C["green"],True)
-    panel(s,720,640,1200,165,"Deterministic execution coordinator",C["teal"],C["ice"],28)
-    for i,t in enumerate(["Schema + units","Limits + resource locks","Stage / point barriers","Command / data ledger"]):
-        xx=742+i*290
-        s.rect(xx,708,274,53,C["white"],C["teal"],radius=7,lw=1.3)
-        text(s,xx+9,726,256,26,t,18,C["teal"],True,align="center")
-    text(s,744,776,1152,24,"Per-PC identity • deadlines • cancellation • qualification • exclusive device ownership",18,C["teal"])
-    s.arrow([(720,724),(655,724)],C["green"],2.2,head=8)
-    text(s,660,687,56,27,"Save",17,C["green"],True,align="center")
+    # MCP is a software-tool boundary, distinct from instrument-host networking.
+    panel(s,800,755,1040,275,"Tool access  /  MCP host + clients",C["blue"],C["pale"],28)
+    for xx,t,body in [(826,"Knowledge MCP","Search / read / retrieve"),(1163,"Analysis MCP","Fit / compare / visualize"),(1500,"LabOS Control MCP","Request / status / cancel")]:
+        s.rect(xx,832,314,102,C["white"],C["blue"],radius=8,lw=1.3)
+        text(s,xx+12,845,290,31,t,23,C["blue"],True,align="center")
+        text(s,xx+12,887,290,28,body,17,C["muted"],align="center")
+    text(s,827,958,985,28,"Connector services expose tools, resources and prompts through a common interface.",20,C["blue"])
+    text(s,827,991,985,27,"Additional connectors: papers, files, code, reporting and software integration",18,C["muted"])
+    s.arrow([(1320,650),(1320,755)],C["blue"],2.6,head=10)
+    text(s,1343,684,466,31,"Discover tools / invoke capability",21,C["blue"],True)
+    s.arrow([(1280,755),(1280,650)],C["green"],2.6,head=10)
+    text(s,845,684,410,31,"Structured results → evidence",20,C["green"],True,align="right")
 
-    panel(s,1970,640,495,165,"Model router / failover",C["purple"],C["plum"],25)
-    text(s,1994,696,448,92,"Preferred: cloud model API\nFallback: local LLM on this server\nTriggers: API / internet / quota\nContext + permissions preserved",18)
-    s.arrow([(1920,504),(1940,504),(1940,620),(2100,620),(2100,640)],C["purple"],2,head=8)
-    s.arrow([(2330,640),(2330,600),(1955,600),(1955,480),(1920,480)],C["purple"],2,head=8)
+    panel(s,1900,755,560,275,"Capability + setup registry",C["teal"],C["ice"],27)
+    text(s,1923,824,514,141,"PC identity → device bindings\nOperations + parameter schemas\nUnits / limits + calibration\nShared resources + reservations\nRun / stage / point context",22)
+    text(s,1923,985,514,29,"PC roles follow registered capabilities",20,C["teal"],True)
+    s.arrow([(1840,868),(1900,868)],C["teal"],2,head=8)
+    s.arrow([(1900,893),(1840,893)],C["teal"],2,head=8)
 
-    # Network buses show payload directions, while every PC initiates HTTP(S).
-    text(s,61,866,1050,38,"NETWORK  •  HTTP(S) OVER LAN / VPN",25,C["navy"],True)
-    text(s,1630,866,870,34,"PC-initiated connections • no SSH dependency",21,C["muted"],align="right")
-    s.arrow([(1160,805),(1160,930)],C["purple"],2.8,head=10)
-    s.arrow([(1560,982),(1560,805)],C["green"],2.8,head=10)
-    s.line(241,930,2291,930,C["purple"],3)
-    s.line(269,982,2319,982,C["green"],3)
-    text(s,61,914,170,31,"Commands ↓",20,C["purple"],True)
-    text(s,61,968,198,31,"Evidence ↑",20,C["green"],True)
-    text(s,1630,895,870,27,"Register / heartbeat / poll / results / artifacts",18,C["muted"],align="right")
+    # Every actuation request enters the same deterministic authority.
+    s.arrow([(1657,1030),(1657,1110)],C["purple"],2.7,head=10)
+    text(s,1680,1059,670,31,"LabOS control tools → validated execution",22,C["purple"],True)
+    s.arrow([(1080,1110),(1080,1030)],C["green"],2.7,head=10)
+    text(s,1110,1060,497,28,"Results / status / artifact handles",21,C["green"],True)
+    panel(s,100,1110,2360,140,"Execution authority  /  deterministic stage coordinator",C["teal"],C["ice"],29)
+    parts=["Validate units + limits","Reserve resources","Join READY states","Track command outcome","Qualify + archive data"]
+    for i,t in enumerate(parts):
+        xx=122+i*468
+        s.rect(xx,1178,449,47,C["white"],C["teal"],radius=7,lw=1.2)
+        text(s,xx+10,1192,429,29,t,21,C["teal"],True,align="center")
 
-    pcs=[("PC A","Optical lab","SuperK + IR spectroscopy","Vendor SDK / USB / LAN"),
-         ("PC B","Sample lab","Environment + electrical / optical","SDK / VISA / serial"),
-         ("PC C","Imaging lab","Microscopy + camera acquisition","Camera SDK / USB / LAN"),
-         ("PC D","Motion lab","Positioning + sample alignment","USB / serial / Ethernet"),
-         ("PC E","Electrical lab","Source + readout resources","VISA / GPIB / serial"),
-         ("PC N","Additional lab","Expandable instrument resources","Driver-specific interfaces")]
-    for i,(name,role,sub,protocol) in enumerate(pcs):
-        x=60+i*410;cx=x+195
-        s.arrow([(cx-14,930),(cx-14,1040)],C["purple"],2,head=8)
-        s.arrow([(cx+14,1040),(cx+14,982)],C["green"],2,head=8)
-        s.circle(cx-14,930,3.7,C["purple"]);s.circle(cx+14,982,3.7,C["green"])
-        s.rect(x,1040,390,265,C["ice"],C["teal"],radius=13,lw=1.8)
-        monitor(s,x+18,1057,62,44,C["teal"])
-        text(s,x+97,1058,276,35,f"{name} / {role}",23,C["teal"],True)
-        text(s,x+97,1098,276,25,sub,16,C["muted"])
-        card(s,x+18,1135,354,64,"Local PC Agent","",C["teal"],C["white"],23)
-        text(s,x+31,1175,328,24,"Persistent execution worker",17,C["muted"])
-        s.arrow([(cx,1199),(cx,1217)],C["teal"],1.8,head=7)
-        s.rect(x+18,1217,354,68,C["white"],C["teal"],radius=8,lw=1.2)
-        text(s,x+30,1227,330,26,"Driver adapters + sessions",20,C["teal"],True)
-        text(s,x+30,1260,330,25,"Journal • watchdog • raw-data outbox",16,C["green"])
-        s.arrow([(x+34,1305),(x+34,1360)],C["blue"],2.3,head=9)
-        s.arrow([(x+48,1360),(x+48,1305)],C["blue"],2.3,head=9)
-        text(s,x+59,1321,319,27,protocol,17,C["blue"])
-        s.rect(x,1360,390,215,C["bg"],C["blue"],radius=11,lw=1.5)
-        text(s,x+18,1373,354,26,"PHYSICAL DEVICES",18,C["blue"],True)
-        if i==0:
-            instrument(s,x+18,1410,354,"SuperK",h=58)
-            instrument(s,x+18,1491,354,"IR spectrometer",h=58)
-        elif i==1:
-            instrument(s,x+18,1407,354,"attoDRY + transport lock-ins ×2",h=40)
-            instrument(s,x+18,1456,354,"BVPE lock-in / chopper / PD",h=40)
-            instrument(s,x+18,1505,354,"730 nm / CLD1000 / 2400",h=40)
-            text(s,x+20,1549,349,25,"Motorized polarizer / QWP",17,C["muted"])
-        elif i==2:
-            # Camera above an objective and sample plane.
-            s.rect(x+144,1410,100,48,C["pale"],C["blue"],radius=6,lw=2)
-            s.circle(x+194,1434,14,C["white"],C["blue"],2)
-            s.poly([(x+163,1458),(x+225,1458),(x+213,1500),(x+175,1500)],C["pale"],C["blue"],2)
-            s.arrow([(x+194,1500),(x+194,1518)],C["blue"],1.6,head=6)
-            s.rect(x+119,1523,152,9,C["blue"],radius=2)
-            text(s,x+18,1540,354,28,"Microscope / camera",20,C["blue"],True,align="center")
-        elif i==3:
-            for dx,dy in [(0,0),(22,-15),(44,-30)]:
-                s.rect(x+102+dx,1470+dy,145,30,C["pale"],C["blue"],radius=3,lw=1.6)
-            s.arrow([(x+127,1430),(x+255,1430)],C["purple"],2,head=8)
-            s.arrow([(x+277,1510),(x+277,1410)],C["teal"],2,head=8)
-            text(s,x+18,1540,354,28,"Stages / motors / encoders",19,C["blue"],True,align="center")
-        elif i==4:
-            instrument(s,x+18,1410,354,"Current / voltage source",h=58)
-            instrument(s,x+18,1491,354,"Meter / lock-in / digitizer",h=58)
-        else:
-            instrument(s,x+18,1410,354,"Instrument / controller",h=58)
-            instrument(s,x+18,1491,354,"Detector / sensor",h=58)
+    # Representative, interchangeable PCs depict the entire fleet, rather than roles.
+    text(s,63,1296,1050,28,"PC-INITIATED HTTP(S)  •  commands, heartbeat, results and artifacts",20,C["navy"],True)
+    text(s,1650,1296,850,28,"LAN / VPN / central HTTPS  •  no SSH dependency",20,C["muted"],align="right")
+    s.arrow([(1230,1250),(1230,1340)],C["purple"],2.5,head=10)
+    s.arrow([(1410,1380),(1410,1250)],C["green"],2.5,head=10)
+    s.line(426,1340,2106,1340,C["purple"],2.8)
+    s.line(454,1380,2134,1380,C["green"],2.8)
+    text(s,61,1326,340,28,"Command payloads ↓",20,C["purple"],True)
+    text(s,61,1366,359,28,"Readbacks + evidence ↑",20,C["green"],True)
+    for x,name in [(100,"PC i"),(940,"PC j"),(1780,"PC N")]:
+        cx=x+340
+        s.arrow([(cx-14,1340),(cx-14,1420)],C["purple"],2,head=8)
+        s.arrow([(cx+14,1420),(cx+14,1380)],C["green"],2,head=8)
+        s.circle(cx-14,1340,3.4,C["purple"]);s.circle(cx+14,1380,3.4,C["green"])
+        s.rect(x,1420,680,218,C["ice"],C["teal"],radius=12,lw=1.7)
+        monitor(s,x+21,1439,68,45,C["teal"])
+        text(s,x+116,1440,541,37,f"{name} / instrument host",28,C["teal"],True)
+        text(s,x+116,1480,541,27,"Local execution, vendor environment and data",20,C["muted"])
+        s.rect(x+21,1524,638,49,C["white"],C["teal"],radius=7,lw=1.3)
+        text(s,x+34,1538,612,31,"PC Agent → bounded drivers → device sessions",23,C["teal"],True,align="center")
+        text(s,x+25,1596,630,29,"Watchdog • command journal • raw-data outbox",22,C["green"],align="center")
+        s.arrow([(x+151,1638),(x+151,1690)],C["blue"],2.1,head=8)
+        s.arrow([(x+169,1690),(x+169,1638)],C["blue"],2.1,head=8)
+        text(s,x+205,1651,452,28,"SDK / VISA / USB / serial / LAN",20,C["blue"])
+        s.rect(x+21,1690,638,90,C["bg"],C["blue"],radius=8,lw=1.4)
+        text(s,x+38,1703,531,31,"Local instruments / controllers / detectors",22,C["blue"],True)
+        text(s,x+38,1745,575,28,"Device 1 • Device 2 • … • Device m",20,C["muted"])
+        s.rect(x+584,1707,55,28,C["pale"],C["blue"],radius=4)
+        s.circle(x+624,1721,5,C["white"],C["blue"],1.1)
+    text(s,802,1509,116,62,"…",48,C["faint"],True,align="center")
+    text(s,1642,1509,116,62,"…",48,C["faint"],True,align="center")
 
-    s.line(60,1600,2500,1600,C["line"],1.5)
-    text(s,60,1612,1460,26,"Server: cloud / local LLM routing. Instrument PCs: execution workers; no PC-side LLM required.",21,C["navy"],True)
-    text(s,60,1646,1740,24,"A/B retain the supplied setup; C…N illustrate additional hosts. Hardware trigger / reference wiring is separate from HTTP(S).",18,C["muted"])
-    text(s,1830,1613,670,28,"One experiment → coordinated stages across PCs",20,C["teal"],True,align="right")
-    text(s,1840,1646,660,25,"Original LabOS system-design figure • scalable deployment view",17,C["muted"],align="right")
+    s.line(60,1809,2500,1809,C["line"],1.5)
+    text(s,60,1823,1590,32,"Representative PCs: i, j, …, N. Any PC may host any registered instrument set.",23,C["navy"],True)
+    text(s,1710,1824,790,31,"AI inference is central; PC-side LLMs are optional.",21,C["muted"],align="right")
+    s.rect(60,1870,2440,39,C["ice"],radius=7)
+    text(s,76,1878,2408,28,"Skills = reusable methods    |    MCP = tool interfaces    |    Coordinator = execution authority    |    PC Agent = local device I/O",22,C["teal"],True,align="center")
     return s
 
 
@@ -248,11 +235,11 @@ def verify(scene,pptx,pdf):
     assert len(prs.slides)==len(doc)==1
     ptext="\n".join(sh.text for sh in prs.slides[0].shapes if sh.has_text_frame)
     pdftext=doc[0].get_text()
-    assert ptext.count("CENTRAL LABOS SERVER")==1
-    assert ptext.count("Local PC Agent")==6
-    assert ptext.count("Human / operator computer")==1
-    assert "Model router / failover" in ptext and "Fallback: local LLM on this server" in ptext
-    for name in ["PC A","PC B","PC C","PC D","PC E","PC N"]:assert f"{name} / " in ptext
+    assert ptext.count("ONE CENTRAL SERVER")==1
+    assert ptext.count("PC Agent → bounded drivers → device sessions")==3
+    for name in ["PC i","PC j","PC N"]:assert f"{name} / instrument host" in ptext
+    for required in ["Skill library","Brainstorming","MCP host + clients","LabOS Control MCP","Local LLM • on this server"]:assert required in ptext
+    for obsolete in ["Optical lab","Sample lab","Imaging lab","Motion lab","Electrical lab"]:assert obsolete not in ptext
     norm=lambda t:re.sub(r"\s+","",t)
     for oi,o in enumerate(scene.ops):
         if o["kind"]!="text":continue
@@ -277,8 +264,8 @@ def verify(scene,pptx,pdf):
     assert not re.search(r"[\u3400-\u9fff]",ptext+prs.slides[0].notes_slide.notes_text_frame.text)
     assert not any(int(sh.shape_type)==13 for sh in prs.slides[0].shapes)
     if errors:raise AssertionError("\n".join(errors))
-    return dict(status="PASS",pages=1,central_servers=1,instrument_host_pcs=6,operator_browser_pcs=1,
-                local_pc_agents=6,pc_local_llm_required=False,language="English",raster_images_in_pptx=0,
+    return dict(status="PASS",pages=1,central_servers=1,representative_pc_symbols=3,fleet_size="N",fixed_pc_roles=False,
+                skill_library=True,mcp_host_clients_connectors=True,pc_local_llm_required=False,language="English",raster_images_in_pptx=0,
                 server_local_llm_fallback=True,
                 native_objects=len(prs.slides[0].shapes),missing_text=0,out_of_page_text=0,text_overlaps=0)
 
@@ -287,8 +274,8 @@ def main():
     g.W=W;g.H=H;g.SCALE=.5;g.ROOT=ROOT;g.SLIDES.clear()
     scene=build();g.SLIDES.append(scene)
     if scene.errors:raise AssertionError("\n".join(scene.errors))
-    title="LabOS System Architecture: One Server, Many Instrument PCs"
-    pptx=g.render_pptx("LabOS_System_Architecture_EN.pptx",title,"Central AI agents and distributed execution workers",notes_source_label="Reference: ")
+    title="LabOS System Architecture: Scientific Skills, MCP Tools and Distributed Execution"
+    pptx=g.render_pptx("LabOS_System_Architecture_EN.pptx",title,"Agents, skills, MCP, model routing and generic instrument-host PCs",notes_source_label="Reference: ")
     pdf=g.render_pdf("LabOS_System_Architecture_EN.pdf",title)
     record=dict(title=scene.title,section=scene.section,note=scene.note,source=scene.source,ops=scene.ops)
     (ROOT/"architecture_scene.json").write_text(json.dumps(record,indent=2,ensure_ascii=False)+"\n")

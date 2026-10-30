@@ -1,6 +1,6 @@
 # LabOS 跨 PC 协同实验：非线性 Hall 与 BVPE
 
-新增独立的 [LabOS 多 PC 系统架构图](System_Architecture/README.md)：一台中央服务器、六台设备 PC 和一台浏览器操作电脑；明确区分中央 AI 子 Agent 与本地 PC 执行程序，并展开云端/本地模型切换、知识/记忆、协调器、数据反馈及设备通信。提供全英文 PDF、SVG、PPT 和高清 PNG。
+独立的 [LabOS 系统架构图](System_Architecture/README.md) 已重新编排：科学 Agent 运行时连接知识/记忆、Skill 库、模型路由与 MCP 工具层，再经统一协调器控制通用 PC 群。少量 PC 符号与省略号表示任意规模，不固定分配科研功能。提供全英文 PDF、SVG、PPT 和高清 PNG。
 
 当前交付为重新绘制的 **22 页全英文技术版**，详细展开中央与 PC Agent、完整光电拓扑、Hall 电路、BVPE 光路、跨 PC 时序及数据质量流程。下载 [英文 PowerPoint](English/LabOS_Technical_Overview_EN.pptx)、[英文 PDF](English/LabOS_Technical_Overview_EN.pdf)，或查看 [英文交付说明与六张独立矢量图](English/README.md)。下方说明对应保留的首版中文材料。
 
