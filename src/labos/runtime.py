@@ -88,8 +88,10 @@ class Runtime:
             self.store.transition(run_id, {"RUNNING", "PAUSING", "PAUSED"}, "STOPPING")
             self.store.cancel_queued(run_id)
         elif action == "reconcile":
-            self.preflight(Plan.model_validate(run["plan"]), ignore_reservation=True,
-                           allow_faults=True)
+            # Safe cleanup is independent of acquisition limits, old plan schemas
+            # and superseded scientific references. Ownership is checked atomically
+            # here; authenticated workers execute only local shutdown operations,
+            # and reservations remain held unless shutdown readbacks are confirmed.
             self.store.begin_reconcile(run_id)
             self.tasks[run_id] = asyncio.create_task(self.reconcile(run_id))
         else:
@@ -105,6 +107,8 @@ class Runtime:
                 raise RunStopped()
             current = self.store.command(command["id"])
             if current["state"] == "COMPLETED":
+                if op == "acquire_and_store" and current["result"].get("measurement_id") != command["id"]:
+                    raise ValueError("acquisition result identity mismatch")
                 return current["result"]
             if current["state"] in {"FAILED", "UNKNOWN", "CANCELLED"}:
                 raise ValueError(f"{op}: {current['state']}; {current['result'].get('error', '')}")

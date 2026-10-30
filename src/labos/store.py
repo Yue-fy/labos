@@ -10,8 +10,8 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from .files import Measurement, atomic_write, json_bytes
-from .models import Plan
-from .quality import assess
+from .models import QualityPolicy
+from .quality import UNASSESSED, assess
 
 
 class Store:
@@ -330,7 +330,8 @@ class Store:
             if getattr(measurement, field) != command["parameters"].get(field):
                 raise ValueError(f"artifact {field} disagrees with acquisition")
         run = self.run(command["run_id"])
-        quality = assess(measurement, Plan.model_validate(run["plan"]).quality,
+        # Historical evidence must not be re-admitted against a newer Plan schema.
+        quality = assess(measurement, QualityPolicy.model_validate(run["plan"].get("quality", {})),
                          run["preflight"].get("instruments", {}).get("spectrometer", {}).get("spec", spec)
                          .get("detector_max_counts"))
         with self.transaction() as db:
@@ -364,6 +365,16 @@ class Store:
         with self.transaction() as db:
             row = db.execute("SELECT body FROM qualifications WHERE measurement_id=?", (measurement_id,)).fetchone()
             return json.loads(row[0]) if row else None
+
+    def export_snapshot(self, run_id):
+        with self.transaction() as db:
+            run = self.decode_run(db.execute("SELECT * FROM runs WHERE id=?", (run_id,)).fetchone())
+            rows = db.execute("""SELECT m.body,m.sha,q.body AS quality FROM measurements m
+                LEFT JOIN qualifications q ON m.id=q.measurement_id
+                WHERE m.run_id=? ORDER BY m.point_index""", (run_id,)).fetchall()
+            return run, [{"measurement": json.loads(r["body"]), "sha256": r["sha"],
+                          "quality": json.loads(r["quality"]) if r["quality"] else UNASSESSED}
+                         for r in rows]
 
     def artifact_sha(self, measurement_id):
         with self.transaction() as db:

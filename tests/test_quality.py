@@ -80,3 +80,81 @@ def test_overload_flag_cannot_be_hidden_by_low_counts(central_config, tmp_path):
     quality = assess(Measurement.model_validate(data), QualityPolicy(), None)
     assert quality["status"] == "rejected"
     assert "detector_overload" in quality["reasons"]
+
+
+def test_stale_capture_result_cannot_skip_a_rejected_point(central_config, tmp_path, monkeypatch):
+    from labos.agent import Agent
+    from labos.drivers import SimulatedInstrument
+    original_driver, original_agent = SimulatedInstrument.execute, Agent.execute
+    first_id = []
+
+    async def overload_after_first(self, op, parameters, cancel):
+        result = await original_driver(self, op, parameters, cancel)
+        if op == "acquire_and_store" and parameters["point_index"] > 0:
+            result["detector_flags"]["overloaded"] = True
+        return result
+
+    async def stale_result(self, command):
+        response = await original_agent(self, command)
+        if command["op"] == "acquire_and_store":
+            if not first_id:
+                first_id.append(response["result"]["measurement_id"])
+            response["result"]["measurement_id"] = first_id[0]
+        return response
+
+    monkeypatch.setattr(SimulatedInstrument, "execute", overload_after_first)
+    monkeypatch.setattr(Agent, "execute", stale_result)
+    store, run_id = asyncio.run(run_with_local_pump(
+        central_config, tmp_path, Plan(angle_stop_deg=20, exposure_ms=1)))
+    assert store.run(run_id)["status"] == "FAILED"
+    assert "identity" in store.run(run_id)["error"]
+    assert store.measurement_summary(run_id) == {"accepted": 1, "rejected": 1, "unassessed": 0, "total": 2}
+
+
+def test_legacy_plan_late_upload_remains_synchronizable(tmp_path):
+    store = ready_store(tmp_path)
+    run, data = artifact(store)
+    old_plan = {**run["plan"], "exposure_ms": 0.0001}
+    old_plan.pop("quality")
+    old_plan.pop("evidence_ids")
+    parameters = {**store.command(data["command_id"])["parameters"], "exposure_ms": 0.0001}
+    parameters.pop("provenance")
+    data.update(exposure_ms=0.0001, workflow_version="polarization-0.1.0")
+    data.pop("provenance")
+    data.pop("detector_flags")
+    with store.transaction() as db:
+        db.execute("UPDATE runs SET plan=?,preflight='{}' WHERE id=?", (json.dumps(old_plan), run["id"]))
+        db.execute("UPDATE commands SET parameters=? WHERE id=?", (json.dumps(parameters), data["command_id"]))
+    content = json.dumps(data).encode()
+    store.accept_artifact("pc-b", content, hashlib.sha256(content).hexdigest())
+    assert len(store.measurements(run["id"])) == 1
+    assert store.qualification(data["measurement_id"])["status"] == "unassessed"
+
+
+def test_export_keeps_raw_audit_and_hashes_in_one_snapshot(tmp_path, monkeypatch):
+    store = ready_store(tmp_path)
+    run, first = artifact(store)
+    content = json.dumps(first).encode()
+    store.accept_artifact("pc-b", content, hashlib.sha256(content).hexdigest())
+    params = {**store.command(first["command_id"])["parameters"], "point_index": 1, "angle_deg": 10}
+    second_command = store.new_command(run["id"], "capture1", "spectrometer_01", "acquire_and_store", params)
+    store.claim("pc-b", "boot-b")
+    second = {**first, "measurement_id": second_command["id"], "command_id": second_command["id"],
+              "point_index": 1, "angle_deg": 10}
+    second_bytes = json.dumps(second).encode()
+    original = store.measurements
+    injected = []
+
+    def late_upload(run_id, qualified_only=False):
+        rows = original(run_id, qualified_only)
+        if not qualified_only and not injected:
+            injected.append(True)
+            store.accept_artifact("pc-b", second_bytes, hashlib.sha256(second_bytes).hexdigest())
+        return rows
+
+    monkeypatch.setattr(store, "measurements", late_upload)
+    with h5py.File(export_hdf5(store, run["id"])) as h5:
+        raw = h5["raw/counts"].shape[0]
+        assert raw == len(h5["audit/measurements_json"])
+        assert raw == len(h5["audit/qualifications_json"])
+        assert raw == len(h5["audit/artifact_sha256"])

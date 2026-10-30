@@ -48,12 +48,15 @@ def build_review(store, run_id) -> dict:
         next_actions.append({"action": "Confirm local stop state and reconcile device ownership before another run.",
                              "requires_operator": True, "requires_start": True, "requires_new_preflight": True})
     if counts["rejected"]:
-        plan = Plan.model_validate(run["plan"])
-        proposed = plan.model_copy(update={"exposure_ms": max(0.001, plan.exposure_ms / 2)})
-        next_actions.append({"action": "Inspect detector configuration; consider a shorter-exposure qualification pilot.",
+        action = {"action": "Inspect detector configuration; consider a shorter-exposure qualification pilot.",
             "reason": "Recovery would establish readability, not the cause of overload or a physical mechanism.",
-            "requires_operator": True, "requires_new_preflight": True, "requires_start": True,
-            "proposed_plan": proposed.model_dump()})
+            "requires_operator": True, "requires_new_preflight": True, "requires_start": True}
+        try:
+            plan = Plan.model_validate(run["plan"])
+            action["proposed_plan"] = plan.model_copy(update={"exposure_ms": max(0.001, plan.exposure_ms / 2)}).model_dump()
+        except ValueError:
+            action["action"] = "Review the historical plan schema and prepare a new qualification plan manually."
+        next_actions.append(action)
     elif counts["unassessed"]:
         next_actions.append({"action": "Review historical acquisition evidence; do not promote it as qualified data.",
                              "requires_operator": True})

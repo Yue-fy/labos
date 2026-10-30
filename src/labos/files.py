@@ -9,7 +9,6 @@ from pathlib import Path
 from pydantic import AwareDatetime, Field, model_validator
 
 from .models import DetectorFlags, Finite, Identifier, Model
-from .quality import UNASSESSED
 
 
 def json_bytes(value: dict) -> bytes:
@@ -105,9 +104,9 @@ def export_hdf5(store, run_id: str) -> Path:
     import h5py
     import numpy as np
 
-    run = store.run(run_id)
-    all_measurements = store.measurements(run_id)
-    measurements = store.measurements(run_id, qualified_only=True)
+    run, artifacts = store.export_snapshot(run_id)
+    all_measurements = [a["measurement"] for a in artifacts]
+    measurements = [a["measurement"] for a in artifacts if a["quality"]["status"] == "accepted"]
     if not all_measurements:
         raise ValueError("no synchronized measurements to export")
     path = store.root / "exports" / f"{run_id}.h5"
@@ -140,11 +139,9 @@ def export_hdf5(store, run_id: str) -> Path:
             audit = h5.create_group("audit")
             audit.create_dataset("measurements_json", data=[json.dumps(m, ensure_ascii=False)
                                                             for m in all_measurements], dtype=text_type)
-            audit.create_dataset("qualifications_json", data=[json.dumps(
-                store.qualification(m["measurement_id"]) or UNASSESSED,
-                ensure_ascii=False) for m in all_measurements], dtype=text_type)
-            audit.create_dataset("artifact_sha256", data=[store.artifact_sha(m["measurement_id"])
-                                                          for m in all_measurements], dtype=text_type)
+            audit.create_dataset("qualifications_json", data=[json.dumps(a["quality"], ensure_ascii=False)
+                                                               for a in artifacts], dtype=text_type)
+            audit.create_dataset("artifact_sha256", data=[a["sha256"] for a in artifacts], dtype=text_type)
             h5.flush()
         with temporary.open("rb") as handle:
             os.fsync(handle.fileno())
