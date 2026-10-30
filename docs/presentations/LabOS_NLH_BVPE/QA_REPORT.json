@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "pages": 19,
+  "aspect_ratio": "16:9",
+  "native_editable_text_boxes": 410,
+  "vector_shapes_and_lines": 393,
+  "slide_raster_images": 0,
+  "missing_text": 0,
+  "out_of_page_text": 0,
+  "speaker_notes": "19/19",
+  "content_mode": "系统能力与应用场景展示",
+  "forbidden_placeholder_labels": 0,
+  "visual_inspection": "overview and dense diagrams reviewed",
+  "pdf_reference_links": 4
+}
