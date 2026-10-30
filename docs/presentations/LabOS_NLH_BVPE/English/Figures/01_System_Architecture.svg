@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="45 177 1190 500" width="1190" height="500">
+<title>An evidence-driven hierarchy across two control PCs</title>
+<rect x="0" y="0" width="1280" height="720" rx="0" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="54" y="43.09" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" font-weight="700" fill="#168D9D">02 / FIGURE 1 — SYSTEM ARCHITECTURE</text>
+<text x="54" y="104.48" font-family="DejaVu Sans,Arial,sans-serif" font-size="36" font-weight="700" fill="#11233E">An evidence-driven hierarchy across two control PCs</text>
+<text x="56" y="148.67000000000002" font-family="DejaVu Sans,Arial,sans-serif" font-size="19" font-weight="400" fill="#62758C">Scientific reasoning, deterministic orchestration and local instrument ownership are separate layers.</text>
+<line x1="299" y1="234" x2="331" y2="234" stroke="#BC7D1D" stroke-width="2.3"/>
+<polygon points="331,234 322.0,229.95 322.0,238.05" fill="#BC7D1D" stroke="none" stroke-width="1"/>
+<line x1="911" y1="236" x2="880" y2="236" stroke="#7653CF" stroke-width="2.3"/>
+<polygon points="880,236 889.0,240.05 889.0,231.95" fill="#7653CF" stroke="none" stroke-width="1"/>
+<line x1="606" y1="293" x2="606" y2="318" stroke="#7653CF" stroke-width="2.5"/>
+<polygon points="606,318 610.05,309.0 601.95,309.0" fill="#7653CF" stroke="none" stroke-width="1"/>
+<line x1="760" y1="318" x2="760" y2="293" stroke="#278565" stroke-width="2.5"/>
+<polygon points="760,293 755.95,302.0 764.05,302.0" fill="#278565" stroke="none" stroke-width="1"/>
+<line x1="1068" y1="318" x2="1068" y2="293" stroke="#278565" stroke-width="2.2"/>
+<polygon points="1068,293 1063.95,302.0 1072.05,302.0" fill="#278565" stroke="none" stroke-width="1"/>
+<rect x="55" y="188" width="244" height="105" rx="11" fill="#FFF4DE" stroke="#BC7D1D" stroke-width="1.2"/>
+<text x="68" y="216.6" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="700" fill="#BC7D1D">Researcher</text>
+<text x="69" y="242.88" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="400" fill="#23364D">Question, sample, limits</text>
+<text x="69" y="264.48" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="400" fill="#23364D">and physical interventions</text>
+<rect x="331" y="188" width="549" height="105" rx="11" fill="#F1ECFC" stroke="#7653CF" stroke-width="1.2"/>
+<text x="344" y="216.6" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="700" fill="#7653CF">Central scientific agent</text>
+<rect x="344" y="244" width="166" height="35" rx="10" fill="#FFFFFF" stroke="#7653CF" stroke-width="1.4"/>
+<text x="387.44140625" y="265.58" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="#7653CF">Planning</text>
+<rect x="519" y="244" width="166" height="35" rx="10" fill="#FFFFFF" stroke="#7653CF" stroke-width="1.4"/>
+<text x="564.4921875" y="265.58" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="#7653CF">Analysis</text>
+<rect x="694" y="244" width="166" height="35" rx="10" fill="#FFFFFF" stroke="#7653CF" stroke-width="1.4"/>
+<text x="705.3843994140625" y="265.115" font-family="DejaVu Sans,Arial,sans-serif" font-size="15.5" font-weight="700" fill="#7653CF">Troubleshooting</text>
+<rect x="911" y="188" width="314" height="105" rx="11" fill="#E9F6EF" stroke="#278565" stroke-width="1.2"/>
+<text x="924" y="216.6" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="700" fill="#278565">Evidence and memory</text>
+<text x="925" y="242.88" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="400" fill="#23364D">Papers / manuals / protocols</text>
+<text x="925" y="264.48" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="400" fill="#23364D">Code versions / previous runs</text>
+<rect x="55" y="318" width="1170" height="96" rx="11" fill="#E9F6F7" stroke="#168D9D" stroke-width="1.2"/>
+<text x="68" y="346.6" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="700" fill="#168D9D">Deterministic execution coordinator</text>
+<rect x="73" y="365" width="207" height="35" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="107.53125" y="386.58" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="#168D9D">Schema + units</text>
+<rect x="300" y="365" width="207" height="35" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="342.04296875" y="386.58" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="#168D9D">Limits + locks</text>
+<rect x="527" y="365" width="207" height="35" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="579.03515625" y="386.58" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="#168D9D">Stage state</text>
+<rect x="754" y="365" width="207" height="35" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="781.5546875" y="386.58" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="#168D9D">Command ledger</text>
+<rect x="981" y="365" width="207" height="35" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="1029.19921875" y="386.58" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="#168D9D">QC + hashes</text>
+<line x1="206" y1="414" x2="206" y2="435" stroke="#7653CF" stroke-width="2.5"/>
+<polygon points="206,435 209.15,428.0 202.85,428.0" fill="#7653CF" stroke="none" stroke-width="1"/>
+<line x1="760" y1="414" x2="760" y2="435" stroke="#7653CF" stroke-width="2.5"/>
+<polygon points="760,435 763.15,428.0 756.85,428.0" fill="#7653CF" stroke="none" stroke-width="1"/>
+<line x1="388" y1="435" x2="388" y2="414" stroke="#278565" stroke-width="2.5"/>
+<polygon points="388,414 384.85,421.0 391.15,421.0" fill="#278565" stroke="none" stroke-width="1"/>
+<line x1="1063" y1="435" x2="1063" y2="414" stroke="#278565" stroke-width="2.5"/>
+<polygon points="1063,414 1059.85,421.0 1066.15,421.0" fill="#278565" stroke="none" stroke-width="1"/>
+<rect x="55" y="435" width="455" height="203" rx="11" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.2"/>
+<text x="68" y="463.6" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="700" fill="#168D9D">PC A agent: optical worker</text>
+<text x="70" y="489.88" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="400" fill="#23364D">Persistent sessions / drivers / local watchdog</text>
+<rect x="72" y="508" width="200" height="91" rx="7" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="82" y="530.81" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="700" fill="#168D9D">SuperK</text>
+<rect x="82" y="547" width="146" height="24" rx="3" fill="#F5F8FC" stroke="#D9E3EE" stroke-width="1"/>
+<text x="88" y="561.695" font-family="DejaVu Sans,Arial,sans-serif" font-size="11.5" font-weight="400" fill="#23364D">Source + band control</text>
+<circle cx="249" cy="559" r="9" fill="#EDF3FC" stroke="#168D9D" stroke-width="1.2"/>
+<circle cx="249" cy="584" r="4" fill="#278565" stroke="none" stroke-width="1"/>
+<circle cx="127.0" cy="587" r="3.3" fill="#168D9D" stroke="none" stroke-width="1"/>
+<text x="114.17919921875" y="612.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">CMD</text>
+<circle cx="217.0" cy="587" r="3.3" fill="#168D9D" stroke="none" stroke-width="1"/>
+<text x="199.552001953125" y="612.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">STATE</text>
+<rect x="293" y="508" width="200" height="91" rx="7" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="303" y="530.81" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="700" fill="#168D9D">IR spectrometer</text>
+<rect x="303" y="547" width="146" height="24" rx="3" fill="#F5F8FC" stroke="#D9E3EE" stroke-width="1"/>
+<text x="309" y="562.625" font-family="DejaVu Sans,Arial,sans-serif" font-size="12.5" font-weight="400" fill="#23364D">Reference spectrum</text>
+<circle cx="470" cy="559" r="9" fill="#EDF3FC" stroke="#168D9D" stroke-width="1.2"/>
+<circle cx="470" cy="584" r="4" fill="#278565" stroke="none" stroke-width="1"/>
+<circle cx="348.0" cy="587" r="3.3" fill="#168D9D" stroke="none" stroke-width="1"/>
+<text x="334.934814453125" y="612.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">TRIG</text>
+<circle cx="438.0" cy="587" r="3.3" fill="#168D9D" stroke="none" stroke-width="1"/>
+<text x="422.88037109375" y="612.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">DATA</text>
+<text x="73" y="633.95" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" fill="#278565">Command journal + local raw-data outbox</text>
+<rect x="540" y="435" width="685" height="203" rx="11" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.2"/>
+<text x="553" y="463.6" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="700" fill="#168D9D">PC B agent: environment, transport and optics</text>
+<text x="556" y="489.88" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="400" fill="#23364D">Persistent sessions / drivers / local watchdog / artifact cache</text>
+<rect x="558" y="508" width="149" height="91" rx="7" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="568" y="530.81" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="700" fill="#168D9D">attoDRY</text>
+<rect x="568" y="547" width="95" height="24" rx="3" fill="#F5F8FC" stroke="#D9E3EE" stroke-width="1"/>
+<text x="574" y="563.09" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" font-weight="400" fill="#23364D">T / B state</text>
+<circle cx="684" cy="559" r="9" fill="#EDF3FC" stroke="#168D9D" stroke-width="1.2"/>
+<circle cx="684" cy="584" r="4" fill="#278565" stroke="none" stroke-width="1"/>
+<circle cx="632.5" cy="587" r="3.3" fill="#168D9D" stroke="none" stroke-width="1"/>
+<text x="624.69580078125" y="612.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">I/O</text>
+<rect x="725" y="508" width="149" height="91" rx="7" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="735" y="530.81" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="700" fill="#168D9D">Transport x2</text>
+<rect x="735" y="547" width="95" height="24" rx="3" fill="#F5F8FC" stroke="#D9E3EE" stroke-width="1"/>
+<text x="741" y="563.09" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" font-weight="400" fill="#23364D">Vxx / Vxy</text>
+<circle cx="851" cy="559" r="9" fill="#EDF3FC" stroke="#168D9D" stroke-width="1.2"/>
+<circle cx="851" cy="584" r="4" fill="#278565" stroke="none" stroke-width="1"/>
+<circle cx="799.5" cy="587" r="3.3" fill="#168D9D" stroke="none" stroke-width="1"/>
+<text x="791.69580078125" y="612.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">I/O</text>
+<rect x="892" y="508" width="149" height="91" rx="7" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="902" y="530.81" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="700" fill="#168D9D">Optical chain</text>
+<rect x="902" y="547" width="95" height="24" rx="3" fill="#F5F8FC" stroke="#D9E3EE" stroke-width="1"/>
+<text x="908" y="563.09" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" font-weight="400" fill="#23364D">PD / laser</text>
+<circle cx="1018" cy="559" r="9" fill="#EDF3FC" stroke="#168D9D" stroke-width="1.2"/>
+<circle cx="1018" cy="584" r="4" fill="#278565" stroke="none" stroke-width="1"/>
+<circle cx="966.5" cy="587" r="3.3" fill="#168D9D" stroke="none" stroke-width="1"/>
+<text x="958.69580078125" y="612.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">I/O</text>
+<rect x="1059" y="508" width="149" height="91" rx="7" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="1069" y="530.81" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="700" fill="#168D9D">Gate + pol.</text>
+<rect x="1069" y="547" width="95" height="24" rx="3" fill="#F5F8FC" stroke="#D9E3EE" stroke-width="1"/>
+<text x="1075" y="562.16" font-family="DejaVu Sans,Arial,sans-serif" font-size="12.0" font-weight="400" fill="#23364D">2400 / motor</text>
+<circle cx="1185" cy="559" r="9" fill="#EDF3FC" stroke="#168D9D" stroke-width="1.2"/>
+<circle cx="1185" cy="584" r="4" fill="#278565" stroke="none" stroke-width="1"/>
+<circle cx="1133.5" cy="587" r="3.3" fill="#168D9D" stroke="none" stroke-width="1"/>
+<text x="1125.69580078125" y="612.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">I/O</text>
+<text x="558" y="633.95" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" fill="#278565">BVPE lock-in + CLD1000 + power / polarization configuration</text>
+<text x="70" y="664.95" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="400" fill="#62758C">DOWN: approved commands     UP: data, readbacks and faults     LOCAL: session ownership and recovery state</text>
+<line x1="54" y1="687" x2="1226" y2="687" stroke="#D9E3EE" stroke-width="1"/>
+<text x="55" y="705.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">Architecture presentation inspired by QUANTA Fig. 1 [1]; original LabOS redraw for this instrument scenario.</text>
+<text x="1191.41796875" y="704.16" font-family="DejaVu Sans,Arial,sans-serif" font-size="12" font-weight="400" fill="#62758C">03/22</text>
+</svg>

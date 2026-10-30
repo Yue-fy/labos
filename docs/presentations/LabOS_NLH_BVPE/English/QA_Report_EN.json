@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "pages": 22,
+  "language": "English throughout slides, speaker notes and metadata",
+  "native_text_boxes": 573,
+  "native_vector_shapes_and_lines": 632,
+  "slide_raster_images": 0,
+  "missing_text": 0,
+  "out_of_page_text": 0,
+  "text_overlap_candidates": [],
+  "speaker_notes": "22/22",
+  "standalone_vector_figures": 6,
+  "reference_links": 4
+}

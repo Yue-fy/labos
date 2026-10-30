@@ -6,7 +6,7 @@
 
 v0.2 新增：过载/阈值资格检查、拒绝数据留存、计划/配置指纹、已核对资料与旧测试代码检索、带来源的草稿和版本化实验复盘。详见 [QUANTA 改进与操作说明](docs/QUANTA_IMPROVEMENTS_ZH.md)。
 
-系统能力展示：跨 PC 的非线性 Hall 与 BVPE 实验场景，[PowerPoint](docs/presentations/LabOS_NLH_BVPE/LabOS_NLH_BVPE_System.pptx) / [PDF](docs/presentations/LabOS_NLH_BVPE/LabOS_NLH_BVPE_System.pdf) / [讲解稿](docs/presentations/LabOS_NLH_BVPE/讲解稿.md)。
+系统能力展示：跨 PC 的非线性 Hall 与 BVPE 实验场景，22 页全英文技术版：[PowerPoint](docs/presentations/LabOS_NLH_BVPE/English/LabOS_Technical_Overview_EN.pptx) / [PDF](docs/presentations/LabOS_NLH_BVPE/English/LabOS_Technical_Overview_EN.pdf) / [完整交付包与独立矢量图](docs/presentations/LabOS_NLH_BVPE/English/README.md)。
 
 真实仪器驱动尚未启用；型号、SDK、连接方式和装置验证齐备后再接入。模拟数据均有显式标记。
 

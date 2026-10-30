@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="45 190 1190 418" width="1190" height="418">
+<title>Explicit state transitions govern the next action</title>
+<rect x="0" y="0" width="1280" height="720" rx="0" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="54" y="43.09" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" font-weight="700" fill="#168D9D">17 / EXECUTION STATE AND QUALITY</text>
+<text x="54" y="104.48" font-family="DejaVu Sans,Arial,sans-serif" font-size="36" font-weight="700" fill="#11233E">Explicit state transitions govern the next action</text>
+<text x="56" y="148.67000000000002" font-family="DejaVu Sans,Arial,sans-serif" font-size="19" font-weight="400" fill="#62758C">A completed command, a synchronized artifact and a scientifically usable reading are distinct outcomes.</text>
+<rect x="54.0" y="203" width="220.0" height="100" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="109.967041015625" y="235.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#168D9D">PREPARE</text>
+<text x="92.328125" y="262.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="400" fill="#62758C">Set and read back</text>
+<line x1="274.0" y1="253.0" x2="290.0" y2="253.0" stroke="#168D9D" stroke-width="2.2"/>
+<polygon points="290.0,253.0 284.0,250.3 284.0,255.7" fill="#168D9D" stroke="none" stroke-width="1"/>
+<rect x="292.0" y="203" width="220.0" height="100" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="362.296875" y="235.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#168D9D">READY</text>
+<text x="315.375" y="262.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="400" fill="#62758C">Participants + criteria</text>
+<line x1="512.0" y1="253.0" x2="528.0" y2="253.0" stroke="#168D9D" stroke-width="2.2"/>
+<polygon points="528.0,253.0 522.0,250.3 522.0,255.7" fill="#168D9D" stroke="none" stroke-width="1"/>
+<rect x="530.0" y="203" width="220.0" height="100" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="587.55126953125" y="235.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#168D9D">ACQUIRE</text>
+<text x="559.18359375" y="262.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="400" fill="#62758C">Local raw-data write</text>
+<line x1="750.0" y1="253.0" x2="766.0" y2="253.0" stroke="#168D9D" stroke-width="2.2"/>
+<polygon points="766.0,253.0 760.0,250.3 760.0,255.7" fill="#168D9D" stroke="none" stroke-width="1"/>
+<rect x="768.0" y="203" width="220.0" height="100" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="793.061767578125" y="235.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#168D9D">SYNCHRONIZE</text>
+<text x="797.28125" y="262.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="400" fill="#62758C">Artifact + checksum</text>
+<line x1="988.0" y1="253.0" x2="1004.0" y2="253.0" stroke="#168D9D" stroke-width="2.2"/>
+<polygon points="1004.0,253.0 998.0,250.3 998.0,255.7" fill="#168D9D" stroke="none" stroke-width="1"/>
+<rect x="1006.0" y="203" width="220.0" height="100" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="1065.04833984375" y="235.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#168D9D">QUALIFY</text>
+<text x="1047.8671875" y="262.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="400" fill="#62758C">Flags + evidence</text>
+<rect x="865" y="377" width="340" height="77" rx="10" fill="#E9F6EF" stroke="#278565" stroke-width="1.4"/>
+<text x="925.45751953125" y="404.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#278565">ACCEPT -&gt; analyze</text>
+<text x="906.9765625" y="429.37" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" fill="#62758C">Preserve raw + calibration + context</text>
+<rect x="458" y="377" width="340" height="77" rx="10" fill="#FCEFF2" stroke="#B94C61" stroke-width="1.4"/>
+<text x="514.3662109375" y="404.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#B94C61">REJECT -&gt; diagnose</text>
+<text x="486.291015625" y="429.37" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" fill="#62758C">Keep raw / flags; stop affected excitation</text>
+<rect x="54" y="377" width="340" height="77" rx="10" fill="#FFF4DE" stroke="#BC7D1D" stroke-width="1.4"/>
+<text x="88.058837890625" y="404.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#BC7D1D">UNKNOWN -&gt; reconcile</text>
+<text x="84.76904296875" y="429.37" font-family="DejaVu Sans,Arial,sans-serif" font-size="14" font-weight="400" fill="#62758C">Verify owner / command / physical state</text>
+<line x1="1110" y1="303" x2="1110" y2="377" stroke="#278565" stroke-width="2"/>
+<polygon points="1110,377 1114.05,368.0 1105.95,368.0" fill="#278565" stroke="none" stroke-width="1"/>
+<line x1="1110" y1="330" x2="629" y2="330" stroke="#B94C61" stroke-width="2"/>
+<line x1="629" y1="330" x2="629" y2="377" stroke="#B94C61" stroke-width="2"/>
+<polygon points="629,377 633.05,368.0 624.95,368.0" fill="#B94C61" stroke="none" stroke-width="1"/>
+<line x1="518" y1="253" x2="518" y2="345" stroke="#BC7D1D" stroke-width="2" stroke-dasharray="5 4"/>
+<line x1="518" y1="345" x2="223" y2="345" stroke="#BC7D1D" stroke-width="2" stroke-dasharray="5 4"/>
+<line x1="223" y1="345" x2="223" y2="377" stroke="#BC7D1D" stroke-width="2" stroke-dasharray="5 4"/>
+<polygon points="223,377 227.05,368.0 218.95,368.0" fill="#BC7D1D" stroke="none" stroke-width="1"/>
+<rect x="54" y="510" width="1172" height="90" rx="11" fill="#FFFFFF" stroke="#D9E3EE" stroke-width="1"/>
+<rect x="54" y="526" width="4" height="31" rx="0" fill="#168D9D" stroke="none" stroke-width="1"/>
+<text x="74" y="543.39" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="700" fill="#168D9D">Closure is a recorded state, not just an acknowledgement</text>
+<text x="74" y="578.6" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="400" fill="#23364D">Excitation off and readback verified; gate / T / B follow the selected end-state policy.</text>
+<rect x="54" y="618" width="1172" height="54" rx="9" fill="#E9F6F7" stroke="none" stroke-width="1"/>
+<text x="73" y="647.205" font-family="DejaVu Sans,Arial,sans-serif" font-size="18.5" font-weight="700" fill="#168D9D">The next proposed stage is validated again and respects operator gates and the configured action envelope.</text>
+<line x1="54" y1="687" x2="1226" y2="687" stroke="#D9E3EE" stroke-width="1"/>
+<text x="55" y="705.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">LabOS  |  Cross-PC nonlinear Hall and BVPE measurement workflows</text>
+<text x="1191.41796875" y="704.16" font-family="DejaVu Sans,Arial,sans-serif" font-size="12" font-weight="400" fill="#62758C">18/22</text>
+</svg>

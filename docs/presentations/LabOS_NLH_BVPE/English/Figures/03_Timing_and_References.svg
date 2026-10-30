@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="45 183 1190 418" width="1190" height="418">
+<title>A point barrier links conditions before acquisition</title>
+<rect x="0" y="0" width="1280" height="720" rx="0" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="54" y="43.09" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" font-weight="700" fill="#168D9D">07 / FIGURE 3 — TIMING AND SYNCHRONIZATION</text>
+<text x="54" y="104.48" font-family="DejaVu Sans,Arial,sans-serif" font-size="36" font-weight="700" fill="#11233E">A point barrier links conditions before acquisition</text>
+<text x="56" y="148.67000000000002" font-family="DejaVu Sans,Arial,sans-serif" font-size="19" font-weight="400" fill="#62758C">A shared point_id provides correspondence; acquisition intervals and physical references provide timing context.</text>
+<text x="54" y="242.67000000000002" font-family="DejaVu Sans,Arial,sans-serif" font-size="19" font-weight="700" fill="#7653CF">Coordinator</text>
+<line x1="217" y1="240" x2="1210" y2="240" stroke="#D9E3EE" stroke-width="1.4"/>
+<text x="54" y="319.67" font-family="DejaVu Sans,Arial,sans-serif" font-size="19" font-weight="700" fill="#168D9D">PC A</text>
+<line x1="217" y1="317" x2="1210" y2="317" stroke="#D9E3EE" stroke-width="1.4"/>
+<text x="54" y="396.67" font-family="DejaVu Sans,Arial,sans-serif" font-size="19" font-weight="700" fill="#168D9D">PC B</text>
+<line x1="217" y1="394" x2="1210" y2="394" stroke="#D9E3EE" stroke-width="1.4"/>
+<text x="54" y="473.67" font-family="DejaVu Sans,Arial,sans-serif" font-size="19" font-weight="700" fill="#BC7D1D">Electrical ref.</text>
+<line x1="217" y1="471" x2="1210" y2="471" stroke="#D9E3EE" stroke-width="1.4"/>
+<text x="54" y="550.67" font-family="DejaVu Sans,Arial,sans-serif" font-size="19" font-weight="700" fill="#BC7D1D">Optical ref.</text>
+<line x1="217" y1="548" x2="1210" y2="548" stroke="#D9E3EE" stroke-width="1.4"/>
+<rect x="224" y="214" width="187" height="51" rx="10" fill="#F1ECFC" stroke="#7653CF" stroke-width="1.4"/>
+<text x="251.977783203125" y="243.835" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="700" fill="#7653CF">Issue point_id</text>
+<rect x="501" y="214" width="203" height="51" rx="10" fill="#F1ECFC" stroke="#7653CF" stroke-width="1.4"/>
+<text x="518.197265625" y="243.835" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="700" fill="#7653CF">Join READY states</text>
+<rect x="799" y="214" width="216" height="51" rx="10" fill="#F1ECFC" stroke="#7653CF" stroke-width="1.4"/>
+<text x="814.5625" y="243.835" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="700" fill="#7653CF">Release acquisition</text>
+<rect x="1070" y="214" width="140" height="51" rx="10" fill="#F1ECFC" stroke="#7653CF" stroke-width="1.4"/>
+<text x="1081.500732421875" y="243.37" font-family="DejaVu Sans,Arial,sans-serif" font-size="16.5" font-weight="700" fill="#7653CF">QC + archive</text>
+<rect x="253" y="291" width="247" height="51" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="265.26953125" y="320.58" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="#168D9D">Set source / band / optics</text>
+<rect x="542" y="291" width="161" height="51" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="553.40576171875" y="317.78999999999996" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.0" font-weight="700" fill="#168D9D">Readback + READY</text>
+<rect x="799" y="291" width="294" height="51" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="844.43798828125" y="321.09000000000003" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="700" fill="#168D9D">Reference spectrum</text>
+<rect x="253" y="368" width="247" height="51" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="290.40625" y="397.58" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="#168D9D">Set T / B / Vg; settle</text>
+<rect x="542" y="368" width="161" height="51" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="553.40576171875" y="394.78999999999996" font-family="DejaVu Sans,Arial,sans-serif" font-size="13.0" font-weight="700" fill="#168D9D">Readback + READY</text>
+<rect x="799" y="368" width="294" height="51" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="877.8583984375" y="398.09000000000003" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="700" fill="#168D9D">Lock-ins + PD</text>
+<line x1="749" y1="192" x2="749" y2="431" stroke="#7653CF" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="726.5" y="449.88" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="#7653CF">Barrier</text>
+<line x1="236" y1="471" x2="1208" y2="471" stroke="#BC7D1D" stroke-width="2.4"/>
+<polygon points="1208,471 1199.0,466.95 1199.0,475.05" fill="#BC7D1D" stroke="none" stroke-width="1"/>
+<line x1="236" y1="548" x2="1208" y2="548" stroke="#BC7D1D" stroke-width="2.4"/>
+<polygon points="1208,548 1199.0,543.95 1199.0,552.05" fill="#BC7D1D" stroke="none" stroke-width="1"/>
+<text x="276" y="499.74" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="400" fill="#BC7D1D">f_I: master oscillator -&gt; follower REF; select harmonic n</text>
+<text x="276" y="576.74" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="400" fill="#BC7D1D">fchop: chopper controller -&gt; BVPE lock-in REF</text>
+<rect x="54" y="618" width="1172" height="54" rx="9" fill="#E9F6F7" stroke="none" stroke-width="1"/>
+<text x="73" y="649.995" font-family="DejaVu Sans,Arial,sans-serif" font-size="21.5" font-weight="700" fill="#168D9D">Store conditions AND time windows. Shared coordination is not a claim of zero-skew sampling.</text>
+<line x1="54" y1="687" x2="1226" y2="687" stroke="#D9E3EE" stroke-width="1"/>
+<text x="55" y="705.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">LabOS  |  Cross-PC nonlinear Hall and BVPE measurement workflows</text>
+<text x="1191.41796875" y="704.16" font-family="DejaVu Sans,Arial,sans-serif" font-size="12" font-weight="400" fill="#62758C">08/22</text>
+</svg>

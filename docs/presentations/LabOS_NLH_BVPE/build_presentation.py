@@ -511,11 +511,11 @@ def style_shape(shape, fill=None, border=None, lw=1, dash=False):
         shape.line.fill.background()
 
 
-def render_pptx():
+def render_pptx(filename="LabOS_NLH_BVPE_System.pptx", title=None, subject=None, notes_source_label="来源："):
     prs=Presentation()
     prs.slide_width=pval(W); prs.slide_height=pval(H)
-    prs.core_properties.title="LabOS：跨 PC 协同的非线性 Hall 与 BVPE 实验系统"
-    prs.core_properties.subject="系统能力、双 PC 装置与测量流程"
+    prs.core_properties.title=title or "LabOS：跨 PC 协同的非线性 Hall 与 BVPE 实验系统"
+    prs.core_properties.subject=subject or "系统能力、双 PC 装置与测量流程"
     prs.core_properties.author="LabOS"
     for scene in SLIDES:
         slide=prs.slides.add_slide(prs.slide_layouts[6])
@@ -557,16 +557,16 @@ def render_pptx():
                             run.hyperlink.address=line
                         props=run._r.get_or_add_rPr()
                         ea=OxmlElement("a:ea"); ea.set("typeface","Microsoft YaHei");props.append(ea)
-        slide.notes_slide.notes_text_frame.text=scene.note+(("\n来源："+scene.source) if scene.source else "")
-    path=ROOT/"LabOS_NLH_BVPE_System.pptx"
+        slide.notes_slide.notes_text_frame.text=scene.note+(("\n"+notes_source_label+scene.source) if scene.source else "")
+    path=ROOT/filename
     prs.save(path)
     return path
 
 
-def render_pdf():
-    path=ROOT/"LabOS_NLH_BVPE_System.pdf"
+def render_pdf(filename="LabOS_NLH_BVPE_System.pdf", title=None):
+    path=ROOT/filename
     c=canvas.Canvas(str(path),pagesize=(W*SCALE,H*SCALE),pageCompression=1)
-    c.setTitle("LabOS：跨 PC 协同的非线性 Hall 与 BVPE 实验系统")
+    c.setTitle(title or "LabOS：跨 PC 协同的非线性 Hall 与 BVPE 实验系统")
     c.setAuthor("LabOS")
     for scene in SLIDES:
         c.saveState(); c.scale(SCALE,SCALE)

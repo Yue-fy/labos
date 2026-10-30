@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="45 185 1190 431" width="1190" height="431">
+<title>Optical drive, power and referenced readout</title>
+<rect x="0" y="0" width="1280" height="720" rx="0" fill="#F5F8FC" stroke="none" stroke-width="1"/>
+<text x="54" y="43.09" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" font-weight="700" fill="#168D9D">12 / FIGURE 5 — BVPE OPTICAL AND READOUT PATH</text>
+<text x="54" y="104.48" font-family="DejaVu Sans,Arial,sans-serif" font-size="36" font-weight="700" fill="#11233E">Optical drive, power and referenced readout</text>
+<text x="56" y="148.67000000000002" font-family="DejaVu Sans,Arial,sans-serif" font-size="19" font-weight="400" fill="#62758C">The 730 nm and SuperK paths converge on the same configured polarization and sample environment.</text>
+<rect x="55" y="201" width="247" height="92" rx="7" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="65" y="223.81" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="700" fill="#168D9D">SuperK</text>
+<rect x="65" y="240" width="193" height="25" rx="3" fill="#F5F8FC" stroke="#D9E3EE" stroke-width="1"/>
+<text x="71" y="256.09" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" font-weight="400" fill="#23364D">Band / source configuration</text>
+<circle cx="279" cy="252" r="9" fill="#EDF3FC" stroke="#168D9D" stroke-width="1.2"/>
+<circle cx="279" cy="277" r="4" fill="#278565" stroke="none" stroke-width="1"/>
+<circle cx="178.5" cy="281" r="3.3" fill="#168D9D" stroke="none" stroke-width="1"/>
+<text x="155.51708984375" y="306.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">SOURCE</text>
+<rect x="55" y="396" width="247" height="92" rx="7" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="65" y="418.81" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="700" fill="#168D9D">730 nm laser</text>
+<rect x="65" y="435" width="193" height="25" rx="3" fill="#F5F8FC" stroke="#D9E3EE" stroke-width="1"/>
+<text x="71" y="451.09" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" font-weight="400" fill="#23364D">Selected laser excitation</text>
+<circle cx="279" cy="447" r="9" fill="#EDF3FC" stroke="#168D9D" stroke-width="1.2"/>
+<circle cx="279" cy="472" r="4" fill="#278565" stroke="none" stroke-width="1"/>
+<circle cx="178.5" cy="476" r="3.3" fill="#168D9D" stroke="none" stroke-width="1"/>
+<text x="162.056396484375" y="501.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">LIGHT</text>
+<rect x="55" y="535" width="247" height="57" rx="10" fill="#F1ECFC" stroke="#7653CF" stroke-width="1.4"/>
+<text x="94.65380859375" y="568.855" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#7653CF">CLD1000: I_LD</text>
+<line x1="178" y1="535" x2="178" y2="488" stroke="#7653CF" stroke-width="2"/>
+<polygon points="178,488 173.95,497.0 182.05,497.0" fill="#7653CF" stroke="none" stroke-width="1"/>
+<line x1="302" y1="248" x2="350" y2="248" stroke="#168D9D" stroke-width="3"/>
+<line x1="350" y1="248" x2="350" y2="350" stroke="#168D9D" stroke-width="3"/>
+<line x1="350" y1="350" x2="390" y2="350" stroke="#168D9D" stroke-width="3"/>
+<polygon points="390,350 381.0,345.95 381.0,354.05" fill="#168D9D" stroke="none" stroke-width="1"/>
+<line x1="302" y1="442" x2="350" y2="442" stroke="#168D9D" stroke-width="3"/>
+<line x1="350" y1="442" x2="350" y2="350" stroke="#168D9D" stroke-width="3"/>
+<polygon points="350,350 345.95,359.0 354.05,359.0" fill="#168D9D" stroke="none" stroke-width="1"/>
+<circle cx="418" cy="350" r="28" fill="#E9F6F7" stroke="#168D9D" stroke-width="1.5"/>
+<line x1="402" y1="334" x2="434" y2="334" stroke="#168D9D" stroke-width="4"/>
+<line x1="402" y1="350" x2="434" y2="350" stroke="#168D9D" stroke-width="4"/>
+<line x1="402" y1="366" x2="434" y2="366" stroke="#168D9D" stroke-width="4"/>
+<circle cx="418" cy="350" r="4" fill="#FFFFFF" stroke="#168D9D" stroke-width="1"/>
+<text x="376.87744140625" y="300.74" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="700" fill="#168D9D">Chopper</text>
+<rect x="505" y="322" width="20" height="56" rx="3" fill="#E9F6F7" stroke="#168D9D" stroke-width="1.5"/>
+<line x1="508" y1="370" x2="522" y2="330" stroke="#168D9D" stroke-width="2"/>
+<text x="477.298583984375" y="399.95" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" fill="#168D9D">Polarizer</text>
+<rect x="610" y="322" width="20" height="56" rx="3" fill="#E9F6F7" stroke="#168D9D" stroke-width="1.5"/>
+<line x1="613" y1="370" x2="627" y2="330" stroke="#168D9D" stroke-width="2"/>
+<text x="567.78564453125" y="399.95" font-family="DejaVu Sans,Arial,sans-serif" font-size="15" font-weight="700" fill="#168D9D">QWP / motor</text>
+<line x1="446" y1="350" x2="505" y2="350" stroke="#168D9D" stroke-width="3"/>
+<polygon points="505,350 496.0,345.95 496.0,354.05" fill="#168D9D" stroke="none" stroke-width="1"/>
+<line x1="525" y1="350" x2="610" y2="350" stroke="#168D9D" stroke-width="3"/>
+<polygon points="610,350 601.0,345.95 601.0,354.05" fill="#168D9D" stroke="none" stroke-width="1"/>
+<line x1="630" y1="350" x2="737" y2="350" stroke="#168D9D" stroke-width="3"/>
+<polygon points="737,350 728.0,345.95 728.0,354.05" fill="#168D9D" stroke="none" stroke-width="1"/>
+<polygon points="681,338 693,350 681,362 669,350" fill="#E9F6EF" stroke="#278565" stroke-width="1.4"/>
+<rect x="737" y="244" width="180" height="210" rx="24" fill="#EDF3FC" stroke="#3B6CB0" stroke-width="2"/>
+<rect x="752" y="227" width="150" height="35" rx="13" fill="#FFFFFF" stroke="#3B6CB0" stroke-width="1.7"/>
+<rect x="752" y="446" width="150" height="35" rx="13" fill="#FFFFFF" stroke="#3B6CB0" stroke-width="1.7"/>
+<rect x="789.2" y="267" width="75.6" height="160" rx="10" fill="#FFFFFF" stroke="#D9E3EE" stroke-width="1"/>
+<rect x="755" y="307.5" width="41.4" height="28" rx="4" fill="#CCDDF2" stroke="#3B6CB0" stroke-width="1"/>
+<rect x="857.6" y="307.5" width="41.4" height="28" rx="4" fill="#CCDDF2" stroke="#3B6CB0" stroke-width="1"/>
+<line x1="758" y1="310.5" x2="758" y2="332.5" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="861.2" y1="310.5" x2="861.2" y2="332.5" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="765" y1="310.5" x2="765" y2="332.5" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="868.2" y1="310.5" x2="868.2" y2="332.5" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="772" y1="310.5" x2="772" y2="332.5" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="875.2" y1="310.5" x2="875.2" y2="332.5" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="779" y1="310.5" x2="779" y2="332.5" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="882.2" y1="310.5" x2="882.2" y2="332.5" stroke="#3B6CB0" stroke-width="0.8"/>
+<rect x="755" y="360.0" width="41.4" height="28" rx="4" fill="#CCDDF2" stroke="#3B6CB0" stroke-width="1"/>
+<rect x="857.6" y="360.0" width="41.4" height="28" rx="4" fill="#CCDDF2" stroke="#3B6CB0" stroke-width="1"/>
+<line x1="758" y1="363.0" x2="758" y2="385.0" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="861.2" y1="363.0" x2="861.2" y2="385.0" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="765" y1="363.0" x2="765" y2="385.0" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="868.2" y1="363.0" x2="868.2" y2="385.0" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="772" y1="363.0" x2="772" y2="385.0" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="875.2" y1="363.0" x2="875.2" y2="385.0" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="779" y1="363.0" x2="779" y2="385.0" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="882.2" y1="363.0" x2="882.2" y2="385.0" stroke="#3B6CB0" stroke-width="0.8"/>
+<line x1="825.2" y1="404.0" x2="825.2" y2="296.5" stroke="#7653CF" stroke-width="1.6"/>
+<polygon points="825.2,296.5 822.5,302.5 827.9000000000001,302.5" fill="#7653CF" stroke="none" stroke-width="1"/>
+<rect x="801.8" y="343.0" width="50.400000000000006" height="12" rx="2" fill="#3B6CB0" stroke="none" stroke-width="1"/>
+<circle cx="749" cy="349.0" r="9" fill="#E9F6F7" stroke="#168D9D" stroke-width="1.8"/>
+<circle cx="854.0" cy="369.0" r="4" fill="#B94C61" stroke="none" stroke-width="1"/>
+<text x="775.93701171875" y="508.46" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="700" fill="#3B6CB0">attoDRY</text>
+<text x="739.83837890625" y="210.02" font-family="DejaVu Sans,Arial,sans-serif" font-size="14.0" font-weight="700" fill="#3B6CB0">Optical-access sample</text>
+<line x1="681" y1="362" x2="681" y2="499" stroke="#278565" stroke-width="2"/>
+<line x1="681" y1="499" x2="611" y2="499" stroke="#278565" stroke-width="2"/>
+<polygon points="611,499 620.0,503.05 620.0,494.95" fill="#278565" stroke="none" stroke-width="1"/>
+<rect x="381" y="461" width="230" height="91" rx="7" fill="#FFFFFF" stroke="#278565" stroke-width="1.4"/>
+<text x="391" y="483.81" font-family="DejaVu Sans,Arial,sans-serif" font-size="17" font-weight="700" fill="#278565">PD power monitor</text>
+<rect x="391" y="500" width="176" height="24" rx="3" fill="#F5F8FC" stroke="#D9E3EE" stroke-width="1"/>
+<text x="397" y="516.09" font-family="DejaVu Sans,Arial,sans-serif" font-size="13" font-weight="400" fill="#23364D">Responsivity / transfer K</text>
+<circle cx="588" cy="512" r="9" fill="#EDF3FC" stroke="#278565" stroke-width="1.2"/>
+<circle cx="588" cy="537" r="4" fill="#278565" stroke="none" stroke-width="1"/>
+<circle cx="496.0" cy="540" r="3.3" fill="#278565" stroke="none" stroke-width="1"/>
+<text x="475.619384765625" y="565.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">POWER</text>
+<rect x="381" y="201" width="230" height="60" rx="10" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.4"/>
+<text x="393.6041259765625" y="234.87" font-family="DejaVu Sans,Arial,sans-serif" font-size="16.5" font-weight="700" fill="#168D9D">IR reference spectrum</text>
+<line x1="350" y1="294" x2="350" y2="231" stroke="#168D9D" stroke-width="1.7" stroke-dasharray="5 4"/>
+<line x1="350" y1="231" x2="381" y2="231" stroke="#168D9D" stroke-width="1.7" stroke-dasharray="5 4"/>
+<polygon points="381,231 372.0,226.95 372.0,235.05" fill="#168D9D" stroke="none" stroke-width="1"/>
+<rect x="969" y="279" width="257" height="204" rx="11" fill="#EDF3FC" stroke="#3B6CB0" stroke-width="1.2"/>
+<text x="982" y="307.6" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="700" fill="#3B6CB0">BVPE LOCK-IN</text>
+<text x="985" y="341.74" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="400" fill="#3B6CB0">Photovoltage input</text>
+<text x="985" y="366.04" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="400" fill="#3B6CB0">or current-mode readout</text>
+<text x="985" y="390.34000000000003" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="400" fill="#3B6CB0">Gain / range / X / Y</text>
+<text x="985" y="414.64" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="400" fill="#3B6CB0">External REF = fchop</text>
+<line x1="917" y1="350" x2="943" y2="350" stroke="#3B6CB0" stroke-width="2.5"/>
+<line x1="943" y1="350" x2="943" y2="366" stroke="#3B6CB0" stroke-width="2.5"/>
+<line x1="943" y1="366" x2="969" y2="366" stroke="#3B6CB0" stroke-width="2.5"/>
+<polygon points="969,366 960.0,361.95 960.0,370.05" fill="#3B6CB0" stroke="none" stroke-width="1"/>
+<line x1="418" y1="378" x2="418" y2="420" stroke="#BC7D1D" stroke-width="2" stroke-dasharray="5 4"/>
+<line x1="418" y1="420" x2="700" y2="420" stroke="#BC7D1D" stroke-width="2" stroke-dasharray="5 4"/>
+<line x1="700" y1="420" x2="700" y2="604" stroke="#BC7D1D" stroke-width="2" stroke-dasharray="5 4"/>
+<line x1="700" y1="604" x2="1097" y2="604" stroke="#BC7D1D" stroke-width="2" stroke-dasharray="5 4"/>
+<line x1="1097" y1="604" x2="1097" y2="483" stroke="#BC7D1D" stroke-width="2" stroke-dasharray="5 4"/>
+<polygon points="1097,483 1092.95,492.0 1101.05,492.0" fill="#BC7D1D" stroke="none" stroke-width="1"/>
+<text x="939" y="559.88" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="#BC7D1D">Chopper REF</text>
+<text x="939" y="581.48" font-family="DejaVu Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="#BC7D1D">fchop</text>
+<rect x="737" y="538" width="180" height="52" rx="10" fill="#FFFFFF" stroke="#7653CF" stroke-width="1.4"/>
+<text x="764.7998046875" y="568.59" font-family="DejaVu Sans,Arial,sans-serif" font-size="18" font-weight="700" fill="#7653CF">2400: Vg / Ig</text>
+<line x1="827" y1="538" x2="930" y2="538" stroke="#7653CF" stroke-width="2"/>
+<line x1="930" y1="538" x2="930" y2="414" stroke="#7653CF" stroke-width="2"/>
+<line x1="930" y1="414" x2="917" y2="414" stroke="#7653CF" stroke-width="2"/>
+<polygon points="917,414 926.0,418.05 926.0,409.95" fill="#7653CF" stroke="none" stroke-width="1"/>
+<rect x="54" y="618" width="1172" height="54" rx="9" fill="#E9F6F7" stroke="none" stroke-width="1"/>
+<text x="73" y="649.065" font-family="DejaVu Sans,Arial,sans-serif" font-size="20.5" font-weight="700" fill="#168D9D">fchop is the optical-intensity envelope reference; it is not the optical carrier frequency or Hall 2f_I.</text>
+<line x1="54" y1="687" x2="1226" y2="687" stroke="#D9E3EE" stroke-width="1"/>
+<text x="55" y="705.23" font-family="DejaVu Sans,Arial,sans-serif" font-size="11" font-weight="400" fill="#62758C">Optical / photocurrent scenario for LabOS; BVPE experimental context: Osterhoudt et al. [4].</text>
+<text x="1191.41796875" y="704.16" font-family="DejaVu Sans,Arial,sans-serif" font-size="12" font-weight="400" fill="#62758C">13/22</text>
+</svg>
