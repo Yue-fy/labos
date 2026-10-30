@@ -5,10 +5,11 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse
 
 from .config import CentralConfig
+from .evidence import EvidenceDocument, EvidenceStore
 from .files import InstanceLock, export_hdf5
 from .models import Identifier, Model, Plan
 from .runtime import Runtime
@@ -38,6 +39,7 @@ def create_app(config: CentralConfig):
     for agent_id, enrollment in config.agents.items():
         store.enroll(agent_id, enrollment.instruments)
     runtime = Runtime(config, store)
+    evidence = EvidenceStore(config.data_dir)
 
     @asynccontextmanager
     async def lifespan(app):
@@ -110,11 +112,22 @@ def create_app(config: CentralConfig):
         if not body.prompt.strip() or len(body.prompt) > 8000:
             raise HTTPException(422, "prompt must contain 1–8000 characters")
         try:
-            return await draft_plan(body.prompt, config)
+            references = evidence.search(body.prompt[:500])
+            store.event("EVIDENCE_RETRIEVED", {"purpose": "draft_plan", "citations": [
+                {k: d[k] for k in ("id", "sha256", "source", "version")} for d in references]})
+            return await draft_plan(body.prompt, config, evidence=references)
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
         except Exception as exc:
             raise HTTPException(502, "AI provider request failed; no experiment was started") from exc
+
+    @app.post("/api/evidence", dependencies=[Depends(operator)])
+    def add_evidence(document: EvidenceDocument):
+        return checked(evidence.add, document)
+
+    @app.get("/api/evidence", dependencies=[Depends(operator)])
+    def search_evidence(q: str = Query(default="", max_length=500), reviewed_only: bool = True):
+        return checked(evidence.search, q, reviewed_only=reviewed_only)
 
     @app.post("/api/runs", dependencies=[Depends(operator)])
     async def start(plan: Plan):
