@@ -1,0 +1,4989 @@
+{
+  "title": "LabOS System Architecture",
+  "section": "Distributed laboratory architecture",
+  "note": "One central LabOS server hosts scientific AI reasoning, specialist sub-agents, knowledge and memory, and deterministic coordination. A server-side model router prefers a remote cloud model and falls back to the server's local LLM when cloud connectivity, the API or its quota is unavailable. The agents preserve experiment context and tool permissions across model changes. Each instrument-host PC runs one persistent execution worker, called a PC Agent. The worker does not require a local large language model. It owns instrument sessions, bounded adapters, a command journal, watchdog and artifact outbox. An operator computer can use only a browser. All laboratory PCs initiate their HTTP(S) connections; command arrows represent payload flow, not inbound network sessions. Physical device interfaces remain local to the instrument host. A/B retain the supplied optical and sample-lab inventory; C through N illustrate additional resource hosts. Hardware reference and trigger cables are separate from this control network. This figure describes the scalable LabOS system design, rather than an inventory of currently commissioned drivers.",
+  "source": "Original LabOS architecture drawing, based on project design and the supplied laboratory scenario.",
+  "ops": [
+    {
+      "kind": "rect",
+      "x": 0,
+      "y": 0,
+      "w": 2560,
+      "h": 1680,
+      "fill": "FFFFFF",
+      "border": null,
+      "radius": 0,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 60,
+      "y": 31,
+      "w": 1570,
+      "h": 66,
+      "lines": [
+        "LabOS System Architecture"
+      ],
+      "size": 47,
+      "color": "11233E",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 62,
+      "y": 102,
+      "w": 1510,
+      "h": 35,
+      "lines": [
+        "One central server • many PCs • shared knowledge and experimental evidence"
+      ],
+      "size": 23,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1290,
+      "y": 58,
+      "w": 385,
+      "h": 86,
+      "fill": "F1ECFC",
+      "border": "7653CF",
+      "radius": 13,
+      "lw": 1.5,
+      "dash": true
+    },
+    {
+      "kind": "text",
+      "x": 1311,
+      "y": 72,
+      "w": 343,
+      "h": 34,
+      "lines": [
+        "Cloud LLM API"
+      ],
+      "size": 26,
+      "color": "7653CF",
+      "bold": true,
+      "align": "center",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 1311,
+      "y": 112,
+      "w": 343,
+      "h": 27,
+      "lines": [
+        "Remote model service"
+      ],
+      "size": 19,
+      "color": "62758C",
+      "bold": false,
+      "align": "center",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1468,
+      "y1": 190,
+      "x2": 1468,
+      "y2": 144,
+      "color": "7653CF",
+      "lw": 2.3,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1468,
+          144
+        ],
+        [
+          1463.95,
+          153.0
+        ],
+        [
+          1472.05,
+          153.0
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 1496,
+      "y1": 144,
+      "x2": 1496,
+      "y2": 190,
+      "color": "278565",
+      "lw": 2.3,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1496,
+          190
+        ],
+        [
+          1500.05,
+          181.0
+        ],
+        [
+          1491.95,
+          181.0
+        ]
+      ],
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 1725,
+      "y": 64,
+      "w": 775,
+      "h": 88,
+      "fill": "FFF4DE",
+      "border": "BC7D1D",
+      "radius": 13,
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 1747,
+      "y": 78,
+      "w": 67,
+      "h": 44,
+      "fill": "EDF3FC",
+      "border": "BC7D1D",
+      "radius": 4,
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 1754,
+      "y": 85,
+      "w": 53,
+      "h": 30,
+      "fill": "FFFFFF",
+      "border": null,
+      "radius": 0,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 1780.5,
+      "y1": 122,
+      "x2": 1780.5,
+      "y2": 132,
+      "color": "BC7D1D",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 1761.07,
+      "y1": 134,
+      "x2": 1799.93,
+      "y2": 134,
+      "color": "BC7D1D",
+      "lw": 3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1840,
+      "y": 76,
+      "w": 637,
+      "h": 35,
+      "lines": [
+        "Human / operator computer"
+      ],
+      "size": 27,
+      "color": "BC7D1D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 1840,
+      "y": 115,
+      "w": 637,
+      "h": 27,
+      "lines": [
+        "Browser only • question, review and authorize"
+      ],
+      "size": 20,
+      "color": "23364D",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 2112,
+      "y1": 152,
+      "x2": 2112,
+      "y2": 190,
+      "color": "BC7D1D",
+      "lw": 2.8,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          2112,
+          190
+        ],
+        [
+          2116.95,
+          179.0
+        ],
+        [
+          2107.05,
+          179.0
+        ]
+      ],
+      "fill": "BC7D1D",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 60,
+      "y": 190,
+      "w": 2440,
+      "h": 655,
+      "fill": "F5F8FC",
+      "border": "3B6CB0",
+      "radius": 21,
+      "lw": 2.8,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 88,
+      "y": 208,
+      "w": 63,
+      "h": 75,
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "radius": 7,
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 96,
+      "y": 218,
+      "w": 47,
+      "h": 15,
+      "fill": "FFFFFF",
+      "border": "3B6CB0",
+      "radius": 3,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "circle",
+      "x": 134,
+      "y": 225.5,
+      "r": 2.5,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 102,
+      "y1": 225.5,
+      "x2": 121,
+      "y2": 225.5,
+      "color": "3B6CB0",
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 96,
+      "y": 239,
+      "w": 47,
+      "h": 15,
+      "fill": "FFFFFF",
+      "border": "3B6CB0",
+      "radius": 3,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "circle",
+      "x": 134,
+      "y": 246.5,
+      "r": 2.5,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 102,
+      "y1": 246.5,
+      "x2": 121,
+      "y2": 246.5,
+      "color": "3B6CB0",
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 96,
+      "y": 260,
+      "w": 47,
+      "h": 15,
+      "fill": "FFFFFF",
+      "border": "3B6CB0",
+      "radius": 3,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "circle",
+      "x": 134,
+      "y": 267.5,
+      "r": 2.5,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 102,
+      "y1": 267.5,
+      "x2": 121,
+      "y2": 267.5,
+      "color": "3B6CB0",
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 172,
+      "y": 211,
+      "w": 870,
+      "h": 48,
+      "lines": [
+        "CENTRAL LABOS SERVER"
+      ],
+      "size": 35,
+      "color": "11233E",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 172,
+      "y": 258,
+      "w": 1740,
+      "h": 29,
+      "lines": [
+        "Scientific reasoning + deterministic control + durable evidence on one server"
+      ],
+      "size": 22,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 2040,
+      "y": 218,
+      "w": 420,
+      "h": 33,
+      "lines": [
+        "ONE CENTRAL ENDPOINT"
+      ],
+      "size": 21,
+      "color": "3B6CB0",
+      "bold": true,
+      "align": "right",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 95,
+      "y": 310,
+      "w": 560,
+      "h": 495,
+      "fill": "E9F6EF",
+      "border": "278565",
+      "radius": 15,
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 117,
+      "y": 328,
+      "w": 516,
+      "h": 45,
+      "lines": [
+        "Knowledge / memory"
+      ],
+      "size": 30,
+      "color": "278565",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 548,
+      "y": 365,
+      "w": 74,
+      "h": 29,
+      "fill": "FFFFFF",
+      "border": "278565",
+      "radius": 10,
+      "lw": 1.7,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 548,
+      "y": 347,
+      "w": 74,
+      "h": 29,
+      "fill": "FFFFFF",
+      "border": "278565",
+      "radius": 10,
+      "lw": 1.7,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 548,
+      "y": 330,
+      "w": 74,
+      "h": 29,
+      "fill": "FFFFFF",
+      "border": "278565",
+      "radius": 10,
+      "lw": 1.7,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          622.0,
+          338.0
+        ],
+        [
+          620.7392555726956,
+          340.07055236082016
+        ],
+        [
+          617.0429399400242,
+          342.0
+        ],
+        [
+          611.1629509039022,
+          343.65685424949237
+        ],
+        [
+          603.5,
+          344.9282032302755
+        ],
+        [
+          594.5763046687932,
+          345.7274066103125
+        ],
+        [
+          585.0,
+          346.0
+        ],
+        [
+          575.4236953312068,
+          345.7274066103125
+        ],
+        [
+          566.5,
+          344.9282032302755
+        ],
+        [
+          558.8370490960978,
+          343.65685424949237
+        ],
+        [
+          552.9570600599758,
+          342.0
+        ],
+        [
+          549.2607444273044,
+          340.07055236082016
+        ],
+        [
+          548.0,
+          338.0
+        ],
+        [
+          549.2607444273044,
+          335.92944763917984
+        ],
+        [
+          552.9570600599758,
+          334.0
+        ],
+        [
+          558.8370490960978,
+          332.34314575050763
+        ],
+        [
+          566.5,
+          331.0717967697245
+        ],
+        [
+          575.4236953312068,
+          330.2725933896875
+        ],
+        [
+          585.0,
+          330.0
+        ],
+        [
+          594.5763046687932,
+          330.2725933896875
+        ],
+        [
+          603.5,
+          331.0717967697245
+        ],
+        [
+          611.1629509039022,
+          332.34314575050763
+        ],
+        [
+          617.0429399400242,
+          334.0
+        ],
+        [
+          620.7392555726955,
+          335.92944763917984
+        ]
+      ],
+      "fill": "E9F6EF",
+      "border": "278565",
+      "lw": 1.5
+    },
+    {
+      "kind": "text",
+      "x": 120,
+      "y": 379,
+      "w": 495,
+      "h": 29,
+      "lines": [
+        "SEMANTIC KNOWLEDGE"
+      ],
+      "size": 20,
+      "color": "278565",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 120,
+      "y": 421,
+      "w": 495,
+      "h": 100,
+      "lines": [
+        "Scientific literature + protocols",
+        "Instrument manuals + local code",
+        "Calibrations + setup definitions"
+      ],
+      "size": 22,
+      "color": "23364D",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 120,
+      "y1": 534,
+      "x2": 629,
+      "y2": 534,
+      "color": "BFDCCF",
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 120,
+      "y": 552,
+      "w": 495,
+      "h": 29,
+      "lines": [
+        "EXPERIMENT / EPISODIC MEMORY"
+      ],
+      "size": 20,
+      "color": "278565",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 120,
+      "y": 593,
+      "w": 495,
+      "h": 113,
+      "lines": [
+        "Prior runs + raw artifacts",
+        "Commands, faults + recoveries",
+        "Analyses + provenance",
+        "Run / setup / capability registry"
+      ],
+      "size": 22,
+      "color": "23364D",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 117,
+      "y": 719,
+      "w": 516,
+      "h": 64,
+      "fill": "FFFFFF",
+      "border": "BFDCCF",
+      "radius": 7,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 132,
+      "y": 729,
+      "w": 487,
+      "h": 24,
+      "lines": [
+        "Retrieve → cite → reuse"
+      ],
+      "size": 20,
+      "color": "278565",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 132,
+      "y": 758,
+      "w": 487,
+      "h": 22,
+      "lines": [
+        "Versioned records + configuration hashes"
+      ],
+      "size": 17,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 720,
+      "y": 310,
+      "w": 1200,
+      "h": 265,
+      "fill": "F1ECFC",
+      "border": "7653CF",
+      "radius": 15,
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 742,
+      "y": 328,
+      "w": 1156,
+      "h": 45,
+      "lines": [
+        "Main AI agent / control system"
+      ],
+      "size": 32,
+      "color": "7653CF",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 744,
+      "y": 367,
+      "w": 1150,
+      "h": 31,
+      "lines": [
+        "Scientific objective → measurement strategy → evidence-based next step"
+      ],
+      "size": 22,
+      "color": "7653CF",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 745,
+      "y": 424,
+      "w": 265,
+      "h": 66,
+      "fill": "FFFFFF",
+      "border": "7653CF",
+      "radius": 9,
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 757,
+      "y": 444,
+      "w": 241,
+      "h": 31,
+      "lines": [
+        "Question + context"
+      ],
+      "size": 22,
+      "color": "7653CF",
+      "bold": true,
+      "align": "center",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1010,
+      "y1": 457,
+      "x2": 1028,
+      "y2": 457,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1028,
+          457
+        ],
+        [
+          1021.0,
+          453.85
+        ],
+        [
+          1021.0,
+          460.15
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 1033,
+      "y": 424,
+      "w": 265,
+      "h": 66,
+      "fill": "FFFFFF",
+      "border": "7653CF",
+      "radius": 9,
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1045,
+      "y": 444,
+      "w": 241,
+      "h": 31,
+      "lines": [
+        "Review evidence"
+      ],
+      "size": 22,
+      "color": "7653CF",
+      "bold": true,
+      "align": "center",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1298,
+      "y1": 457,
+      "x2": 1316,
+      "y2": 457,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1316,
+          457
+        ],
+        [
+          1309.0,
+          453.85
+        ],
+        [
+          1309.0,
+          460.15
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 1321,
+      "y": 424,
+      "w": 265,
+      "h": 66,
+      "fill": "FFFFFF",
+      "border": "7653CF",
+      "radius": 9,
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1333,
+      "y": 444,
+      "w": 241,
+      "h": 31,
+      "lines": [
+        "Build stage plan"
+      ],
+      "size": 22,
+      "color": "7653CF",
+      "bold": true,
+      "align": "center",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1586,
+      "y1": 457,
+      "x2": 1604,
+      "y2": 457,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1604,
+          457
+        ],
+        [
+          1597.0,
+          453.85
+        ],
+        [
+          1597.0,
+          460.15
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 1609,
+      "y": 424,
+      "w": 265,
+      "h": 66,
+      "fill": "FFFFFF",
+      "border": "7653CF",
+      "radius": 9,
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1621,
+      "y": 444,
+      "w": 241,
+      "h": 31,
+      "lines": [
+        "Interpret + refine"
+      ],
+      "size": 22,
+      "color": "7653CF",
+      "bold": true,
+      "align": "center",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 746,
+      "y": 520,
+      "w": 1148,
+      "h": 31,
+      "lines": [
+        "Delegate specialist work • compare controls • propose the next scientific stage"
+      ],
+      "size": 21,
+      "color": "7653CF",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 655,
+      "y1": 447,
+      "x2": 720,
+      "y2": 447,
+      "color": "278565",
+      "lw": 2.2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          720,
+          447
+        ],
+        [
+          712.0,
+          443.4
+        ],
+        [
+          712.0,
+          450.6
+        ]
+      ],
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 720,
+      "y1": 464,
+      "x2": 655,
+      "y2": 464,
+      "color": "278565",
+      "lw": 2.2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          655,
+          464
+        ],
+        [
+          663.0,
+          467.6
+        ],
+        [
+          663.0,
+          460.4
+        ]
+      ],
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "text",
+      "x": 661,
+      "y": 412,
+      "w": 54,
+      "h": 28,
+      "lines": [
+        "RAG"
+      ],
+      "size": 18,
+      "color": "278565",
+      "bold": true,
+      "align": "center",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1970,
+      "y": 310,
+      "w": 495,
+      "h": 265,
+      "fill": "F1ECFC",
+      "border": "7653CF",
+      "radius": 15,
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1992,
+      "y": 328,
+      "w": 451,
+      "h": 45,
+      "lines": [
+        "Specialist sub-agents"
+      ],
+      "size": 27,
+      "color": "7653CF",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1992,
+      "y": 367,
+      "w": 451,
+      "h": 26,
+      "fill": "FFFFFF",
+      "border": "C9B9EA",
+      "radius": 5,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 2006,
+      "y": 369,
+      "w": 424,
+      "h": 25,
+      "lines": [
+        "Literature / protocols"
+      ],
+      "size": 18,
+      "color": "7653CF",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1992,
+      "y": 398,
+      "w": 451,
+      "h": 26,
+      "fill": "FFFFFF",
+      "border": "C9B9EA",
+      "radius": 5,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 2006,
+      "y": 400,
+      "w": 424,
+      "h": 25,
+      "lines": [
+        "Planning / sequencing"
+      ],
+      "size": 18,
+      "color": "7653CF",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1992,
+      "y": 429,
+      "w": 451,
+      "h": 26,
+      "fill": "FFFFFF",
+      "border": "C9B9EA",
+      "radius": 5,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 2006,
+      "y": 431,
+      "w": 424,
+      "h": 25,
+      "lines": [
+        "Analysis / fitting"
+      ],
+      "size": 18,
+      "color": "7653CF",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1992,
+      "y": 460,
+      "w": 451,
+      "h": 26,
+      "fill": "FFFFFF",
+      "border": "C9B9EA",
+      "radius": 5,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 2006,
+      "y": 462,
+      "w": 424,
+      "h": 25,
+      "lines": [
+        "Interpretation / controls"
+      ],
+      "size": 18,
+      "color": "7653CF",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1992,
+      "y": 491,
+      "w": 451,
+      "h": 26,
+      "fill": "FFFFFF",
+      "border": "C9B9EA",
+      "radius": 5,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 2006,
+      "y": 493,
+      "w": 424,
+      "h": 25,
+      "lines": [
+        "Troubleshooting"
+      ],
+      "size": 18,
+      "color": "7653CF",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1992,
+      "y": 522,
+      "w": 451,
+      "h": 26,
+      "fill": "FFFFFF",
+      "border": "C9B9EA",
+      "radius": 5,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 2006,
+      "y": 524,
+      "w": 424,
+      "h": 25,
+      "lines": [
+        "Code / adapter review"
+      ],
+      "size": 18,
+      "color": "7653CF",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1920,
+      "y1": 428,
+      "x2": 1970,
+      "y2": 428,
+      "color": "7653CF",
+      "lw": 2.2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1970,
+          428
+        ],
+        [
+          1962.0,
+          424.4
+        ],
+        [
+          1962.0,
+          431.6
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 1970,
+      "y1": 448,
+      "x2": 1920,
+      "y2": 448,
+      "color": "7653CF",
+      "lw": 2.2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1920,
+          448
+        ],
+        [
+          1928.0,
+          451.6
+        ],
+        [
+          1928.0,
+          444.4
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 1040,
+      "y1": 575,
+      "x2": 1040,
+      "y2": 640,
+      "color": "7653CF",
+      "lw": 2.8,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1040,
+          640
+        ],
+        [
+          1044.95,
+          629.0
+        ],
+        [
+          1035.05,
+          629.0
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "text",
+      "x": 1063,
+      "y": 594,
+      "w": 393,
+      "h": 31,
+      "lines": [
+        "Stage proposal"
+      ],
+      "size": 21,
+      "color": "7653CF",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1550,
+      "y1": 640,
+      "x2": 1550,
+      "y2": 575,
+      "color": "278565",
+      "lw": 2.8,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1550,
+          575
+        ],
+        [
+          1545.05,
+          586.0
+        ],
+        [
+          1554.95,
+          586.0
+        ]
+      ],
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "text",
+      "x": 1573,
+      "y": 594,
+      "w": 340,
+      "h": 31,
+      "lines": [
+        "Qualified evidence"
+      ],
+      "size": 21,
+      "color": "278565",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 720,
+      "y": 640,
+      "w": 1200,
+      "h": 165,
+      "fill": "E9F6F7",
+      "border": "168D9D",
+      "radius": 15,
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 742,
+      "y": 658,
+      "w": 1156,
+      "h": 45,
+      "lines": [
+        "Deterministic execution coordinator"
+      ],
+      "size": 28,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 742,
+      "y": 708,
+      "w": 274,
+      "h": 53,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 7,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 751,
+      "y": 726,
+      "w": 256,
+      "h": 26,
+      "lines": [
+        "Schema + units"
+      ],
+      "size": 18,
+      "color": "168D9D",
+      "bold": true,
+      "align": "center",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1032,
+      "y": 708,
+      "w": 274,
+      "h": 53,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 7,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1041,
+      "y": 726,
+      "w": 256,
+      "h": 26,
+      "lines": [
+        "Limits + resource locks"
+      ],
+      "size": 18,
+      "color": "168D9D",
+      "bold": true,
+      "align": "center",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1322,
+      "y": 708,
+      "w": 274,
+      "h": 53,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 7,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1331,
+      "y": 726,
+      "w": 256,
+      "h": 26,
+      "lines": [
+        "Stage / point barriers"
+      ],
+      "size": 18,
+      "color": "168D9D",
+      "bold": true,
+      "align": "center",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1612,
+      "y": 708,
+      "w": 274,
+      "h": 53,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 7,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1621,
+      "y": 726,
+      "w": 256,
+      "h": 26,
+      "lines": [
+        "Command / data ledger"
+      ],
+      "size": 18,
+      "color": "168D9D",
+      "bold": true,
+      "align": "center",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 744,
+      "y": 776,
+      "w": 1152,
+      "h": 24,
+      "lines": [
+        "Per-PC identity • deadlines • cancellation • qualification • exclusive device ownership"
+      ],
+      "size": 18,
+      "color": "168D9D",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 720,
+      "y1": 724,
+      "x2": 655,
+      "y2": 724,
+      "color": "278565",
+      "lw": 2.2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          655,
+          724
+        ],
+        [
+          663.0,
+          727.6
+        ],
+        [
+          663.0,
+          720.4
+        ]
+      ],
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "text",
+      "x": 660,
+      "y": 687,
+      "w": 56,
+      "h": 27,
+      "lines": [
+        "Save"
+      ],
+      "size": 17,
+      "color": "278565",
+      "bold": true,
+      "align": "center",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1970,
+      "y": 640,
+      "w": 495,
+      "h": 165,
+      "fill": "F1ECFC",
+      "border": "7653CF",
+      "radius": 15,
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1992,
+      "y": 658,
+      "w": 451,
+      "h": 45,
+      "lines": [
+        "Model router / failover"
+      ],
+      "size": 25,
+      "color": "7653CF",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 1994,
+      "y": 696,
+      "w": 448,
+      "h": 92,
+      "lines": [
+        "Preferred: cloud model API",
+        "Fallback: local LLM on this server",
+        "Triggers: API / internet / quota",
+        "Context + permissions preserved"
+      ],
+      "size": 18,
+      "color": "23364D",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1920,
+      "y1": 504,
+      "x2": 1940,
+      "y2": 504,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 1940,
+      "y1": 504,
+      "x2": 1940,
+      "y2": 620,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 1940,
+      "y1": 620,
+      "x2": 2100,
+      "y2": 620,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 2100,
+      "y1": 620,
+      "x2": 2100,
+      "y2": 640,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          2100,
+          640
+        ],
+        [
+          2103.6,
+          632.0
+        ],
+        [
+          2096.4,
+          632.0
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 2330,
+      "y1": 640,
+      "x2": 2330,
+      "y2": 600,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 2330,
+      "y1": 600,
+      "x2": 1955,
+      "y2": 600,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 1955,
+      "y1": 600,
+      "x2": 1955,
+      "y2": 480,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 1955,
+      "y1": 480,
+      "x2": 1920,
+      "y2": 480,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1920,
+          480
+        ],
+        [
+          1928.0,
+          483.6
+        ],
+        [
+          1928.0,
+          476.4
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "text",
+      "x": 61,
+      "y": 866,
+      "w": 1050,
+      "h": 38,
+      "lines": [
+        "NETWORK  •  HTTP(S) OVER LAN / VPN"
+      ],
+      "size": 25,
+      "color": "11233E",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 1630,
+      "y": 866,
+      "w": 870,
+      "h": 34,
+      "lines": [
+        "PC-initiated connections • no SSH dependency"
+      ],
+      "size": 21,
+      "color": "62758C",
+      "bold": false,
+      "align": "right",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1160,
+      "y1": 805,
+      "x2": 1160,
+      "y2": 930,
+      "color": "7653CF",
+      "lw": 2.8,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1160,
+          930
+        ],
+        [
+          1164.5,
+          920.0
+        ],
+        [
+          1155.5,
+          920.0
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 1560,
+      "y1": 982,
+      "x2": 1560,
+      "y2": 805,
+      "color": "278565",
+      "lw": 2.8,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1560,
+          805
+        ],
+        [
+          1555.5,
+          815.0
+        ],
+        [
+          1564.5,
+          815.0
+        ]
+      ],
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 241,
+      "y1": 930,
+      "x2": 2291,
+      "y2": 930,
+      "color": "7653CF",
+      "lw": 3,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 269,
+      "y1": 982,
+      "x2": 2319,
+      "y2": 982,
+      "color": "278565",
+      "lw": 3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 61,
+      "y": 914,
+      "w": 170,
+      "h": 31,
+      "lines": [
+        "Commands ↓"
+      ],
+      "size": 20,
+      "color": "7653CF",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 61,
+      "y": 968,
+      "w": 198,
+      "h": 31,
+      "lines": [
+        "Evidence ↑"
+      ],
+      "size": 20,
+      "color": "278565",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 1630,
+      "y": 895,
+      "w": 870,
+      "h": 27,
+      "lines": [
+        "Register / heartbeat / poll / results / artifacts"
+      ],
+      "size": 18,
+      "color": "62758C",
+      "bold": false,
+      "align": "right",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 241,
+      "y1": 930,
+      "x2": 241,
+      "y2": 1040,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          241,
+          1040
+        ],
+        [
+          244.6,
+          1032.0
+        ],
+        [
+          237.4,
+          1032.0
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 269,
+      "y1": 1040,
+      "x2": 269,
+      "y2": 982,
+      "color": "278565",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          269,
+          982
+        ],
+        [
+          265.4,
+          990.0
+        ],
+        [
+          272.6,
+          990.0
+        ]
+      ],
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "circle",
+      "x": 241,
+      "y": 930,
+      "r": 3.7,
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "circle",
+      "x": 269,
+      "y": 982,
+      "r": 3.7,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 60,
+      "y": 1040,
+      "w": 390,
+      "h": 265,
+      "fill": "E9F6F7",
+      "border": "168D9D",
+      "radius": 13,
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 78,
+      "y": 1057,
+      "w": 62,
+      "h": 44,
+      "fill": "EDF3FC",
+      "border": "168D9D",
+      "radius": 4,
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 85,
+      "y": 1064,
+      "w": 48,
+      "h": 30,
+      "fill": "FFFFFF",
+      "border": null,
+      "radius": 0,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 109.0,
+      "y1": 1101,
+      "x2": 109.0,
+      "y2": 1111,
+      "color": "168D9D",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 91.02,
+      "y1": 1113,
+      "x2": 126.98,
+      "y2": 1113,
+      "color": "168D9D",
+      "lw": 3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 157,
+      "y": 1058,
+      "w": 276,
+      "h": 35,
+      "lines": [
+        "PC A / Optical lab"
+      ],
+      "size": 23,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 157,
+      "y": 1098,
+      "w": 276,
+      "h": 25,
+      "lines": [
+        "SuperK + IR spectroscopy"
+      ],
+      "size": 16,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 78,
+      "y": 1135,
+      "w": 354,
+      "h": 64,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 8,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 90,
+      "y": 1145,
+      "w": 330,
+      "h": 31,
+      "lines": [
+        "Local PC Agent"
+      ],
+      "size": 23,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 91,
+      "y": 1175,
+      "w": 328,
+      "h": 24,
+      "lines": [
+        "Persistent execution worker"
+      ],
+      "size": 17,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 255,
+      "y1": 1199,
+      "x2": 255,
+      "y2": 1217,
+      "color": "168D9D",
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          255,
+          1217
+        ],
+        [
+          258.15,
+          1210.0
+        ],
+        [
+          251.85,
+          1210.0
+        ]
+      ],
+      "fill": "168D9D",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 78,
+      "y": 1217,
+      "w": 354,
+      "h": 68,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 8,
+      "lw": 1.2,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 90,
+      "y": 1227,
+      "w": 330,
+      "h": 26,
+      "lines": [
+        "Driver adapters + sessions"
+      ],
+      "size": 20,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 90,
+      "y": 1260,
+      "w": 330,
+      "h": 25,
+      "lines": [
+        "Journal • watchdog • raw-data outbox"
+      ],
+      "size": 16,
+      "color": "278565",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 94,
+      "y1": 1305,
+      "x2": 94,
+      "y2": 1360,
+      "color": "3B6CB0",
+      "lw": 2.3,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          94,
+          1360
+        ],
+        [
+          98.05,
+          1351.0
+        ],
+        [
+          89.95,
+          1351.0
+        ]
+      ],
+      "fill": "3B6CB0",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 108,
+      "y1": 1360,
+      "x2": 108,
+      "y2": 1305,
+      "color": "3B6CB0",
+      "lw": 2.3,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          108,
+          1305
+        ],
+        [
+          103.95,
+          1314.0
+        ],
+        [
+          112.05,
+          1314.0
+        ]
+      ],
+      "fill": "3B6CB0",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "text",
+      "x": 119,
+      "y": 1321,
+      "w": 319,
+      "h": 27,
+      "lines": [
+        "Vendor SDK / USB / LAN"
+      ],
+      "size": 17,
+      "color": "3B6CB0",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 60,
+      "y": 1360,
+      "w": 390,
+      "h": 215,
+      "fill": "F5F8FC",
+      "border": "3B6CB0",
+      "radius": 11,
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 78,
+      "y": 1373,
+      "w": 354,
+      "h": 26,
+      "lines": [
+        "PHYSICAL DEVICES"
+      ],
+      "size": 18,
+      "color": "3B6CB0",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 78,
+      "y": 1410,
+      "w": 354,
+      "h": 58,
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "radius": 5,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 87,
+      "y": 1418,
+      "w": 289,
+      "h": 42,
+      "fill": "11233E",
+      "border": null,
+      "radius": 3,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 95,
+      "y": 1423,
+      "w": 271,
+      "h": 26,
+      "lines": [
+        "SuperK"
+      ],
+      "size": 17,
+      "color": "FFFFFF",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "circle",
+      "x": 402,
+      "y": 1439.0,
+      "r": 10,
+      "fill": "FFFFFF",
+      "border": "3B6CB0",
+      "lw": 1.3
+    },
+    {
+      "kind": "circle",
+      "x": 421,
+      "y": 1458,
+      "r": 2.8,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 78,
+      "y": 1491,
+      "w": 354,
+      "h": 58,
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "radius": 5,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 87,
+      "y": 1499,
+      "w": 289,
+      "h": 42,
+      "fill": "11233E",
+      "border": null,
+      "radius": 3,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 95,
+      "y": 1504,
+      "w": 271,
+      "h": 26,
+      "lines": [
+        "IR spectrometer"
+      ],
+      "size": 17,
+      "color": "FFFFFF",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "circle",
+      "x": 402,
+      "y": 1520.0,
+      "r": 10,
+      "fill": "FFFFFF",
+      "border": "3B6CB0",
+      "lw": 1.3
+    },
+    {
+      "kind": "circle",
+      "x": 421,
+      "y": 1539,
+      "r": 2.8,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 651,
+      "y1": 930,
+      "x2": 651,
+      "y2": 1040,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          651,
+          1040
+        ],
+        [
+          654.6,
+          1032.0
+        ],
+        [
+          647.4,
+          1032.0
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 679,
+      "y1": 1040,
+      "x2": 679,
+      "y2": 982,
+      "color": "278565",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          679,
+          982
+        ],
+        [
+          675.4,
+          990.0
+        ],
+        [
+          682.6,
+          990.0
+        ]
+      ],
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "circle",
+      "x": 651,
+      "y": 930,
+      "r": 3.7,
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "circle",
+      "x": 679,
+      "y": 982,
+      "r": 3.7,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 470,
+      "y": 1040,
+      "w": 390,
+      "h": 265,
+      "fill": "E9F6F7",
+      "border": "168D9D",
+      "radius": 13,
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 488,
+      "y": 1057,
+      "w": 62,
+      "h": 44,
+      "fill": "EDF3FC",
+      "border": "168D9D",
+      "radius": 4,
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 495,
+      "y": 1064,
+      "w": 48,
+      "h": 30,
+      "fill": "FFFFFF",
+      "border": null,
+      "radius": 0,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 519.0,
+      "y1": 1101,
+      "x2": 519.0,
+      "y2": 1111,
+      "color": "168D9D",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 501.02,
+      "y1": 1113,
+      "x2": 536.98,
+      "y2": 1113,
+      "color": "168D9D",
+      "lw": 3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 567,
+      "y": 1058,
+      "w": 276,
+      "h": 35,
+      "lines": [
+        "PC B / Sample lab"
+      ],
+      "size": 23,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 567,
+      "y": 1098,
+      "w": 276,
+      "h": 25,
+      "lines": [
+        "Environment + electrical / optical"
+      ],
+      "size": 16,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 488,
+      "y": 1135,
+      "w": 354,
+      "h": 64,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 8,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 500,
+      "y": 1145,
+      "w": 330,
+      "h": 31,
+      "lines": [
+        "Local PC Agent"
+      ],
+      "size": 23,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 501,
+      "y": 1175,
+      "w": 328,
+      "h": 24,
+      "lines": [
+        "Persistent execution worker"
+      ],
+      "size": 17,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 665,
+      "y1": 1199,
+      "x2": 665,
+      "y2": 1217,
+      "color": "168D9D",
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          665,
+          1217
+        ],
+        [
+          668.15,
+          1210.0
+        ],
+        [
+          661.85,
+          1210.0
+        ]
+      ],
+      "fill": "168D9D",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 488,
+      "y": 1217,
+      "w": 354,
+      "h": 68,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 8,
+      "lw": 1.2,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 500,
+      "y": 1227,
+      "w": 330,
+      "h": 26,
+      "lines": [
+        "Driver adapters + sessions"
+      ],
+      "size": 20,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 500,
+      "y": 1260,
+      "w": 330,
+      "h": 25,
+      "lines": [
+        "Journal • watchdog • raw-data outbox"
+      ],
+      "size": 16,
+      "color": "278565",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 504,
+      "y1": 1305,
+      "x2": 504,
+      "y2": 1360,
+      "color": "3B6CB0",
+      "lw": 2.3,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          504,
+          1360
+        ],
+        [
+          508.05,
+          1351.0
+        ],
+        [
+          499.95,
+          1351.0
+        ]
+      ],
+      "fill": "3B6CB0",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 518,
+      "y1": 1360,
+      "x2": 518,
+      "y2": 1305,
+      "color": "3B6CB0",
+      "lw": 2.3,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          518,
+          1305
+        ],
+        [
+          513.95,
+          1314.0
+        ],
+        [
+          522.05,
+          1314.0
+        ]
+      ],
+      "fill": "3B6CB0",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "text",
+      "x": 529,
+      "y": 1321,
+      "w": 319,
+      "h": 27,
+      "lines": [
+        "SDK / VISA / serial"
+      ],
+      "size": 17,
+      "color": "3B6CB0",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 470,
+      "y": 1360,
+      "w": 390,
+      "h": 215,
+      "fill": "F5F8FC",
+      "border": "3B6CB0",
+      "radius": 11,
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 488,
+      "y": 1373,
+      "w": 354,
+      "h": 26,
+      "lines": [
+        "PHYSICAL DEVICES"
+      ],
+      "size": 18,
+      "color": "3B6CB0",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 488,
+      "y": 1407,
+      "w": 354,
+      "h": 40,
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "radius": 5,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 497,
+      "y": 1415,
+      "w": 289,
+      "h": 24,
+      "fill": "11233E",
+      "border": null,
+      "radius": 3,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 505,
+      "y": 1420,
+      "w": 271,
+      "h": 26,
+      "lines": [
+        "attoDRY + transport lock-ins ×2"
+      ],
+      "size": 15.0,
+      "color": "FFFFFF",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "circle",
+      "x": 812,
+      "y": 1427.0,
+      "r": 10,
+      "fill": "FFFFFF",
+      "border": "3B6CB0",
+      "lw": 1.3
+    },
+    {
+      "kind": "circle",
+      "x": 831,
+      "y": 1437,
+      "r": 2.8,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 488,
+      "y": 1456,
+      "w": 354,
+      "h": 40,
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "radius": 5,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 497,
+      "y": 1464,
+      "w": 289,
+      "h": 24,
+      "fill": "11233E",
+      "border": null,
+      "radius": 3,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 505,
+      "y": 1469,
+      "w": 271,
+      "h": 26,
+      "lines": [
+        "BVPE lock-in / chopper / PD"
+      ],
+      "size": 17,
+      "color": "FFFFFF",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "circle",
+      "x": 812,
+      "y": 1476.0,
+      "r": 10,
+      "fill": "FFFFFF",
+      "border": "3B6CB0",
+      "lw": 1.3
+    },
+    {
+      "kind": "circle",
+      "x": 831,
+      "y": 1486,
+      "r": 2.8,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 488,
+      "y": 1505,
+      "w": 354,
+      "h": 40,
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "radius": 5,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 497,
+      "y": 1513,
+      "w": 289,
+      "h": 24,
+      "fill": "11233E",
+      "border": null,
+      "radius": 3,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 505,
+      "y": 1518,
+      "w": 271,
+      "h": 26,
+      "lines": [
+        "730 nm / CLD1000 / 2400"
+      ],
+      "size": 17,
+      "color": "FFFFFF",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "circle",
+      "x": 812,
+      "y": 1525.0,
+      "r": 10,
+      "fill": "FFFFFF",
+      "border": "3B6CB0",
+      "lw": 1.3
+    },
+    {
+      "kind": "circle",
+      "x": 831,
+      "y": 1535,
+      "r": 2.8,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "text",
+      "x": 490,
+      "y": 1549,
+      "w": 349,
+      "h": 25,
+      "lines": [
+        "Motorized polarizer / QWP"
+      ],
+      "size": 17,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1061,
+      "y1": 930,
+      "x2": 1061,
+      "y2": 1040,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1061,
+          1040
+        ],
+        [
+          1064.6,
+          1032.0
+        ],
+        [
+          1057.4,
+          1032.0
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 1089,
+      "y1": 1040,
+      "x2": 1089,
+      "y2": 982,
+      "color": "278565",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1089,
+          982
+        ],
+        [
+          1085.4,
+          990.0
+        ],
+        [
+          1092.6,
+          990.0
+        ]
+      ],
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "circle",
+      "x": 1061,
+      "y": 930,
+      "r": 3.7,
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "circle",
+      "x": 1089,
+      "y": 982,
+      "r": 3.7,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 880,
+      "y": 1040,
+      "w": 390,
+      "h": 265,
+      "fill": "E9F6F7",
+      "border": "168D9D",
+      "radius": 13,
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 898,
+      "y": 1057,
+      "w": 62,
+      "h": 44,
+      "fill": "EDF3FC",
+      "border": "168D9D",
+      "radius": 4,
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 905,
+      "y": 1064,
+      "w": 48,
+      "h": 30,
+      "fill": "FFFFFF",
+      "border": null,
+      "radius": 0,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 929.0,
+      "y1": 1101,
+      "x2": 929.0,
+      "y2": 1111,
+      "color": "168D9D",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 911.02,
+      "y1": 1113,
+      "x2": 946.98,
+      "y2": 1113,
+      "color": "168D9D",
+      "lw": 3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 977,
+      "y": 1058,
+      "w": 276,
+      "h": 35,
+      "lines": [
+        "PC C / Imaging lab"
+      ],
+      "size": 23,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 977,
+      "y": 1098,
+      "w": 276,
+      "h": 25,
+      "lines": [
+        "Microscopy + camera acquisition"
+      ],
+      "size": 16,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 898,
+      "y": 1135,
+      "w": 354,
+      "h": 64,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 8,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 910,
+      "y": 1145,
+      "w": 330,
+      "h": 31,
+      "lines": [
+        "Local PC Agent"
+      ],
+      "size": 23,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 911,
+      "y": 1175,
+      "w": 328,
+      "h": 24,
+      "lines": [
+        "Persistent execution worker"
+      ],
+      "size": 17,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1075,
+      "y1": 1199,
+      "x2": 1075,
+      "y2": 1217,
+      "color": "168D9D",
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1075,
+          1217
+        ],
+        [
+          1078.15,
+          1210.0
+        ],
+        [
+          1071.85,
+          1210.0
+        ]
+      ],
+      "fill": "168D9D",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 898,
+      "y": 1217,
+      "w": 354,
+      "h": 68,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 8,
+      "lw": 1.2,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 910,
+      "y": 1227,
+      "w": 330,
+      "h": 26,
+      "lines": [
+        "Driver adapters + sessions"
+      ],
+      "size": 20,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 910,
+      "y": 1260,
+      "w": 330,
+      "h": 25,
+      "lines": [
+        "Journal • watchdog • raw-data outbox"
+      ],
+      "size": 16,
+      "color": "278565",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 914,
+      "y1": 1305,
+      "x2": 914,
+      "y2": 1360,
+      "color": "3B6CB0",
+      "lw": 2.3,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          914,
+          1360
+        ],
+        [
+          918.05,
+          1351.0
+        ],
+        [
+          909.95,
+          1351.0
+        ]
+      ],
+      "fill": "3B6CB0",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 928,
+      "y1": 1360,
+      "x2": 928,
+      "y2": 1305,
+      "color": "3B6CB0",
+      "lw": 2.3,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          928,
+          1305
+        ],
+        [
+          923.95,
+          1314.0
+        ],
+        [
+          932.05,
+          1314.0
+        ]
+      ],
+      "fill": "3B6CB0",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "text",
+      "x": 939,
+      "y": 1321,
+      "w": 319,
+      "h": 27,
+      "lines": [
+        "Camera SDK / USB / LAN"
+      ],
+      "size": 17,
+      "color": "3B6CB0",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 880,
+      "y": 1360,
+      "w": 390,
+      "h": 215,
+      "fill": "F5F8FC",
+      "border": "3B6CB0",
+      "radius": 11,
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 898,
+      "y": 1373,
+      "w": 354,
+      "h": 26,
+      "lines": [
+        "PHYSICAL DEVICES"
+      ],
+      "size": 18,
+      "color": "3B6CB0",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1024,
+      "y": 1410,
+      "w": 100,
+      "h": 48,
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "radius": 6,
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "circle",
+      "x": 1074,
+      "y": 1434,
+      "r": 14,
+      "fill": "FFFFFF",
+      "border": "3B6CB0",
+      "lw": 2
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1043,
+          1458
+        ],
+        [
+          1105,
+          1458
+        ],
+        [
+          1093,
+          1500
+        ],
+        [
+          1055,
+          1500
+        ]
+      ],
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "lw": 2
+    },
+    {
+      "kind": "line",
+      "x1": 1074,
+      "y1": 1500,
+      "x2": 1074,
+      "y2": 1518,
+      "color": "3B6CB0",
+      "lw": 1.6,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1074,
+          1518
+        ],
+        [
+          1076.7,
+          1512.0
+        ],
+        [
+          1071.3,
+          1512.0
+        ]
+      ],
+      "fill": "3B6CB0",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 999,
+      "y": 1523,
+      "w": 152,
+      "h": 9,
+      "fill": "3B6CB0",
+      "border": null,
+      "radius": 2,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 898,
+      "y": 1540,
+      "w": 354,
+      "h": 28,
+      "lines": [
+        "Microscope / camera"
+      ],
+      "size": 20,
+      "color": "3B6CB0",
+      "bold": true,
+      "align": "center",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1471,
+      "y1": 930,
+      "x2": 1471,
+      "y2": 1040,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1471,
+          1040
+        ],
+        [
+          1474.6,
+          1032.0
+        ],
+        [
+          1467.4,
+          1032.0
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 1499,
+      "y1": 1040,
+      "x2": 1499,
+      "y2": 982,
+      "color": "278565",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1499,
+          982
+        ],
+        [
+          1495.4,
+          990.0
+        ],
+        [
+          1502.6,
+          990.0
+        ]
+      ],
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "circle",
+      "x": 1471,
+      "y": 930,
+      "r": 3.7,
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "circle",
+      "x": 1499,
+      "y": 982,
+      "r": 3.7,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 1290,
+      "y": 1040,
+      "w": 390,
+      "h": 265,
+      "fill": "E9F6F7",
+      "border": "168D9D",
+      "radius": 13,
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 1308,
+      "y": 1057,
+      "w": 62,
+      "h": 44,
+      "fill": "EDF3FC",
+      "border": "168D9D",
+      "radius": 4,
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 1315,
+      "y": 1064,
+      "w": 48,
+      "h": 30,
+      "fill": "FFFFFF",
+      "border": null,
+      "radius": 0,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 1339.0,
+      "y1": 1101,
+      "x2": 1339.0,
+      "y2": 1111,
+      "color": "168D9D",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 1321.02,
+      "y1": 1113,
+      "x2": 1356.98,
+      "y2": 1113,
+      "color": "168D9D",
+      "lw": 3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1387,
+      "y": 1058,
+      "w": 276,
+      "h": 35,
+      "lines": [
+        "PC D / Motion lab"
+      ],
+      "size": 23,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 1387,
+      "y": 1098,
+      "w": 276,
+      "h": 25,
+      "lines": [
+        "Positioning + sample alignment"
+      ],
+      "size": 16,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1308,
+      "y": 1135,
+      "w": 354,
+      "h": 64,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 8,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1320,
+      "y": 1145,
+      "w": 330,
+      "h": 31,
+      "lines": [
+        "Local PC Agent"
+      ],
+      "size": 23,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 1321,
+      "y": 1175,
+      "w": 328,
+      "h": 24,
+      "lines": [
+        "Persistent execution worker"
+      ],
+      "size": 17,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1485,
+      "y1": 1199,
+      "x2": 1485,
+      "y2": 1217,
+      "color": "168D9D",
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1485,
+          1217
+        ],
+        [
+          1488.15,
+          1210.0
+        ],
+        [
+          1481.85,
+          1210.0
+        ]
+      ],
+      "fill": "168D9D",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 1308,
+      "y": 1217,
+      "w": 354,
+      "h": 68,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 8,
+      "lw": 1.2,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1320,
+      "y": 1227,
+      "w": 330,
+      "h": 26,
+      "lines": [
+        "Driver adapters + sessions"
+      ],
+      "size": 20,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 1320,
+      "y": 1260,
+      "w": 330,
+      "h": 25,
+      "lines": [
+        "Journal • watchdog • raw-data outbox"
+      ],
+      "size": 16,
+      "color": "278565",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1324,
+      "y1": 1305,
+      "x2": 1324,
+      "y2": 1360,
+      "color": "3B6CB0",
+      "lw": 2.3,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1324,
+          1360
+        ],
+        [
+          1328.05,
+          1351.0
+        ],
+        [
+          1319.95,
+          1351.0
+        ]
+      ],
+      "fill": "3B6CB0",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 1338,
+      "y1": 1360,
+      "x2": 1338,
+      "y2": 1305,
+      "color": "3B6CB0",
+      "lw": 2.3,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1338,
+          1305
+        ],
+        [
+          1333.95,
+          1314.0
+        ],
+        [
+          1342.05,
+          1314.0
+        ]
+      ],
+      "fill": "3B6CB0",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "text",
+      "x": 1349,
+      "y": 1321,
+      "w": 319,
+      "h": 27,
+      "lines": [
+        "USB / serial / Ethernet"
+      ],
+      "size": 17,
+      "color": "3B6CB0",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1290,
+      "y": 1360,
+      "w": 390,
+      "h": 215,
+      "fill": "F5F8FC",
+      "border": "3B6CB0",
+      "radius": 11,
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1308,
+      "y": 1373,
+      "w": 354,
+      "h": 26,
+      "lines": [
+        "PHYSICAL DEVICES"
+      ],
+      "size": 18,
+      "color": "3B6CB0",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1392,
+      "y": 1470,
+      "w": 145,
+      "h": 30,
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "radius": 3,
+      "lw": 1.6,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 1414,
+      "y": 1455,
+      "w": 145,
+      "h": 30,
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "radius": 3,
+      "lw": 1.6,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 1436,
+      "y": 1440,
+      "w": 145,
+      "h": 30,
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "radius": 3,
+      "lw": 1.6,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 1417,
+      "y1": 1430,
+      "x2": 1545,
+      "y2": 1430,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1545,
+          1430
+        ],
+        [
+          1537.0,
+          1426.4
+        ],
+        [
+          1537.0,
+          1433.6
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 1567,
+      "y1": 1510,
+      "x2": 1567,
+      "y2": 1410,
+      "color": "168D9D",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1567,
+          1410
+        ],
+        [
+          1563.4,
+          1418.0
+        ],
+        [
+          1570.6,
+          1418.0
+        ]
+      ],
+      "fill": "168D9D",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "text",
+      "x": 1308,
+      "y": 1540,
+      "w": 354,
+      "h": 28,
+      "lines": [
+        "Stages / motors / encoders"
+      ],
+      "size": 19,
+      "color": "3B6CB0",
+      "bold": true,
+      "align": "center",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1881,
+      "y1": 930,
+      "x2": 1881,
+      "y2": 1040,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1881,
+          1040
+        ],
+        [
+          1884.6,
+          1032.0
+        ],
+        [
+          1877.4,
+          1032.0
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 1909,
+      "y1": 1040,
+      "x2": 1909,
+      "y2": 982,
+      "color": "278565",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1909,
+          982
+        ],
+        [
+          1905.4,
+          990.0
+        ],
+        [
+          1912.6,
+          990.0
+        ]
+      ],
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "circle",
+      "x": 1881,
+      "y": 930,
+      "r": 3.7,
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "circle",
+      "x": 1909,
+      "y": 982,
+      "r": 3.7,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 1700,
+      "y": 1040,
+      "w": 390,
+      "h": 265,
+      "fill": "E9F6F7",
+      "border": "168D9D",
+      "radius": 13,
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 1718,
+      "y": 1057,
+      "w": 62,
+      "h": 44,
+      "fill": "EDF3FC",
+      "border": "168D9D",
+      "radius": 4,
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 1725,
+      "y": 1064,
+      "w": 48,
+      "h": 30,
+      "fill": "FFFFFF",
+      "border": null,
+      "radius": 0,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 1749.0,
+      "y1": 1101,
+      "x2": 1749.0,
+      "y2": 1111,
+      "color": "168D9D",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 1731.02,
+      "y1": 1113,
+      "x2": 1766.98,
+      "y2": 1113,
+      "color": "168D9D",
+      "lw": 3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1797,
+      "y": 1058,
+      "w": 276,
+      "h": 35,
+      "lines": [
+        "PC E / Electrical lab"
+      ],
+      "size": 23,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 1797,
+      "y": 1098,
+      "w": 276,
+      "h": 25,
+      "lines": [
+        "Source + readout resources"
+      ],
+      "size": 16,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1718,
+      "y": 1135,
+      "w": 354,
+      "h": 64,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 8,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1730,
+      "y": 1145,
+      "w": 330,
+      "h": 31,
+      "lines": [
+        "Local PC Agent"
+      ],
+      "size": 23,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 1731,
+      "y": 1175,
+      "w": 328,
+      "h": 24,
+      "lines": [
+        "Persistent execution worker"
+      ],
+      "size": 17,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1895,
+      "y1": 1199,
+      "x2": 1895,
+      "y2": 1217,
+      "color": "168D9D",
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1895,
+          1217
+        ],
+        [
+          1898.15,
+          1210.0
+        ],
+        [
+          1891.85,
+          1210.0
+        ]
+      ],
+      "fill": "168D9D",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 1718,
+      "y": 1217,
+      "w": 354,
+      "h": 68,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 8,
+      "lw": 1.2,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1730,
+      "y": 1227,
+      "w": 330,
+      "h": 26,
+      "lines": [
+        "Driver adapters + sessions"
+      ],
+      "size": 20,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 1730,
+      "y": 1260,
+      "w": 330,
+      "h": 25,
+      "lines": [
+        "Journal • watchdog • raw-data outbox"
+      ],
+      "size": 16,
+      "color": "278565",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 1734,
+      "y1": 1305,
+      "x2": 1734,
+      "y2": 1360,
+      "color": "3B6CB0",
+      "lw": 2.3,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1734,
+          1360
+        ],
+        [
+          1738.05,
+          1351.0
+        ],
+        [
+          1729.95,
+          1351.0
+        ]
+      ],
+      "fill": "3B6CB0",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 1748,
+      "y1": 1360,
+      "x2": 1748,
+      "y2": 1305,
+      "color": "3B6CB0",
+      "lw": 2.3,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          1748,
+          1305
+        ],
+        [
+          1743.95,
+          1314.0
+        ],
+        [
+          1752.05,
+          1314.0
+        ]
+      ],
+      "fill": "3B6CB0",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "text",
+      "x": 1759,
+      "y": 1321,
+      "w": 319,
+      "h": 27,
+      "lines": [
+        "VISA / GPIB / serial"
+      ],
+      "size": 17,
+      "color": "3B6CB0",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1700,
+      "y": 1360,
+      "w": 390,
+      "h": 215,
+      "fill": "F5F8FC",
+      "border": "3B6CB0",
+      "radius": 11,
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1718,
+      "y": 1373,
+      "w": 354,
+      "h": 26,
+      "lines": [
+        "PHYSICAL DEVICES"
+      ],
+      "size": 18,
+      "color": "3B6CB0",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 1718,
+      "y": 1410,
+      "w": 354,
+      "h": 58,
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "radius": 5,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 1727,
+      "y": 1418,
+      "w": 289,
+      "h": 42,
+      "fill": "11233E",
+      "border": null,
+      "radius": 3,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1735,
+      "y": 1423,
+      "w": 271,
+      "h": 26,
+      "lines": [
+        "Current / voltage source"
+      ],
+      "size": 17,
+      "color": "FFFFFF",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "circle",
+      "x": 2042,
+      "y": 1439.0,
+      "r": 10,
+      "fill": "FFFFFF",
+      "border": "3B6CB0",
+      "lw": 1.3
+    },
+    {
+      "kind": "circle",
+      "x": 2061,
+      "y": 1458,
+      "r": 2.8,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 1718,
+      "y": 1491,
+      "w": 354,
+      "h": 58,
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "radius": 5,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 1727,
+      "y": 1499,
+      "w": 289,
+      "h": 42,
+      "fill": "11233E",
+      "border": null,
+      "radius": 3,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 1735,
+      "y": 1504,
+      "w": 271,
+      "h": 26,
+      "lines": [
+        "Meter / lock-in / digitizer"
+      ],
+      "size": 17,
+      "color": "FFFFFF",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "circle",
+      "x": 2042,
+      "y": 1520.0,
+      "r": 10,
+      "fill": "FFFFFF",
+      "border": "3B6CB0",
+      "lw": 1.3
+    },
+    {
+      "kind": "circle",
+      "x": 2061,
+      "y": 1539,
+      "r": 2.8,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 2291,
+      "y1": 930,
+      "x2": 2291,
+      "y2": 1040,
+      "color": "7653CF",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          2291,
+          1040
+        ],
+        [
+          2294.6,
+          1032.0
+        ],
+        [
+          2287.4,
+          1032.0
+        ]
+      ],
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 2319,
+      "y1": 1040,
+      "x2": 2319,
+      "y2": 982,
+      "color": "278565",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          2319,
+          982
+        ],
+        [
+          2315.4,
+          990.0
+        ],
+        [
+          2322.6,
+          990.0
+        ]
+      ],
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "circle",
+      "x": 2291,
+      "y": 930,
+      "r": 3.7,
+      "fill": "7653CF",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "circle",
+      "x": 2319,
+      "y": 982,
+      "r": 3.7,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 2110,
+      "y": 1040,
+      "w": 390,
+      "h": 265,
+      "fill": "E9F6F7",
+      "border": "168D9D",
+      "radius": 13,
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 2128,
+      "y": 1057,
+      "w": 62,
+      "h": 44,
+      "fill": "EDF3FC",
+      "border": "168D9D",
+      "radius": 4,
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 2135,
+      "y": 1064,
+      "w": 48,
+      "h": 30,
+      "fill": "FFFFFF",
+      "border": null,
+      "radius": 0,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 2159.0,
+      "y1": 1101,
+      "x2": 2159.0,
+      "y2": 1111,
+      "color": "168D9D",
+      "lw": 2,
+      "dash": false
+    },
+    {
+      "kind": "line",
+      "x1": 2141.02,
+      "y1": 1113,
+      "x2": 2176.98,
+      "y2": 1113,
+      "color": "168D9D",
+      "lw": 3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 2207,
+      "y": 1058,
+      "w": 276,
+      "h": 35,
+      "lines": [
+        "PC N / Additional lab"
+      ],
+      "size": 23,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 2207,
+      "y": 1098,
+      "w": 276,
+      "h": 25,
+      "lines": [
+        "Expandable instrument resources"
+      ],
+      "size": 16,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 2128,
+      "y": 1135,
+      "w": 354,
+      "h": 64,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 8,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 2140,
+      "y": 1145,
+      "w": 330,
+      "h": 31,
+      "lines": [
+        "Local PC Agent"
+      ],
+      "size": 23,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 2141,
+      "y": 1175,
+      "w": 328,
+      "h": 24,
+      "lines": [
+        "Persistent execution worker"
+      ],
+      "size": 17,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 2305,
+      "y1": 1199,
+      "x2": 2305,
+      "y2": 1217,
+      "color": "168D9D",
+      "lw": 1.8,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          2305,
+          1217
+        ],
+        [
+          2308.15,
+          1210.0
+        ],
+        [
+          2301.85,
+          1210.0
+        ]
+      ],
+      "fill": "168D9D",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 2128,
+      "y": 1217,
+      "w": 354,
+      "h": 68,
+      "fill": "FFFFFF",
+      "border": "168D9D",
+      "radius": 8,
+      "lw": 1.2,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 2140,
+      "y": 1227,
+      "w": 330,
+      "h": 26,
+      "lines": [
+        "Driver adapters + sessions"
+      ],
+      "size": 20,
+      "color": "168D9D",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 2140,
+      "y": 1260,
+      "w": 330,
+      "h": 25,
+      "lines": [
+        "Journal • watchdog • raw-data outbox"
+      ],
+      "size": 16,
+      "color": "278565",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "line",
+      "x1": 2144,
+      "y1": 1305,
+      "x2": 2144,
+      "y2": 1360,
+      "color": "3B6CB0",
+      "lw": 2.3,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          2144,
+          1360
+        ],
+        [
+          2148.05,
+          1351.0
+        ],
+        [
+          2139.95,
+          1351.0
+        ]
+      ],
+      "fill": "3B6CB0",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 2158,
+      "y1": 1360,
+      "x2": 2158,
+      "y2": 1305,
+      "color": "3B6CB0",
+      "lw": 2.3,
+      "dash": false
+    },
+    {
+      "kind": "poly",
+      "points": [
+        [
+          2158,
+          1305
+        ],
+        [
+          2153.95,
+          1314.0
+        ],
+        [
+          2162.05,
+          1314.0
+        ]
+      ],
+      "fill": "3B6CB0",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "text",
+      "x": 2169,
+      "y": 1321,
+      "w": 319,
+      "h": 27,
+      "lines": [
+        "Driver-specific interfaces"
+      ],
+      "size": 17,
+      "color": "3B6CB0",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 2110,
+      "y": 1360,
+      "w": 390,
+      "h": 215,
+      "fill": "F5F8FC",
+      "border": "3B6CB0",
+      "radius": 11,
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 2128,
+      "y": 1373,
+      "w": 354,
+      "h": 26,
+      "lines": [
+        "PHYSICAL DEVICES"
+      ],
+      "size": 18,
+      "color": "3B6CB0",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "rect",
+      "x": 2128,
+      "y": 1410,
+      "w": 354,
+      "h": 58,
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "radius": 5,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 2137,
+      "y": 1418,
+      "w": 289,
+      "h": 42,
+      "fill": "11233E",
+      "border": null,
+      "radius": 3,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 2145,
+      "y": 1423,
+      "w": 271,
+      "h": 26,
+      "lines": [
+        "Instrument / controller"
+      ],
+      "size": 17,
+      "color": "FFFFFF",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "circle",
+      "x": 2452,
+      "y": 1439.0,
+      "r": 10,
+      "fill": "FFFFFF",
+      "border": "3B6CB0",
+      "lw": 1.3
+    },
+    {
+      "kind": "circle",
+      "x": 2471,
+      "y": 1458,
+      "r": 2.8,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "rect",
+      "x": 2128,
+      "y": 1491,
+      "w": 354,
+      "h": 58,
+      "fill": "EDF3FC",
+      "border": "3B6CB0",
+      "radius": 5,
+      "lw": 1.3,
+      "dash": false
+    },
+    {
+      "kind": "rect",
+      "x": 2137,
+      "y": 1499,
+      "w": 289,
+      "h": 42,
+      "fill": "11233E",
+      "border": null,
+      "radius": 3,
+      "lw": 1,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 2145,
+      "y": 1504,
+      "w": 271,
+      "h": 26,
+      "lines": [
+        "Detector / sensor"
+      ],
+      "size": 17,
+      "color": "FFFFFF",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "circle",
+      "x": 2452,
+      "y": 1520.0,
+      "r": 10,
+      "fill": "FFFFFF",
+      "border": "3B6CB0",
+      "lw": 1.3
+    },
+    {
+      "kind": "circle",
+      "x": 2471,
+      "y": 1539,
+      "r": 2.8,
+      "fill": "278565",
+      "border": null,
+      "lw": 1
+    },
+    {
+      "kind": "line",
+      "x1": 60,
+      "y1": 1600,
+      "x2": 2500,
+      "y2": 1600,
+      "color": "D9E3EE",
+      "lw": 1.5,
+      "dash": false
+    },
+    {
+      "kind": "text",
+      "x": 60,
+      "y": 1612,
+      "w": 1460,
+      "h": 26,
+      "lines": [
+        "Server: cloud / local LLM routing. Instrument PCs: execution workers; no PC-side LLM required."
+      ],
+      "size": 21,
+      "color": "11233E",
+      "bold": true,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 60,
+      "y": 1646,
+      "w": 1740,
+      "h": 24,
+      "lines": [
+        "A/B retain the supplied setup; C…N illustrate additional hosts. Hardware trigger / reference wiring is separate from HTTP(S)."
+      ],
+      "size": 18,
+      "color": "62758C",
+      "bold": false,
+      "align": "left",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 1830,
+      "y": 1613,
+      "w": 670,
+      "h": 28,
+      "lines": [
+        "One experiment → coordinated stages across PCs"
+      ],
+      "size": 20,
+      "color": "168D9D",
+      "bold": true,
+      "align": "right",
+      "leading": 1.25
+    },
+    {
+      "kind": "text",
+      "x": 1840,
+      "y": 1646,
+      "w": 660,
+      "h": 25,
+      "lines": [
+        "Original LabOS system-design figure • scalable deployment view"
+      ],
+      "size": 17,
+      "color": "62758C",
+      "bold": false,
+      "align": "right",
+      "leading": 1.25
+    }
+  ]
+}

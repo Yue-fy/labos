@@ -8,6 +8,8 @@ v0.2 新增：过载/阈值资格检查、拒绝数据留存、计划/配置指�
 
 系统能力展示：跨 PC 的非线性 Hall 与 BVPE 实验场景，22 页全英文技术版：[PowerPoint](docs/presentations/LabOS_NLH_BVPE/English/LabOS_Technical_Overview_EN.pptx) / [PDF](docs/presentations/LabOS_NLH_BVPE/English/LabOS_Technical_Overview_EN.pdf) / [完整交付包与独立矢量图](docs/presentations/LabOS_NLH_BVPE/English/README.md)。
 
+独立的 [LabOS 多 PC 系统架构图](docs/presentations/LabOS_NLH_BVPE/System_Architecture/README.md)：一台中央服务器、知识与记忆、主 AI Agent 与专业子 Agent、云端/本地模型切换、六台设备 PC 的本地执行程序，以及设备通信；提供英文 PDF、SVG、可编辑 PPT 和高清 PNG。
+
 真实仪器驱动尚未启用；型号、SDK、连接方式和装置验证齐备后再接入。模拟数据均有显式标记。
 
 ## 开发环境与本机验收
