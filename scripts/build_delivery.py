@@ -5,6 +5,7 @@ import hashlib
 import zipfile
 from pathlib import Path
 
+from labos import __version__
 from labos.delivery import write_package
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,7 +15,7 @@ def build_release(output: Path, windows_runtime: Path | None = None) -> list[Pat
     output.mkdir(parents=True, exist_ok=True)
     packages = []
     for role in ("central", "agent"):
-        path = output / f"LabOS-{role.title()}-0.1.0.zip"
+        path = output / f"LabOS-{role.title()}-{__version__}.zip"
         with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as package:
             write_package(package, role)
             package.write(ROOT / "README.md", "README.md")
@@ -26,7 +27,7 @@ def build_release(output: Path, windows_runtime: Path | None = None) -> list[Pat
                 package.write(windows_runtime, "delivery/windows-x64-runtime.zip")
         packages.append(path)
     if windows_runtime:
-        path = output / "LabOS-Agent-Windows-x64-0.1.0.zip"
+        path = output / f"LabOS-Agent-Windows-x64-{__version__}.zip"
         with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as package:
             write_package(package, "agent")
             with zipfile.ZipFile(windows_runtime) as runtime:

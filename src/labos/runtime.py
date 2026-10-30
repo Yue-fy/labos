@@ -64,6 +64,7 @@ class Runtime:
             snapshot[role] = {"instrument_id": instrument_id, "agent_id": instrument["agent_id"],
                               "seen": instrument["seen"], "spec": spec, "status": status}
         return {"checked_at": datetime.now(timezone.utc).isoformat(), "instruments": snapshot,
+                "evidence": self.store.evidence_citations(plan.evidence_ids),
                 "point_count": len(plan.points()), "simulated": True,
                 "minimum_exposure_s": len(plan.points()) * plan.exposure_ms / 1000,
                 "note": "Exposure-only lower bound; movement, network and storage add time."}
@@ -199,12 +200,17 @@ class Runtime:
             self.store.set_run(run_id, final, error, release=True)
         except Exception as exc:
             self.store.set_run(run_id, "FAILED", f"{error or final}; {exc}", release=False)
+        # Persist closure before the optional asynchronous export can be cancelled.
+        self.review(run_id)
         if self.store.measurements(run_id):
             try:
                 await asyncio.to_thread(export_hdf5, self.store, run_id)
                 self.store.event("HDF5_EXPORTED", {}, run_id)
             except Exception as exc:
                 self.store.event("HDF5_EXPORT_FAILED", {"error": str(exc)}, run_id)
+    def review(self, run_id):
+        from .review import build_review
+        return self.store.save_review(run_id, build_review(self.store, run_id))
 
     async def reconcile(self, run_id):
         self.store.cancel_queued(run_id)
@@ -213,6 +219,7 @@ class Runtime:
             self.store.set_run(run_id, "ABORTED", "operator reconciliation completed", release=True)
         except Exception as exc:
             self.store.set_run(run_id, "FAILED", str(exc))
+        self.review(run_id)
 
     async def close(self):
         pending = [task for task in self.tasks.values() if not task.done()]

@@ -45,3 +45,20 @@ def test_evidence_is_operator_only_and_never_executes_code(central_config, tmp_p
         assert hits[0]["category"] == "code"
         assert not target.exists()
         assert client.get("/api/status", headers=operator_auth).json()["runs"] == []
+
+
+def test_preflight_rejects_invented_or_superseded_evidence(central_config):
+    import pytest
+    from labos.evidence import EvidenceDocument, EvidenceStore
+    from labos.models import Plan
+    library = EvidenceStore(central_config.data_dir)
+    doc = EvidenceDocument(title="Protocol", source="lab:p", category="protocol", content="spectrum", reviewed=True)
+    first = library.add(doc)
+    assert library.store.evidence_citations([first["id"]])[0]["sha256"] == first["sha256"]
+    library.add(doc.model_copy(update={"content": "changed spectrum", "reviewed": False}))
+    with pytest.raises(ValueError, match="reviewed and current"):
+        library.store.evidence_citations([first["id"]])
+    with pytest.raises(ValueError, match="unknown evidence"):
+        library.store.evidence_citations(["invented"])
+    # Check provenance is part of the Plan schema used by preflight/start.
+    assert Plan(evidence_ids=[first["id"]]).evidence_ids == [first["id"]]

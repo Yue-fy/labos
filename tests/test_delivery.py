@@ -7,7 +7,7 @@ from scripts.build_delivery import build_release
 
 def test_role_archives_are_complete_and_have_no_live_credentials(tmp_path):
     packages = build_release(tmp_path)
-    assert {p.name for p in packages} >= {"LabOS-Central-0.1.0.zip", "LabOS-Agent-0.1.0.zip"}
+    assert {p.name for p in packages} >= {"LabOS-Central-0.2.0.zip", "LabOS-Agent-0.2.0.zip"}
     for package_path in packages:
         with zipfile.ZipFile(package_path) as package:
             names = package.namelist()

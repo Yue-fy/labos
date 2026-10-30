@@ -3,14 +3,15 @@ from __future__ import annotations
 import zipfile
 from pathlib import Path
 
+from . import __version__
 from .config import AgentConfig, load_config
 
-PACKAGE_PROJECT = '''[build-system]
+PACKAGE_PROJECT = f'''[build-system]
 requires = ["setuptools>=75"]
 build-backend = "setuptools.build_meta"
 [project]
 name = "labos-mvp"
-version = "0.1.0"
+version = "{__version__}"
 requires-python = ">=3.11"
 dependencies = ["pydantic>=2.10,<3", "httpx>=0.28,<1", "PyYAML>=6,<7"]
 [project.optional-dependencies]

@@ -102,10 +102,11 @@ class Plan(Model):
     angle_start_deg: Finite = 0
     angle_stop_deg: Finite = 180
     angle_step_deg: Annotated[float, Field(gt=0)] = 10
-    exposure_ms: Annotated[float, Field(gt=0, le=10000)] = 100
+    exposure_ms: Annotated[float, Field(ge=0.001, le=10000)] = 100
     power_percent: Annotated[float, Field(ge=0, le=100)] = 5
     sample_power_limit_percent: Annotated[float, Field(ge=0, le=100)] = 10
     quality: QualityPolicy = Field(default_factory=QualityPolicy)
+    evidence_ids: list[Identifier] = Field(default_factory=list, max_length=5)
 
     @model_validator(mode="after")
     def check_grid(self):

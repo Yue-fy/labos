@@ -43,6 +43,10 @@ class Store:
               run_id TEXT, category TEXT NOT NULL, detail TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS qualifications (
               measurement_id TEXT PRIMARY KEY, status TEXT NOT NULL, body TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS reviews (
+              id TEXT PRIMARY KEY, run_id TEXT NOT NULL, version INTEGER NOT NULL,
+              sha256 TEXT NOT NULL, created REAL NOT NULL, body TEXT NOT NULL,
+              UNIQUE(run_id,version));
             """)
 
     @contextmanager
@@ -364,6 +368,62 @@ class Store:
     def artifact_sha(self, measurement_id):
         with self.transaction() as db:
             return db.execute("SELECT sha FROM measurements WHERE id=?", (measurement_id,)).fetchone()[0]
+
+    def measurement_summary(self, run_id):
+        summary = {"accepted": 0, "rejected": 0, "unassessed": 0, "total": 0}
+        with self.transaction() as db:
+            rows = db.execute("""SELECT COALESCE(q.status,'unassessed'),COUNT(*) FROM measurements m
+                LEFT JOIN qualifications q ON m.id=q.measurement_id WHERE m.run_id=?
+                GROUP BY COALESCE(q.status,'unassessed')""", (run_id,)).fetchall()
+        for status, count in rows:
+            summary[status] = count
+            summary["total"] += count
+        return summary
+
+    def evidence_citations(self, ids):
+        if not ids:
+            return []
+        with self.transaction() as db:
+            if not db.execute("SELECT 1 FROM sqlite_master WHERE name='evidence'").fetchone():
+                raise ValueError("plan references unknown evidence")
+            citations = []
+            for record_id in dict.fromkeys(ids):
+                row = db.execute("SELECT * FROM evidence WHERE id=?", (record_id,)).fetchone()
+                if not row:
+                    raise ValueError("plan references unknown evidence")
+                doc = json.loads(row["body"])
+                latest = db.execute("SELECT MAX(version) FROM evidence WHERE source=?", (row["source"],)).fetchone()[0]
+                if not doc["reviewed"] or latest != row["version"]:
+                    raise ValueError("plan evidence must be reviewed and current; retrieve it again")
+                citations.append({k: row[k] for k in ("id", "sha256", "source", "version")})
+        return citations
+
+    def save_review(self, run_id, body):
+        self.run(run_id)
+        if body.get("run_id") != run_id:
+            raise ValueError("review run identity mismatch")
+        encoded = json_bytes(body).decode()
+        sha = hashlib.sha256(encoded.encode()).hexdigest()
+        record_id = "review_" + sha
+        with self.transaction() as db:
+            row = db.execute("SELECT * FROM reviews WHERE id=?", (record_id,)).fetchone()
+            if not row:
+                version = db.execute("SELECT COALESCE(MAX(version),0)+1 FROM reviews WHERE run_id=?",
+                                     (run_id,)).fetchone()[0]
+                db.execute("INSERT INTO reviews VALUES(?,?,?,?,?,?)",
+                           (record_id, run_id, version, sha, time.time(), encoded))
+                self.event_db(db, "RUN_REVIEW_CREATED", {"id": record_id, "sha256": sha}, run_id)
+                row = db.execute("SELECT * FROM reviews WHERE id=?", (record_id,)).fetchone()
+        return {**dict(row), "body": json.loads(row["body"])}
+
+    def reviews(self, run_id):
+        with self.transaction() as db:
+            rows = db.execute("SELECT * FROM reviews WHERE run_id=? ORDER BY version DESC", (run_id,)).fetchall()
+            return [{**dict(r), "body": json.loads(r["body"])} for r in rows]
+
+    def latest_review(self, run_id):
+        rows = self.reviews(run_id)
+        return rows[0] if rows else None
 
     def events(self, run_id=None):
         with self.transaction() as db:

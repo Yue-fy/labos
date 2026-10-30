@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse
 
+from . import __version__
 from .config import CentralConfig
 from .evidence import EvidenceDocument, EvidenceStore
 from .files import InstanceLock, export_hdf5
@@ -48,7 +49,7 @@ def create_app(config: CentralConfig):
             yield
             await runtime.close()
 
-    app = FastAPI(title="LabOS MVP", version="0.1.0", lifespan=lifespan,
+    app = FastAPI(title="LabOS MVP", version=__version__, lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.store, app.state.runtime = store, runtime
 
@@ -90,7 +91,7 @@ def create_app(config: CentralConfig):
 
     @app.get("/health")
     def health():
-        return {"status": "ok", "service": "labos-central", "version": "0.1.0"}
+        return {"status": "ok", "service": "labos-central", "version": __version__}
 
     @app.get("/", response_class=HTMLResponse)
     def dashboard():
@@ -100,6 +101,7 @@ def create_app(config: CentralConfig):
     @app.get("/api/status", dependencies=[Depends(operator)])
     def status():
         return {**store.registry(config.offline_after_s), "runs": store.runs(),
+                "quality": {r["id"]: store.measurement_summary(r["id"]) for r in store.runs()},
                 "setups": [s.model_dump() for s in config.setups], "simulated": True}
 
     @app.post("/api/preflight", dependencies=[Depends(operator)])
@@ -137,15 +139,29 @@ def create_app(config: CentralConfig):
     def run(run_id: str):
         return checked(store.run, run_id)
 
+    @app.post("/api/runs/{run_id}/review", dependencies=[Depends(operator)])
+    def create_review(run_id: str):
+        return checked(runtime.review, run_id)
+
+    @app.get("/api/runs/{run_id}/review", dependencies=[Depends(operator)])
+    def latest_review(run_id: str):
+        checked(store.run, run_id)
+        return store.latest_review(run_id)
+
+    @app.get("/api/runs/{run_id}/reviews", dependencies=[Depends(operator)])
+    def review_history(run_id: str):
+        checked(store.run, run_id)
+        return store.reviews(run_id)
+
     @app.post("/api/runs/{run_id}/{action}", dependencies=[Depends(operator)])
     async def control(run_id: str, action: str):
         checked(runtime.control, run_id, action)
         return checked(store.run, run_id)
 
     @app.get("/api/runs/{run_id}/measurements", dependencies=[Depends(operator)])
-    def measurements(run_id: str):
+    def measurements(run_id: str, qualified_only: bool = False):
         checked(store.run, run_id)
-        return store.measurements(run_id)
+        return store.measurements(run_id, qualified_only=qualified_only)
 
     @app.get("/api/runs/{run_id}/export", dependencies=[Depends(operator)])
     def export(run_id: str):

@@ -43,6 +43,7 @@ async def draft_plan(prompt, config, client=None, model=None, evidence=None):
         plan = Plan.model_validate(response.output_parsed)
         if plan.setup_id not in {s.id for s in config.setups}:
             raise ValueError("AI selected an unregistered setup")
+        plan = plan.model_copy(update={"evidence_ids": [item["id"] for item in citations]})
         return {"plan": plan.model_dump(), "point_count": len(plan.points()),
                 "requires_start": True, "simulated": True, "evidence": citations}
     finally:
