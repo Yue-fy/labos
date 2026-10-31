@@ -1,4 +1,12 @@
-# LabOS cryostat physical pilot, version 0.2.6
+# LabOS cryostat physical pilot, version 0.2.7
+
+For the latest operator-approved **dark a-axis voltage short test**, follow
+**DARK_A_SHORT_TEST_EN.md** and derive a separate disabled dark-a-worker.yaml.
+The optical procedure below describes the older available capability and must
+not be used as authorization to repeat the failed optical task.
+
+Latest operator observation: XX=a, XY=45degrees, AUX=b. Actual contact polarity
+and current calibration remain unverified. Preserve prior raw records unchanged.
 
 This optional executor implements a fixed LabOS command path. It does not launch
 the old measurement application or import production modules. The existing

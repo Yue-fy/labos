@@ -96,3 +96,30 @@ neither current laser OFF nor gate OFF has yet been established by that attempt.
   mandatory guards, binding inconsistencies and required-AUX timeout behavior.
 - Deliver0.2.6 through the existing private GitHub repository/release, keeping
   live configuration and data local. Keep experimental tasks/results on HTTPS.
+
+## Task 5: operator-approved dark a-axis voltage short test
+
+The first .6 physical task failed during the second dark-baseline sample with an
+ASCII decoding exception localized to chopper readback. Cleanup independently
+verified laser emission OFF, zero current setpoint and XX minimum4mV RMS. Preserve
+that result and execution ledger; do not replay it. The operator now explicitly
+approves a dark a-axis1f/2f voltage short test at4mV RMS and about8Hz, with no gate
+sweep or optical measurement. XX=a, XY=45degrees, AUX=b are operator observations;
+contact polarity/current calibration remain unknown. Public GitHub delivery is
+explicitly authorized by the latest instruction.
+
+- Add dark_a plan phases dark_a_1f/dark_a_2f and immutable artifact acceptance.
+- Add strict local experiment_scope=dark_a with exactly cld/xx/gate bindings;
+  exclude PM/chopper/XY/AUX from sessions and queries. Retain laser-OFF/TEC/identity,
+  inactive gate, station lease, finite I/O, status, frequency and settling guards.
+- Reject scope/plan mismatch before execution intent and adapter construction.
+  Only4mV amplitude writes, no FREQ writes; harmonic selection changes detection
+  only. Recheck source amplitude/frequency and restoreXX1f during cleanup.
+- Derive a new disabled dark-a-worker.yaml from the actual local prior profile,
+  preserving its diagnostics acknowledgment, bindings and station lock identity.
+  Use separate state/cursor and no optical authorization; preserve old files.
+- Tests first: engine phases, excluded hardware, raw voltage provenance, guard
+  failures, scope mismatch, profile preparation and update locking.
+- Publish .7 source and overlay with an English local update/preflight/enable guide;
+  actual preflight and a new unique physical task are required for real acceptance.
+- No I/V/resistance inference, excitation escalation or nonlinear Hall claim.

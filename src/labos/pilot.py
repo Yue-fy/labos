@@ -25,7 +25,7 @@ class _PilotModel(BaseModel):
 
 class PilotPlan(_PilotModel):
     sample_id: Annotated[str, Field(min_length=1, max_length=160)]
-    mode: Literal["photoresponse", "dark_hall", "combined"]
+    mode: Literal["photoresponse", "dark_hall", "combined", "dark_a"]
     laser_current_a: Positive | None = None
     power_limit_w: Positive | None = None
     reference_hz: Positive
@@ -44,7 +44,7 @@ class PilotPlan(_PilotModel):
             if self.laser_current_a is None or self.power_limit_w is None:
                 raise ValueError("photoresponse requires laser current and power limits")
         elif self.laser_current_a is not None or self.power_limit_w is not None:
-            raise ValueError("dark_hall must not request laser current or optical power")
+            raise ValueError("dark modes must not request laser current or optical power")
         return self
 
 
@@ -277,6 +277,8 @@ class _ProtectionFailure(Exception):
 
 
 def _phases(mode):
+    if mode == "dark_a":
+        return ["dark_a_1f", "dark_a_2f"]
     phases = []
     if mode in {"photoresponse", "combined"}:
         phases.extend(["dark_baseline", "illuminated"])

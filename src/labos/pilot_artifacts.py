@@ -57,7 +57,9 @@ class PilotArtifacts:
         for sample in report["samples"]:
             if (
                 not isinstance(sample, dict)
-                or sample.get("phase") not in ("dark_baseline", "illuminated", "dark_hall_2f")
+                or sample.get("phase") not in (
+                    "dark_baseline", "illuminated", "dark_hall_2f", "dark_a_1f", "dark_a_2f"
+                )
                 or not isinstance(sample.get("channels", {}), dict)
                 or ("power_w" in sample and type(sample["power_w"]) not in (int, float))
             ):

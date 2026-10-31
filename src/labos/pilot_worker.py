@@ -133,6 +133,9 @@ class PilotWorker(Worker):
                 raise ValueError("physical pilot requires local commissioning and approval")
             self.config.approval.validate_plan(task.pilot_plan)
             self._validate_local_profile()
+            scope = self.config.adapter_config.get("experiment_scope", "optical_transport")
+            if (scope == "dark_a") != (task.pilot_plan.mode == "dark_a"):
+                raise ValueError("Task mode differs from the locally commissioned experiment scope.")
         except ValueError as exc:
             return {"backend": "pilot", "answer": {
                 "status": "needs_input", "summary": str(exc), "findings": [],

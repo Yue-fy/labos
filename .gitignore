@@ -16,5 +16,6 @@ deployments/
 **/config.yaml
 **/cooperation.yaml
 **/pilot-worker.yaml
+**/dark-a-worker.yaml
 **/program-connector.yaml
 subComputer/

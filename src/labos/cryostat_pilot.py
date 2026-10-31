@@ -14,7 +14,7 @@ import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field, StrictBool, ValidationError, model_validator
 
@@ -47,6 +47,7 @@ class ReadingFault(ValueError):
 
 
 class CryostatConfig(Model):
+    experiment_scope: Literal["optical_transport", "dark_a"] = "optical_transport"
     commissioned: StrictBool = False
     manual_route_confirmed: StrictBool = False
     aux_enabled: StrictBool = True
@@ -59,10 +60,10 @@ class CryostatConfig(Model):
     max_laser_voltage_v: Positive
     power_limit_w: Positive
     reference_hz: Positive
-    chopper_port: str = Field(min_length=1, max_length=80)
-    chopper_expected: dict[str, int]
-    chopper_refout_hz: Positive
-    chopper_input_hz: Positive
+    chopper_port: str | None = Field(default=None, min_length=1, max_length=80)
+    chopper_expected: dict[str, int] | None = None
+    chopper_refout_hz: Positive | None = None
+    chopper_input_hz: Positive | None = None
     chopper_phase_lock_manually_confirmed: StrictBool = False
     chopper_phase_lock_confirmation_note: str = Field(default="", max_length=1000)
     cld_acknowledged_connection_diagnostics: tuple[int, int, int] | None = None
@@ -76,7 +77,11 @@ class CryostatConfig(Model):
     @model_validator(mode="after")
     def explicit_bindings(self):
         required_roles = set(SERIALS)
-        if not self.aux_enabled:
+        if self.experiment_scope == "dark_a":
+            required_roles = {"cld", "xx", "gate"}
+            if self.aux_enabled or self.reference_hz != 8:
+                raise ValueError("Dark a-axis profile requires AUX disabled and8Hz reference")
+        elif not self.aux_enabled:
             required_roles.remove("aux")
         if set(self.resources) != required_roles or len(set(self.resources.values())) != len(
             required_roles
@@ -96,7 +101,13 @@ class CryostatConfig(Model):
                     "The commissioned electrical instruments require explicit GPIB bindings"
                 )
         required = {"blade", "ref", "nharmonic", "dharmonic", "output"}
-        if set(self.chopper_expected) != required:
+        if self.experiment_scope == "optical_transport" and (
+            self.chopper_port is None
+            or self.chopper_refout_hz is None
+            or self.chopper_input_hz is None
+            or self.chopper_expected is None
+            or set(self.chopper_expected) != required
+        ):
             raise ValueError("Supply the five current commissioned chopper settings")
         if (
             self.cld_acknowledged_connection_diagnostics is not None
@@ -109,7 +120,13 @@ class CryostatConfig(Model):
 
     @property
     def readout_roles(self):
+        if self.experiment_scope == "dark_a":
+            return ("xx",)
         return ("xx", "xy", "aux") if self.aux_enabled else ("xx", "xy")
+
+    @property
+    def excluded_readout_roles(self):
+        return [r for r in ("xx", "xy", "aux") if r not in self.readout_roles]
 
 
 def validate_adapter_config(settings):
@@ -333,9 +350,10 @@ class CryostatAdapter:
                 self.resources[role] = resource
                 resource.timeout = c.io_timeout_ms
                 resource.read_termination = resource.write_termination = "\n"
-            self.chopper = self.chopper_factory(c.chopper_port, c.io_timeout_ms / 1000)
-            if hasattr(self.chopper, "set_guard"):
-                self.chopper.set_guard(self.guard)
+            if c.experiment_scope == "optical_transport":
+                self.chopper = self.chopper_factory(c.chopper_port, c.io_timeout_ms / 1000)
+                if hasattr(self.chopper, "set_guard"):
+                    self.chopper.set_guard(self.guard)
         except BaseException:
             self.close()
             raise
@@ -551,15 +569,20 @@ class CryostatAdapter:
             raise ValueError("Laser is already enabled; no takeover")
         if self.flag("gate", "OUTP?"):
             raise ValueError("Gate output is active; pilot must not alter it")
-        pm = self.pm_state()
-        chopper = self.chopper_state()
+        dark = self.config.experiment_scope == "dark_a"
+        pm = {"out_of_scope": True} if dark else self.pm_state()
+        chopper = {"out_of_scope": True} if dark else self.chopper_state()
         for role in self.config.readout_roles:
             self.time_constants[role] = self.lockin_settings(role)
+        sine = self.number("xx", "SLVL?")
+        if dark and sine != 0.004:
+            raise ValueError("Dark a-axis preflight requires existing4mV RMS excitation")
         self.owned = True
         return {
             "ready": True,
             "readout_roles": list(self.config.readout_roles),
-            "excluded_readout_roles": [] if self.config.aux_enabled else ["aux"],
+            "experiment_scope": self.config.experiment_scope,
+            "excluded_readout_roles": self.config.excluded_readout_roles,
             "laser_enabled": False,
             "identities": self.identities,
             "cld": cld,
@@ -570,10 +593,12 @@ class CryostatAdapter:
             "lockin_settings": self.time_constants,
             "contact_mapping": "unverified raw "
             + "/".join(role.upper() for role in self.config.readout_roles),
-            "measurement_plane": "PM pickoff before sample",
+            "measurement_plane": (
+                "XX voltage input; operator identifies a axis" if dark else "PM pickoff before sample"
+            ),
             "sample_current_calibrated": False,
             "simulated": False,
-            "sine_v_rms": self.number("xx", "SLVL?"),
+            "sine_v_rms": sine,
         }
 
     def require_owned(self):
@@ -582,13 +607,39 @@ class CryostatAdapter:
 
     def protect_excitation(self):
         self.require_owned()
-        with self.protection_guard():
-            self.w("xx", "SLVL 0.004")
-            actual = self.number("xx", "SLVL?")
-        return {
-            "minimum_excitation_verified": math.isclose(actual, 0.004, abs_tol=1e-12, rel_tol=0),
+        actual = None
+        amplitude_error = None
+        try:
+            with self.protection_guard():
+                self.w("xx", "SLVL 0.004")
+                actual = self.number("xx", "SLVL?")
+        except BaseException as exc:
+            if self.config.experiment_scope != "dark_a":
+                raise
+            amplitude_error = type(exc).__name__ + ": " + str(exc)
+        restored = True
+        frequency = None
+        error = None
+        if self.config.experiment_scope == "dark_a":
+            try:
+                with self.protection_guard():
+                    self.w("xx", "HARM 1")
+                    restored = self.integer("xx", "HARM?") == 1
+                    frequency = self.number("xx", "FREQ?")
+                    restored = restored and abs(frequency - self.config.reference_hz) <= 0.1
+            except BaseException as exc:
+                restored = False
+                error = type(exc).__name__ + ": " + str(exc)
+        evidence = {
+            "minimum_excitation_verified": restored and actual is not None and math.isclose(
+                actual, 0.004, abs_tol=1e-12, rel_tol=0),
             "actual_v_rms": actual,
         }
+        if self.config.experiment_scope == "dark_a":
+            evidence.update(measurement_harmonic_restored=restored,
+                            reference_hz=frequency, restore_error=error,
+                            amplitude_error=amplitude_error)
+        return evidence
 
     def laser_off(self):
         self.require_owned()
@@ -616,6 +667,9 @@ class CryostatAdapter:
 
     def configure(self, phase, plan):
         self.require_owned()
+        dark = self.config.experiment_scope == "dark_a"
+        if dark != (plan.mode == "dark_a") or (dark and phase not in {"dark_a_1f", "dark_a_2f"}):
+            raise ValueError("Plan/phase differs from the locally commissioned experiment scope")
         if (
             plan.reference_hz != self.config.reference_hz
             or plan.settle_s
@@ -639,17 +693,24 @@ class CryostatAdapter:
         ):
             raise ValueError("Cannot configure an unprotected phase")
         for role in self.config.readout_roles:
-            harmonic = 2 if role == "xy" and phase == "dark_hall_2f" else 1
+            harmonic = 2 if (role == "xy" and phase == "dark_hall_2f") or (
+                dark and phase == "dark_a_2f"
+            ) else 1
             self.w(role, "HARM " + str(harmonic))
             if self.integer(role, "HARM?") != harmonic:
                 raise ValueError("Harmonic readback mismatch")
             self.configured_harmonics[role] = harmonic
+        if dark:
+            self.lockin_settings("xx")
+            if self.number("xx", "SLVL?") != 0.004:
+                raise ValueError("Excitation changed while configuring harmonic detection")
         self.phase = phase
 
     def laser_on(self, current_a):
         self.require_owned()
         c = self.config
-        if self.phase != "illuminated" or not 0 < current_a <= c.max_laser_current_a:
+        if (c.experiment_scope == "dark_a" or self.phase != "illuminated"
+                or not 0 < current_a <= c.max_laser_current_a):
             raise ValueError("Laser enable outside finite optical phase")
         before = self.cld_state()
         if before["laser_enabled"]:
@@ -688,6 +749,8 @@ class CryostatAdapter:
 
     def _read_sample(self, phase):
         self.require_owned()
+        if self.config.experiment_scope == "dark_a":
+            return self._read_dark_a_sample(phase)
         cld = self.cld_state()
         if cld["laser_enabled"] != (phase == "illuminated"):
             raise ValueError("Laser phase state mismatch")
@@ -717,6 +780,57 @@ class CryostatAdapter:
         pm_after = self.pm_state()
         if power < 0 or power >= min(pm_before["range_w"], pm_after["range_w"]):
             raise ReadingFault("Power acquisition is invalid/saturated", power_evidence)
+        channels = self._read_lockin_channels(power_evidence)
+        chopper = self.chopper_state()
+        after = self.cld_state()
+        if after["laser_enabled"] != (phase == "illuminated"):
+            raise ValueError("Laser changed while acquiring")
+        return {
+            "channels": channels,
+            "excluded_readout_roles": self.config.excluded_readout_roles,
+            "power_w": power,
+            "measurement_plane": "PM pickoff before sample",
+            "captured_at_utc": datetime.now(timezone.utc).isoformat(),
+            "laser_enabled": after["laser_enabled"],
+            "laser_current_a": after["laser_current_a"],
+            "excitation_v_rms": 0.004,
+            "excitation_definition": "voltage drive; no external series resistor; sample current uncalibrated",
+            "chopper_phase_lock_verified_by_query": False,
+            "chopper_refout_hz": chopper["refout_frequency_hz"],
+            "nominal_wavelength_nm": 730,
+            "wavelength_basis": "operator-declared diode wavelength",
+            "simulated": False,
+        }
+
+    def _read_dark_a_sample(self, phase):
+        if phase != self.phase or phase not in {"dark_a_1f", "dark_a_2f"}:
+            raise ValueError("Dark a-axis acquisition phase mismatch")
+        if self.cld_state()["laser_enabled"]:
+            raise ValueError("Laser must remain OFF during dark acquisition")
+        if self.flag("gate", "OUTP?") or self.number("xx", "SLVL?") != 0.004:
+            raise ValueError("Gate output or minimum excitation changed")
+        self._read_lockin_channels({"simulated": False})
+        # Recheck after acquisition; never adjust the oscillator frequency.
+        self.lockin_settings("xx")
+        if self.number("xx", "SLVL?") != 0.004 or self.flag("gate", "OUTP?"):
+            raise ValueError("Source/gate changed while acquiring")
+        after = self.cld_state()
+        if after["laser_enabled"]:
+            raise ValueError("Laser changed while acquiring")
+        return {
+            **self.active_sample,
+            "experiment_scope": "dark_a",
+            "excluded_readout_roles": ["xy", "aux"],
+            "measurement_plane": "XX voltage input; operator identifies a axis",
+            "contact_polarity_verified": False,
+            "sample_current_calibrated": False,
+            "captured_at_utc": datetime.now(timezone.utc).isoformat(),
+            "laser_enabled": False,
+            "excitation_v_rms": 0.004,
+            "excitation_definition": "SR830 terminal voltage; sample voltage/current uncalibrated",
+        }
+
+    def _read_lockin_channels(self, evidence):
         channels = self.active_sample["channels"]
         for role in self.config.readout_roles:
             settings = self.lockin_settings(role)
@@ -749,33 +863,14 @@ class CryostatAdapter:
             if abs(detection / harmonic - settings["reference_hz"]) > 0.1:
                 raise ReadingFault(
                     "Detection/snapshot reference frequency mismatch: " + role,
-                    {**power_evidence, "channels": channels},
+                    {**evidence, "channels": channels},
                 )
             if lias != 0 or errors != 0:
                 raise ReadingFault(
                     "Lock-in status window is not clean: " + role,
-                    {**power_evidence, "channels": channels},
+                    {**evidence, "channels": channels},
                 )
-        chopper = self.chopper_state()
-        after = self.cld_state()
-        if after["laser_enabled"] != (phase == "illuminated"):
-            raise ValueError("Laser changed while acquiring")
-        return {
-            "channels": channels,
-            "excluded_readout_roles": [] if self.config.aux_enabled else ["aux"],
-            "power_w": power,
-            "measurement_plane": "PM pickoff before sample",
-            "captured_at_utc": datetime.now(timezone.utc).isoformat(),
-            "laser_enabled": after["laser_enabled"],
-            "laser_current_a": after["laser_current_a"],
-            "excitation_v_rms": 0.004,
-            "excitation_definition": "voltage drive; no external series resistor; sample current uncalibrated",
-            "chopper_phase_lock_verified_by_query": False,
-            "chopper_refout_hz": chopper["refout_frequency_hz"],
-            "nominal_wavelength_nm": 730,
-            "wavelength_basis": "operator-declared diode wavelength",
-            "simulated": False,
-        }
+        return channels
 
     def close(self):
         errors = []

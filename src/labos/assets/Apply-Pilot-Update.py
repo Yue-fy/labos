@@ -49,10 +49,12 @@ def apply_update(update, target):
         contents[name] = content
     config = load_worker_config(target / "cooperation.yaml")
     states = [config.state_dir]
-    if (target / "pilot-worker.yaml").is_file():
-        from labos.pilot_worker import load_pilot_worker_config
-
-        states.append(load_pilot_worker_config(target / "pilot-worker.yaml").state_dir)
+    from labos.pilot_worker import load_pilot_worker_config
+    for name in ("pilot-worker.yaml", "dark-a-worker.yaml"):
+        if (target / name).is_file():
+            state = load_pilot_worker_config(target / name).state_dir
+            if state not in states:
+                states.append(state)
     backup = (
         target
         / "data/pilot-update-backups"

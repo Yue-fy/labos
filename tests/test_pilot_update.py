@@ -68,3 +68,12 @@ def test_update_refuses_before_mutation_on_bad_payload_or_active_worker(tmp_path
         runpy.run_path(str(APPLY))["apply_update"](update, target)
     assert (target / "Check-Pilot-Runtime.py").read_text() == "# previous runtime check\n"
     assert (target / "config.yaml").read_text() == "preserved-connection"
+
+
+def test_update_locks_dark_a_worker_before_replacing_shared_code(tmp_path):
+    update, target = fixture(tmp_path)
+    (target / 'dark-a-worker.yaml').write_text(
+        'agent_id: pc-a\nconnection_config: config.yaml\nstate_dir: data/dark-a-pilot\n')
+    with InstanceLock(target / 'data/dark-a-pilot'), pytest.raises(RuntimeError):
+        runpy.run_path(str(APPLY))['apply_update'](update, target)
+    assert (target / 'Check-Pilot-Runtime.py').read_text() == '# previous runtime check\n'

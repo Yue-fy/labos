@@ -43,17 +43,18 @@ separate portable runtime, install dependencies or restart a worker.
 
 ## Download the cryostat physical update
 
-The current physical overlay is version **0.2.6**, supporting explicit AUX
-exclusion after the failed 0.2.5 preflight. It includes the LabOS-owned
+The current physical overlay is version **0.2.7**, adding a dedicated dark a-axis voltage profile with no chopper/PM/XY/AUX
+access. The earlier two-SR830 optical profile remains available for separately
+commissioned use. It includes the LabOS-owned
 executor, pure Python VISA/serial dependencies, a disabled commissioning template,
 the verified overlay updater and START_HERE_PHYSICAL_PILOT_EN.md.
 
 ```powershell
-$ReleaseDir = 'C:\LabOS\updates\v0.2.6'
+$ReleaseDir = 'C:\LabOS\updates\v0.2.7'
 New-Item -ItemType Directory -Force -Path $ReleaseDir | Out-Null
-$Archive = Join-Path $ReleaseDir 'LabOS-Cryostat-Physical-Update-0.2.6.zip'
-$ReleaseURL = 'https://github.com/Yue-fy/labos/releases/download/v0.2.6'
-Invoke-WebRequest -UseBasicParsing -Uri ($ReleaseURL + '/LabOS-Cryostat-Physical-Update-0.2.6.zip') -OutFile $Archive
+$Archive = Join-Path $ReleaseDir 'LabOS-Cryostat-Physical-Update-0.2.7.zip'
+$ReleaseURL = 'https://github.com/Yue-fy/labos/releases/download/v0.2.7'
+Invoke-WebRequest -UseBasicParsing -Uri ($ReleaseURL + '/LabOS-Cryostat-Physical-Update-0.2.7.zip') -OutFile $Archive
 Invoke-WebRequest -UseBasicParsing -Uri ($ReleaseURL + '/SHA256SUMS') -OutFile (Join-Path $ReleaseDir 'SHA256SUMS')
 $ChecksumLines = @(Get-Content -LiteralPath (Join-Path $ReleaseDir 'SHA256SUMS') | Where-Object {
   $_ -match ('^[a-fA-F0-9]{64}  ' + [regex]::Escape([IO.Path]::GetFileName($Archive)) + '$')
@@ -70,7 +71,8 @@ directory; do not use overwrite/force switches on an installation or old evidenc
 A browser can download the same assets without signing in. GitHub CLI remains an
 optional alternative for users who already have it configured.
 
-Follow the extracted **START_HERE_PHYSICAL_PILOT_EN.md**. Cooperatively stop the
+For the current short test, follow **DARK_A_SHORT_TEST_EN.md** in the extracted
+overlay or repository. **START_HERE_PHYSICAL_PILOT_EN.md** also links to it. Cooperatively stop the
 old worker, apply the verified overlay to the actual existing LabOS installation,
 preserve all local configuration/state, and restart report cooperation. The
 updater refuses active worker locks and saves replaced files in a local backup.
