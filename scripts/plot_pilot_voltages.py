@@ -83,7 +83,7 @@ def plot(artifact_path, output, refresh=False):
     fig, axes = plt.subplots(len(roles), len(phases), squeeze=False,
                              figsize=(6.1*max(2, len(phases)), 3.5*len(roles)+3.2))
     fig.subplots_adjust(left=0.09, right=0.97, bottom=0.34, top=0.72,
-                        wspace=0.22, hspace=0.4)
+                        wspace=0.22, hspace=1.2 if len(roles)>1 else 0.4)
     dark = report['mode']=='dark_a'
     phase_labels = {'dark_baseline': 'Laser OFF baseline', 'illuminated': 'Laser ON',
                     'dark_a_1f': 'Dark a-axis', 'dark_a_2f': 'Dark a-axis'}
@@ -129,13 +129,13 @@ def plot(artifact_path, output, refresh=False):
                          f"{harmonic}f detection ({rr[0]['detection_frequency_hz']:g} Hz) · n={len(rr)}",
                          loc='left',fontsize=13,pad=15)
             ax.grid(axis='y', color='#e1e5e9', linewidth=0.7)
-            if all_zero:
+            if all(r['x_v']==0 and r['y_v']==0 for r in rr):
                 ax.text(0.5,0.76,'X and Y overlap at 0 V',transform=ax.transAxes,
                         ha='center',fontsize=11)
     notes = [
         'Instrument-returned points only; no interpolation, noise estimate or fitted response.',
         ('All plotted X/Y replies are 0 V. The ±1 µV display span is not an instrument sensitivity.'
-         if all_zero else 'Input sensitivity and resolution are not recorded in this artifact.'),
+         if all_zero else 'Input sensitivity/resolution unrecorded; display spans are plotting scales.'),
         'Input sensitivity/resolution unrecorded; sample current and contact polarity uncalibrated.',
         'Raw LIAS/ERRS flags are retained in CSV. Instantaneous overload qualification remains unverified.',
         'Cleanup verified: laser emission OFF, zero current setpoint, 4 mV RMS and XX restored to 1f.'
