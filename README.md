@@ -10,6 +10,8 @@ v0.2 新增：过载/阈值资格检查、拒绝数据留存、计划/配置指�
 
 独立的 [LabOS 系统架构图](docs/presentations/LabOS_NLH_BVPE/System_Architecture/README.md)：一台中央服务器、知识/记忆、科学 Agent 与子 Agent、Skill 库、MCP 工具接口、云端/本地模型切换、执行协调器与通用 PC 群。用少量 PC 符号表示任意规模，不固定分配科研功能；提供英文 PDF、SVG、可编辑 PPT 和高清 PNG。
 
+报告讲解使用 [中英双语架构讲稿](docs/presentations/LabOS_NLH_BVPE/System_Architecture/LabOS_Architecture_Presentation_ZH_EN.md)，含完整中英文讲述、实验示例和常见问答。
+
 真实仪器驱动尚未启用；型号、SDK、连接方式和装置验证齐备后再接入。模拟数据均有显式标记。
 
 ## 开发环境与本机验收

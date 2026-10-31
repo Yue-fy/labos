@@ -2,6 +2,8 @@
 
 独立的 [LabOS 系统架构图](System_Architecture/README.md) 已重新编排：科学 Agent 运行时连接知识/记忆、Skill 库、模型路由与 MCP 工具层，再经统一协调器控制通用 PC 群。少量 PC 符号与省略号表示任意规模，不固定分配科研功能。提供全英文 PDF、SVG、PPT 和高清 PNG。
 
+汇报可直接使用 [中英双语架构讲稿](System_Architecture/LabOS_Architecture_Presentation_ZH_EN.md)：包含一分钟介绍、完整讲述顺序、Hall/BVPE 示例、常见问答和术语表。
+
 当前交付为重新绘制的 **22 页全英文技术版**，详细展开中央与 PC Agent、完整光电拓扑、Hall 电路、BVPE 光路、跨 PC 时序及数据质量流程。下载 [英文 PowerPoint](English/LabOS_Technical_Overview_EN.pptx)、[英文 PDF](English/LabOS_Technical_Overview_EN.pdf)，或查看 [英文交付说明与六张独立矢量图](English/README.md)。下方说明对应保留的首版中文材料。
 
 这是一套 **19 页、16:9、中文系统能力展示**，适合约 15–20 分钟组会或方案交流。基于用户提供并确认的 PC A / PC B 装置清单，讲解中央 Agent、多 PC 协同、物理信号链与联合测量流程。所有示意图均为本系统重新绘制。
