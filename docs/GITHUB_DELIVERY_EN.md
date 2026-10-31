@@ -59,7 +59,7 @@ gh release download v0.2.6 --repo Yue-fy/labos `
 if ($LASTEXITCODE -ne 0) { throw 'Release download failed; check GitHub access.' }
 $Archive = Join-Path $ReleaseDir 'LabOS-Cryostat-Physical-Update-0.2.6.zip'
 $ChecksumLines = @(Get-Content -LiteralPath (Join-Path $ReleaseDir 'SHA256SUMS') | Where-Object {
-  $_ -match '^[a-fA-F0-9]{64}  LabOS-Cryostat-Physical-Update-0\.2\.5\.zip$'
+  $_ -match ('^[a-fA-F0-9]{64}  ' + [regex]::Escape([IO.Path]::GetFileName($Archive)) + '$')
 })
 if ($ChecksumLines.Count -ne 1) { throw 'Expected checksum entry is missing or ambiguous.' }
 $Expected = ($ChecksumLines[0] -split '\s+')[0]
