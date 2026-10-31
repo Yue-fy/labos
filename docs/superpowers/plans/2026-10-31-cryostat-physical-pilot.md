@@ -75,3 +75,24 @@ Main-owned files: `src/labos/cryostat_pilot.py`, `tests/test_cryostat_pilot.py`,
 - Tests with replay backends and successful networking never constitute real hardware acceptance.
 
 Actual physical pilot and new Windows worker acceptance remain pending until returned device evidence and commissioning satisfy the local profile. The operator has already authorized this finite test within conservative settings; do not ask for repeated general permission.
+
+## Task 4: explicit two-SR830 profile after real commissioning feedback
+
+The actual PC installed0.2.5 and verified211 overlay files, but its output-preserving
+preflight timed out on AUX *IDN? before status qualification. No physical worker
+was enabled. The returned commissioning report relays the operator's current
+instruction to exclude AUX for this pilot. Four earlier identities succeeded;
+neither current laser OFF nor gate OFF has yet been established by that attempt.
+
+- Add strict local aux_enabled=False with exactly cld/pm/xx/xy/gate bindings;
+  retain defaultTrue for existing profiles and reject inconsistent binding sets.
+- No automatic fallback or excluded AUX session/query/write. Retain every other
+  identity, lease, reference, settling, power and protection check.
+- Both SR830 channels record raw optical baseline/light at1f, then XY2f in dark.
+  Record absent AUX in preflight and data; do not invent an independent channel,
+  zero-bias BVPE, sample current or contact-axis interpretation.
+- Preserve failed preflight and attempted profile; re-preflight before enablement.
+- Regression tests cover combined phases, no excluded resource access, retained
+  mandatory guards, binding inconsistencies and required-AUX timeout behavior.
+- Deliver0.2.6 through the existing private GitHub repository/release, keeping
+  live configuration and data local. Keep experimental tasks/results on HTTPS.

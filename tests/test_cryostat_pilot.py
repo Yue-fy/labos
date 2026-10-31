@@ -516,3 +516,115 @@ def test_preflight_cli_retains_failure_evidence_even_when_close_fails(tmp_path, 
     assert evidence["output_enable_performed"] is False
     assert evidence["error"] or evidence["close_error"]
     assert all(not resource.writes for resource in manager.devices.values())
+
+
+def test_explicit_two_channel_profile_completes_without_opening_or_using_aux(tmp_path, monkeypatch):
+    from labos.cryostat_pilot import CryostatAdapter
+    from labos.pilot import PilotApproval, PilotEngine
+
+    config = settings(tmp_path)
+    config["aux_enabled"] = False
+    del config["resources"]["aux"]
+    manager = Manager(config)
+    station = CryostatAdapter(config, manager_factory=lambda: manager, chopper_factory=Chopper)
+    now = [0.0]
+    monkeypatch.setattr("labos.cryostat_pilot.time.monotonic", lambda: now[0])
+
+    def sleep(seconds):
+        now[0] += seconds
+
+    plan = PilotPlan(
+        sample_id="CrSBr 1",
+        mode="combined",
+        reference_hz=8,
+        laser_current_a=0.0218,
+        power_limit_w=1e-6,
+        settle_s=15,
+        samples_per_phase=3,
+        phase_timeout_s=60,
+        max_run_s=180,
+    )
+    approval = PilotApproval(
+        enabled=True,
+        sample_id="CrSBr 1",
+        reference_hz=8,
+        laser_current_max_a=0.0218,
+        power_limit_max_w=1e-6,
+        max_phase_s=60,
+        max_run_s=180,
+    )
+    result = PilotEngine(station, clock=lambda: now[0], sleep=sleep).run(plan, approval)
+    assert result["status"] == "COMPLETED", result["error"]
+    assert len(manager.devices) == 5 and "GPIB1::10::INSTR" not in manager.devices
+    assert result["preflight"]["readout_roles"] == ["xx", "xy"]
+    assert result["preflight"]["excluded_readout_roles"] == ["aux"]
+    assert all(set(s["channels"]) == {"xx", "xy"} for s in result["samples"])
+    assert all(s["excluded_readout_roles"] == ["aux"] for s in result["samples"])
+    assert all(s["channels"]["xy"]["harmonic"] == 2 for s in result["samples"][-3:])
+    assert result["protection_verified"] is True
+    cld = manager.devices[config["resources"]["cld"]]
+    assert cld.values["OUTP1:STAT?"] == "0" and cld.values["SOUR1:CURR:LEV:IMM:AMPL?"] == "0"
+    assert manager.devices[config["resources"]["xx"]].values["SLVL?"] == "0.004"
+
+
+@pytest.mark.parametrize("fault", ["gate", "interlock", "reference", "chopper", "minimum_settle"])
+def test_excluding_aux_preserves_remaining_hardware_guards(tmp_path, fault):
+    from labos.cryostat_pilot import CryostatAdapter
+
+    config = settings(tmp_path)
+    config["aux_enabled"] = False
+    del config["resources"]["aux"]
+    manager = Manager(config)
+    if fault == "gate":
+        manager.devices[config["resources"]["gate"]].values["OUTP?"] = "1"
+    elif fault == "interlock":
+        manager.devices[config["resources"]["cld"]].values["OUTP1:PROT:INTL:TRIP?"] = "1"
+    elif fault == "reference":
+        manager.devices[config["resources"]["xy"]].values["FREQ?"] = "56"
+    elif fault == "chopper":
+        config["chopper_expected"]["blade"] = 11
+    station = CryostatAdapter(config, manager_factory=lambda: manager, chopper_factory=Chopper)
+    station.open()
+    if fault == "minimum_settle":
+        station.preflight()
+        plan = PilotPlan(sample_id="CrSBr 1", mode="dark_hall", reference_hz=8, settle_s=1)
+        with pytest.raises(ValueError):
+            station.configure("dark_hall_2f", plan)
+    else:
+        with pytest.raises(ValueError):
+            station.preflight()
+    assert all(not r.writes for r in manager.devices.values())
+    station.close()
+
+
+@pytest.mark.parametrize(
+    "fault", ["missing_aux_without_exclusion", "retained_aux_with_exclusion", "missing_gate"]
+)
+def test_channel_exclusion_requires_an_explicit_consistent_binding_set(tmp_path, fault):
+    from labos.cryostat_pilot import CryostatAdapter
+
+    config = settings(tmp_path)
+    if fault == "missing_aux_without_exclusion":
+        del config["resources"]["aux"]
+    elif fault == "retained_aux_with_exclusion":
+        config["aux_enabled"] = False
+    else:
+        config["aux_enabled"] = False
+        del config["resources"]["aux"]
+        del config["resources"]["gate"]
+    with pytest.raises(ValueError):
+        CryostatAdapter(config, manager_factory=lambda: pytest.fail("opened a device"))
+
+
+def test_required_aux_timeout_never_silently_changes_the_instrument_set(tmp_path):
+    station, manager = adapter(tmp_path)
+
+    def timeout(command):
+        raise TimeoutError("AUX did not respond")
+
+    manager.devices["GPIB1::10::INSTR"].query = timeout
+    station.open()
+    with pytest.raises(TimeoutError):
+        station.preflight()
+    assert all(not r.writes for r in manager.devices.values())
+    station.close()

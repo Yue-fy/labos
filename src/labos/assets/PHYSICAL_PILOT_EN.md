@@ -1,4 +1,4 @@
-# LabOS cryostat physical pilot, version 0.2.5
+# LabOS cryostat physical pilot, version 0.2.6
 
 This optional executor implements a fixed LabOS command path. It does not launch
 the old measurement application or import production modules. The existing
@@ -7,7 +7,7 @@ in a separate deterministic worker with a separate ledger and local profile.
 
 ## Established scope
 
-- Sample: **CrSBr 1**. Preserve raw channel names XX, XY and AUX; contact axes are
+- Sample: **CrSBr 1**. Preserve raw channel names XX and XY; contact axes are
   unverified and the operator accepts a workflow test with this limitation.
 - 730 nm CLD1010LP: candidate current **21.8 mA**, never automatically increased.
   Historical pickoff power was approximately 0.483 µW at this current. The new
@@ -17,7 +17,7 @@ in a separate deterministic worker with a separate ledger and local profile.
   series resistor. Sample current is uncalibrated. The operator explicitly accepts
   returning to this minimum after every segment; it is not zero or output OFF.
 - Optical baseline, illuminated response, then dark transverse second harmonic.
-  XX remains at 1f, XY changes from 1f to 2f for the dark segment, AUX remains 1f.
+  XX remains at 1f and XY changes from 1f to 2f for the dark segment.
   Reference topology must already match the commissioned local configuration.
 - Three readings per segment, 15 s settling, at most 60 s per segment and 180 s
   acquisition budget overall. Successful slow queries also consume the budget.
@@ -29,6 +29,14 @@ in a separate deterministic worker with a separate ledger and local profile.
   Failed protection or an interrupted execution latches UNKNOWN and blocks replay.
 - No gate sweep, temperature/magnetic-field change, motion, TEC setting change,
   fault reset, automatic source search or source-amplitude escalation.
+
+The current two-channel profile explicitly excludes the unavailable SR865A AUX,
+following the operator's instruction recorded in the PC commissioning report.
+Both SR830 channels record the optical dark/light response at 1f. There is no
+independent AUX measurement in this profile; each preflight/sample records AUX
+as excluded. The fixed 4 mV RMS electrical drive remains present during the optical
+segments, so these are raw dark/light responses rather than an isolated zero-bias
+BVPE measurement. Do not invent a third channel or treat omitted data as zero.
 
 The operator has authorized this finite test. Missing resource bindings or failed
 device checks require factual local reconciliation, not a new general permission
@@ -73,6 +81,15 @@ Copy pilot-worker.example.yaml to **pilot-worker.yaml**. Keep approval.enabled
 false while preparing and preflighting it. A supplied template is not a hardware
 observation or proof of safe beam delivery.
 
+For an existing 0.2.5 profile, back up the attempted profile and failed preflight.
+Keep its actual CLD/PM/XX/XY/gate resource strings, station path, limits, diagnostic
+acknowledgment and chopper codes. Set **adapter_config.aux_enabled: false** and
+remove only **adapter_config.resources.aux**. Do not copy blank example bindings
+over the working local values. Keep approval.enabled false until a fresh PASSED
+preflight. A two-channel profile has exactly five explicit VISA bindings. An old
+profile without aux_enabled still requires AUX; no timeout triggers automatic
+channel exclusion. CLD/PM/gate/chopper and both SR830 checks remain mandatory.
+
 Copy the actual full CLD and PM VISA strings, station configuration path and
 chopper blade/reference/harmonic/output codes from the most recent local station
 configuration. Do not invent USB vendor/product IDs, create another station lease,
@@ -86,6 +103,12 @@ is running and displays Locked; retain its confirmation note. This is manual PLL
 evidence, not a query-verified lock. A later changed/stopped setup needs a fresh
 state check. The executor checks its running state, configuration and reference
 frequencies; it never starts or configures the chopper.
+
+The received local configuration uses blade=11, ref=1, nharmonic=7, dharmonic=1,
+output=1 and native input/refout readbacks of 56 Hz for an 8 Hz masked-beam
+modulation. Preserve these actual locally reviewed codes and verify them; do not
+replace native chopper readback frequencies with the 8 Hz lock-in reference or
+claim that they alone establish the optical waveform.
 
 Set adapter_config.commissioned and manual_route_confirmed true only after these
 bindings and the existing optical route are established locally. These flags do

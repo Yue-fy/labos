@@ -45,18 +45,19 @@ separate portable runtime, install dependencies or restart a worker.
 
 ## Download the cryostat physical update
 
-The first physical overlay is version **0.2.5**. It includes the LabOS-owned
+The current physical overlay is version **0.2.6**, supporting explicit AUX
+exclusion after the failed 0.2.5 preflight. It includes the LabOS-owned
 executor, pure Python VISA/serial dependencies, a disabled commissioning template,
 the verified overlay updater and START_HERE_PHYSICAL_PILOT_EN.md.
 
 ```powershell
-$ReleaseDir = 'C:\LabOS\updates\v0.2.5'
+$ReleaseDir = 'C:\LabOS\updates\v0.2.6'
 New-Item -ItemType Directory -Force -Path $ReleaseDir | Out-Null
-gh release download v0.2.5 --repo Yue-fy/labos `
-  --pattern LabOS-Cryostat-Physical-Update-0.2.5.zip `
+gh release download v0.2.6 --repo Yue-fy/labos `
+  --pattern LabOS-Cryostat-Physical-Update-0.2.6.zip `
   --pattern SHA256SUMS --dir $ReleaseDir
 if ($LASTEXITCODE -ne 0) { throw 'Release download failed; check GitHub access.' }
-$Archive = Join-Path $ReleaseDir 'LabOS-Cryostat-Physical-Update-0.2.5.zip'
+$Archive = Join-Path $ReleaseDir 'LabOS-Cryostat-Physical-Update-0.2.6.zip'
 $ChecksumLines = @(Get-Content -LiteralPath (Join-Path $ReleaseDir 'SHA256SUMS') | Where-Object {
   $_ -match '^[a-fA-F0-9]{64}  LabOS-Cryostat-Physical-Update-0\.2\.5\.zip$'
 })

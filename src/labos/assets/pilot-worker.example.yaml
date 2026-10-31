@@ -3,7 +3,7 @@ agent_id: cryostat-pc
 connection_config: config.yaml
 state_dir: data/physical-pilot
 poll_s: 10
-start_after: 54
+start_after: 57
 adapter_id: cryostat_v1
 approval:
   enabled: false
@@ -17,13 +17,13 @@ approval:
 adapter_config:
   commissioned: false
   manual_route_confirmed: false
+  aux_enabled: false
   station_config: ''
   resources:
     cld: ''
     pm: ''
     xx: GPIB1::8::INSTR
     xy: GPIB1::9::INSTR
-    aux: GPIB1::10::INSTR
     gate: GPIB1::22::INSTR
   temperature_c: 26.0
   temperature_tolerance_c: 0.05

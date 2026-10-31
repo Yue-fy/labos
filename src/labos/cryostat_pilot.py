@@ -49,6 +49,7 @@ class ReadingFault(ValueError):
 class CryostatConfig(Model):
     commissioned: StrictBool = False
     manual_route_confirmed: StrictBool = False
+    aux_enabled: StrictBool = True
     station_config: Path
     resources: dict[str, str]
     temperature_c: float
@@ -74,8 +75,15 @@ class CryostatConfig(Model):
 
     @model_validator(mode="after")
     def explicit_bindings(self):
-        if set(self.resources) != set(SERIALS) or len(set(self.resources.values())) != 6:
-            raise ValueError("Supply six distinct explicit cryostat VISA resource bindings")
+        required_roles = set(SERIALS)
+        if not self.aux_enabled:
+            required_roles.remove("aux")
+        if set(self.resources) != required_roles or len(set(self.resources.values())) != len(
+            required_roles
+        ):
+            raise ValueError(
+                "Supply distinct explicit VISA bindings matching the locally enabled instrument set"
+            )
         for role, address in self.resources.items():
             if "\n" in address or "\r" in address or not address.upper().endswith("::INSTR"):
                 raise ValueError("Only explicit VISA INSTR resource addresses are supported")
@@ -98,6 +106,10 @@ class CryostatConfig(Model):
                 "A copied CLD diagnostic acknowledgment requires its original explanation"
             )
         return self
+
+    @property
+    def readout_roles(self):
+        return ("xx", "xy", "aux") if self.aux_enabled else ("xx", "xy")
 
 
 def validate_adapter_config(settings):
@@ -541,11 +553,13 @@ class CryostatAdapter:
             raise ValueError("Gate output is active; pilot must not alter it")
         pm = self.pm_state()
         chopper = self.chopper_state()
-        for role in ("xx", "xy", "aux"):
+        for role in self.config.readout_roles:
             self.time_constants[role] = self.lockin_settings(role)
         self.owned = True
         return {
             "ready": True,
+            "readout_roles": list(self.config.readout_roles),
+            "excluded_readout_roles": [] if self.config.aux_enabled else ["aux"],
             "laser_enabled": False,
             "identities": self.identities,
             "cld": cld,
@@ -554,7 +568,8 @@ class CryostatAdapter:
             "gate_output_enabled": False,
             "gate_voltage_zero_verified": False,
             "lockin_settings": self.time_constants,
-            "contact_mapping": "unverified raw XX/XY/AUX",
+            "contact_mapping": "unverified raw "
+            + "/".join(role.upper() for role in self.config.readout_roles),
             "measurement_plane": "PM pickoff before sample",
             "sample_current_calibrated": False,
             "simulated": False,
@@ -623,7 +638,8 @@ class CryostatAdapter:
             or not self.protect_excitation()["minimum_excitation_verified"]
         ):
             raise ValueError("Cannot configure an unprotected phase")
-        for role, harmonic in [("xx", 1), ("xy", 2 if phase == "dark_hall_2f" else 1), ("aux", 1)]:
+        for role in self.config.readout_roles:
+            harmonic = 2 if role == "xy" and phase == "dark_hall_2f" else 1
             self.w(role, "HARM " + str(harmonic))
             if self.integer(role, "HARM?") != harmonic:
                 raise ValueError("Harmonic readback mismatch")
@@ -702,7 +718,7 @@ class CryostatAdapter:
         if power < 0 or power >= min(pm_before["range_w"], pm_after["range_w"]):
             raise ReadingFault("Power acquisition is invalid/saturated", power_evidence)
         channels = self.active_sample["channels"]
-        for role in ("xx", "xy", "aux"):
+        for role in self.config.readout_roles:
             settings = self.lockin_settings(role)
             harmonic = self.integer(role, "HARM?")
             if harmonic != self.configured_harmonics[role]:
@@ -746,6 +762,7 @@ class CryostatAdapter:
             raise ValueError("Laser changed while acquiring")
         return {
             "channels": channels,
+            "excluded_readout_roles": [] if self.config.aux_enabled else ["aux"],
             "power_w": power,
             "measurement_plane": "PM pickoff before sample",
             "captured_at_utc": datetime.now(timezone.utc).isoformat(),
