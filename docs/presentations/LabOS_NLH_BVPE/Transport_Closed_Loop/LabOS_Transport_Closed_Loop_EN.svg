@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3000 2000" width="3000" height="2000">
+<title>LabOS Transport: Calibration, Feedback and Physics-Guided Planning</title>
+<rect x="0" y="0" width="3000" height="2000" rx="0" fill="#FFFFFF" stroke="none" stroke-width="1"/>
+<text x="60" y="78.71000000000001" font-family="DejaVu Sans,Arial,sans-serif" font-size="47" font-weight="700" fill="#11233E">LabOS | A Transport Experiment That Calibrates and Learns</text>
+<text x="63" y="147.11" font-family="DejaVu Sans,Arial,sans-serif" font-size="27" font-weight="400" fill="#62758C">Device communication → autonomous calibration → live feedback → physics-guided next experiment</text>
+<text x="60" y="249.11" font-family="DejaVu Sans,Arial,sans-serif" font-size="27" font-weight="700" fill="#11233E">A / DEVICE COMMUNICATION</text>
+<text x="1010" y="249.11" font-family="DejaVu Sans,Arial,sans-serif" font-size="27" font-weight="700" fill="#11233E">B / MEASUREMENT AND FEEDBACK</text>
+<text x="2120" y="249.11" font-family="DejaVu Sans,Arial,sans-serif" font-size="27" font-weight="700" fill="#11233E">C / SCIENTIFIC NEXT-STEP DESIGN</text>
+<rect x="60" y="300" width="820" height="1360" rx="15" fill="#F5F8FC" stroke="#3B6CB0" stroke-width="1.8"/>
+<text x="82" y="344.97" font-family="DejaVu Sans,Arial,sans-serif" font-size="29" font-weight="700" fill="#3B6CB0">Commands down • evidence back</text>
+<rect x="90" y="375" width="750" height="115" rx="12" fill="#F1ECFC" stroke="#7653CF" stroke-width="1.7"/>
+<text x="112" y="415.18" font-family="DejaVu Sans,Arial,sans-serif" font-size="26" font-weight="700" fill="#7653CF">Central tools → bounded command</text>
+<text x="112" y="460.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="400" fill="#23364D">command_id / stage_id / device_id / deadline</text>
+<rect x="90" y="550" width="750" height="82" rx="12" fill="#FFFFFF" stroke="#7653CF" stroke-width="1.7"/>
+<text x="112" y="591.11" font-family="DejaVu Sans,Arial,sans-serif" font-size="27" font-weight="700" fill="#7653CF">PC-initiated HTTP(S)</text>
+<line x1="440" y1="490" x2="440" y2="550" stroke="#7653CF" stroke-width="2.4"/>
+<polygon points="440,550 444.05,541.0 435.95,541.0" fill="#7653CF" stroke="none" stroke-width="1"/>
+<line x1="440" y1="632" x2="440" y2="725" stroke="#7653CF" stroke-width="2.4"/>
+<polygon points="440,725 444.05,716.0 435.95,716.0" fill="#7653CF" stroke="none" stroke-width="1"/>
+<text x="112" y="669.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="400" fill="#7653CF">Poll + heartbeat</text>
+<text x="112" y="695.78" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="400" fill="#7653CF">Results + raw artifacts</text>
+<rect x="90" y="725" width="750" height="160" rx="11" fill="#E9F6F7" stroke="#168D9D" stroke-width="1.7"/>
+<rect x="112" y="745" width="65" height="45" rx="4" fill="#EDF3FC" stroke="#168D9D" stroke-width="2"/>
+<rect x="119" y="752" width="51" height="31" rx="0" fill="#FFFFFF" stroke="none" stroke-width="1"/>
+<line x1="144.5" y1="790" x2="144.5" y2="800" stroke="#168D9D" stroke-width="2"/>
+<line x1="125.65" y1="802" x2="163.35" y2="802" stroke="#168D9D" stroke-width="3"/>
+<text x="200" y="770.97" font-family="DejaVu Sans,Arial,sans-serif" font-size="29" font-weight="700" fill="#168D9D">PC i … PC N  /  local PC Agent</text>
+<text x="113" y="823.46" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="400" fill="#23364D">Device sessions + command journal + watchdog</text>
+<text x="113" y="850.96" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="400" fill="#23364D">Readbacks / flags / timestamps / local raw cache</text>
+<line x1="840" y1="816" x2="858" y2="816" stroke="#278565" stroke-width="2.1"/>
+<line x1="858" y1="816" x2="858" y2="433" stroke="#278565" stroke-width="2.1"/>
+<line x1="858" y1="433" x2="840" y2="433" stroke="#278565" stroke-width="2.1"/>
+<polygon points="840,433 848.0,436.6 848.0,429.4" fill="#278565" stroke="none" stroke-width="1"/>
+<line x1="440" y1="885" x2="440" y2="955" stroke="#168D9D" stroke-width="2.2"/>
+<polygon points="440,955 443.6,947.0 436.4,947.0" fill="#168D9D" stroke="none" stroke-width="1"/>
+<rect x="90" y="955" width="750" height="112" rx="12" fill="#FFFFFF" stroke="#168D9D" stroke-width="1.7"/>
+<text x="112" y="996.11" font-family="DejaVu Sans,Arial,sans-serif" font-size="27" font-weight="700" fill="#168D9D">Driver adapters / reviewed local code</text>
+<text x="112" y="1039.6" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="400" fill="#23364D">VISA I/O or vendor SDK; SCPI only where supported</text>
+<line x1="415" y1="1067" x2="415" y2="1150" stroke="#3B6CB0" stroke-width="2.3"/>
+<polygon points="415,1150 419.05,1141.0 410.95,1141.0" fill="#3B6CB0" stroke="none" stroke-width="1"/>
+<line x1="445" y1="1150" x2="445" y2="1067" stroke="#3B6CB0" stroke-width="2.3"/>
+<polygon points="445,1067 440.95,1076.0 449.05,1076.0" fill="#3B6CB0" stroke="none" stroke-width="1"/>
+<text x="470" y="1109.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="400" fill="#3B6CB0">GPIB / USB / serial / TCP-IP</text>
+<rect x="90" y="1150" width="750" height="48" rx="5" fill="#EDF3FC" stroke="#3B6CB0" stroke-width="1.2"/>
+<rect x="100" y="1158" width="673" height="32" rx="3" fill="#11233E" stroke="none" stroke-width="1"/>
+<text x="110" y="1181.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#FFFFFF">Lock-in master: sine OUT + Vxx(1f)</text>
+<circle cx="807" cy="1174" r="10" fill="#FFFFFF" stroke="#3B6CB0" stroke-width="1.2"/>
+<circle cx="827" cy="1186" r="3" fill="#278565" stroke="none" stroke-width="1"/>
+<rect x="90" y="1209" width="750" height="48" rx="5" fill="#EDF3FC" stroke="#3B6CB0" stroke-width="1.2"/>
+<rect x="100" y="1217" width="673" height="32" rx="3" fill="#11233E" stroke="none" stroke-width="1"/>
+<text x="110" y="1240.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#FFFFFF">Lock-in follower: selected Vxy(2f)</text>
+<circle cx="807" cy="1233" r="10" fill="#FFFFFF" stroke="#3B6CB0" stroke-width="1.2"/>
+<circle cx="827" cy="1245" r="3" fill="#278565" stroke="none" stroke-width="1"/>
+<rect x="90" y="1268" width="750" height="48" rx="5" fill="#EDF3FC" stroke="#3B6CB0" stroke-width="1.2"/>
+<rect x="100" y="1276" width="673" height="32" rx="3" fill="#11233E" stroke="none" stroke-width="1"/>
+<text x="110" y="1299.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#FFFFFF">attoDRY: T / B    |    2400: Vg / Ig</text>
+<circle cx="807" cy="1292" r="10" fill="#FFFFFF" stroke="#3B6CB0" stroke-width="1.2"/>
+<circle cx="827" cy="1304" r="3" fill="#278565" stroke="none" stroke-width="1"/>
+<text x="92" y="1389.18" font-family="DejaVu Sans,Arial,sans-serif" font-size="26" font-weight="700" fill="#3B6CB0">Physical signal and reference cables</text>
+<rect x="100" y="1430" width="158" height="60" rx="7" fill="#F1ECFC" stroke="#7653CF" stroke-width="1"/>
+<text x="120.820556640625" y="1468.39" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="700" fill="#7653CF">Sine OUT</text>
+<line x1="258" y1="1460" x2="300" y2="1460" stroke="#7653CF" stroke-width="2"/>
+<line x1="300" y1="1460" x2="311" y2="1460" stroke="#7653CF" stroke-width="2"/>
+<line x1="311" y1="1460" x2="316" y2="1452" stroke="#7653CF" stroke-width="2"/>
+<line x1="316" y1="1452" x2="325" y2="1468" stroke="#7653CF" stroke-width="2"/>
+<line x1="325" y1="1468" x2="334" y2="1452" stroke="#7653CF" stroke-width="2"/>
+<line x1="334" y1="1452" x2="343" y2="1468" stroke="#7653CF" stroke-width="2"/>
+<line x1="343" y1="1468" x2="352" y2="1452" stroke="#7653CF" stroke-width="2"/>
+<line x1="352" y1="1452" x2="361" y2="1468" stroke="#7653CF" stroke-width="2"/>
+<line x1="361" y1="1468" x2="370" y2="1452" stroke="#7653CF" stroke-width="2"/>
+<line x1="370" y1="1452" x2="379" y2="1468" stroke="#7653CF" stroke-width="2"/>
+<line x1="379" y1="1468" x2="391" y2="1460" stroke="#7653CF" stroke-width="2"/>
+<line x1="391" y1="1460" x2="405" y2="1460" stroke="#7653CF" stroke-width="2"/>
+<text x="340.482421875" y="1437.46" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="700" fill="#7653CF">Rs</text>
+<line x1="405" y1="1460" x2="461" y2="1460" stroke="#7653CF" stroke-width="2.1"/>
+<polygon points="461,1460 453.0,1456.4 453.0,1463.6" fill="#7653CF" stroke="none" stroke-width="1"/>
+<rect x="461" y="1430" width="235" height="60" rx="7" fill="#EDF3FC" stroke="#3B6CB0" stroke-width="1"/>
+<text x="473.83203125" y="1467.39" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="700" fill="#3B6CB0">Sample + return</text>
+<line x1="126" y1="1550" x2="789" y2="1550" stroke="#BC7D1D" stroke-width="2.4" stroke-dasharray="5 4"/>
+<polygon points="789,1550 780.0,1545.95 780.0,1554.05" fill="#BC7D1D" stroke="none" stroke-width="1"/>
+<text x="108" y="1527.46" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="700" fill="#BC7D1D">Master f_I → follower REF; select harmonic</text>
+<text x="108" y="1599.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="400" fill="#62758C">Network timing and physical phase reference</text>
+<text x="108" y="1625.78" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="400" fill="#62758C">are separate parts of the experiment.</text>
+<rect x="1010" y="300" width="980" height="130" rx="12" fill="#F1ECFC" stroke="#7653CF" stroke-width="1.7"/>
+<text x="1032" y="342.97" font-family="DejaVu Sans,Arial,sans-serif" font-size="29" font-weight="700" fill="#7653CF">1  Define the transport campaign</text>
+<text x="1032" y="386.46" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="400" fill="#23364D">Sample / wiring / T, B, Vg / current and frequency envelope</text>
+<rect x="1010" y="500" width="980" height="180" rx="12" fill="#FFF4DE" stroke="#BC7D1D" stroke-width="1.7"/>
+<text x="1032" y="543.9" font-family="DejaVu Sans,Arial,sans-serif" font-size="30" font-weight="700" fill="#BC7D1D">2  Autonomous calibration</text>
+<text x="1032" y="587.39" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="400" fill="#23364D">Verify actual current, reference and phase</text>
+<text x="1032" y="616.14" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="400" fill="#23364D">Choose range / filtering; repeat baseline checks</text>
+<text x="1032" y="644.89" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="400" fill="#23364D">Reuse valid calibration or issue a new calibration_id</text>
+<rect x="1010" y="760" width="980" height="170" rx="12" fill="#E9F6F7" stroke="#168D9D" stroke-width="1.7"/>
+<text x="1032" y="802.97" font-family="DejaVu Sans,Arial,sans-serif" font-size="29" font-weight="700" fill="#168D9D">3  Prepare + acquire the next point</text>
+<text x="1032" y="845.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="400" fill="#23364D">Join actual T/B/Vg readiness; settle after setting changes</text>
+<text x="1032" y="871.78" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="400" fill="#23364D">Recheck calibration validity at the observed state</text>
+<text x="1032" y="898.03" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="400" fill="#23364D">Save Vxx(1f), Vxy(2f), X/Y, readbacks and timestamps</text>
+<rect x="1010" y="990" width="980" height="150" rx="12" fill="#E9F6EF" stroke="#278565" stroke-width="1.7"/>
+<text x="1032" y="1032.97" font-family="DejaVu Sans,Arial,sans-serif" font-size="29" font-weight="700" fill="#278565">4  Live qualification</text>
+<text x="1032" y="1077.39" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="400" fill="#23364D">Reference lock / overload / freshness / drift / leakage</text>
+<text x="1032" y="1106.14" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="400" fill="#23364D">Recoverable QC issue → recalibrate; hard fault → pause</text>
+<rect x="1010" y="1230" width="980" height="150" rx="12" fill="#F1ECFC" stroke="#7653CF" stroke-width="1.7"/>
+<text x="1032" y="1272.97" font-family="DejaVu Sans,Arial,sans-serif" font-size="29" font-weight="700" fill="#7653CF">5  Central feedback + scientific analysis</text>
+<text x="1032" y="1317.39" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="400" fill="#23364D">Fit amplitude / phase / drive dependence; compare controls</text>
+<text x="1032" y="1346.14" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="400" fill="#23364D">Propose a repeat, a new setting or a discriminating test</text>
+<rect x="1010" y="1470" width="980" height="130" rx="12" fill="#E9F6F7" stroke="#168D9D" stroke-width="1.7"/>
+<text x="1032" y="1512.97" font-family="DejaVu Sans,Arial,sans-serif" font-size="29" font-weight="700" fill="#168D9D">6  Validate update / close the campaign</text>
+<text x="1032" y="1557.39" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="400" fill="#23364D">Limits + locks + versioned update / recorded closure</text>
+<line x1="1500" y1="430" x2="1500" y2="500" stroke="#7653CF" stroke-width="2.8"/>
+<polygon points="1500,500 1504.5,490.0 1495.5,490.0" fill="#7653CF" stroke="none" stroke-width="1"/>
+<line x1="1500" y1="680" x2="1500" y2="760" stroke="#168D9D" stroke-width="2.8"/>
+<polygon points="1500,760 1504.5,750.0 1495.5,750.0" fill="#168D9D" stroke="none" stroke-width="1"/>
+<line x1="1500" y1="930" x2="1500" y2="990" stroke="#168D9D" stroke-width="2.8"/>
+<polygon points="1500,990 1504.5,980.0 1495.5,980.0" fill="#168D9D" stroke="none" stroke-width="1"/>
+<line x1="1500" y1="1140" x2="1500" y2="1230" stroke="#278565" stroke-width="2.8"/>
+<polygon points="1500,1230 1504.5,1220.0 1495.5,1220.0" fill="#278565" stroke="none" stroke-width="1"/>
+<line x1="1500" y1="1380" x2="1500" y2="1470" stroke="#7653CF" stroke-width="2.8"/>
+<polygon points="1500,1470 1504.5,1460.0 1495.5,1460.0" fill="#7653CF" stroke="none" stroke-width="1"/>
+<text x="1525" y="1189.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#278565">Qualified evidence</text>
+<line x1="1010" y1="1535" x2="940" y2="1535" stroke="#7653CF" stroke-width="2.7"/>
+<line x1="940" y1="1535" x2="940" y2="590" stroke="#7653CF" stroke-width="2.7"/>
+<line x1="940" y1="590" x2="1010" y2="590" stroke="#7653CF" stroke-width="2.7"/>
+<polygon points="1010,590 1000.0,585.5 1000.0,594.5" fill="#7653CF" stroke="none" stroke-width="1"/>
+<line x1="1990" y1="1040" x2="2040" y2="1040" stroke="#BC7D1D" stroke-width="2.5"/>
+<line x1="2040" y1="1040" x2="2040" y2="590" stroke="#BC7D1D" stroke-width="2.5"/>
+<line x1="2040" y1="590" x2="1990" y2="590" stroke="#BC7D1D" stroke-width="2.5"/>
+<polygon points="1990,590 2000.0,594.5 2000.0,585.5" fill="#BC7D1D" stroke="none" stroke-width="1"/>
+<line x1="1500" y1="1600" x2="1500" y2="1640" stroke="#278565" stroke-width="2.4"/>
+<polygon points="1500,1640 1504.05,1631.0 1495.95,1631.0" fill="#278565" stroke="none" stroke-width="1"/>
+<rect x="1010" y="1640" width="980" height="56" rx="8" fill="#E9F6EF" stroke="#278565" stroke-width="1.4"/>
+<text x="1172.8125" y="1676.32" font-family="DejaVu Sans,Arial,sans-serif" font-size="24" font-weight="700" fill="#278565">Objective met / budget reached → archive + close</text>
+<rect x="2120" y="300" width="820" height="660" rx="14" fill="#FFF4DE" stroke="#BC7D1D" stroke-width="1.8" stroke-dasharray="5 4"/>
+<text x="2142" y="347.04" font-family="DejaVu Sans,Arial,sans-serif" font-size="28" font-weight="700" fill="#BC7D1D">PLANNED • SERVER-LOCAL THEORY</text>
+<text x="2142" y="394.46" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="400" fill="#BC7D1D">Theory MCP / numerical jobs / versioned models</text>
+<rect x="2143" y="435" width="774" height="102" rx="12" fill="#FFFFFF" stroke="#BC7D1D" stroke-width="1.7"/>
+<text x="2165" y="474.25" font-family="DejaVu Sans,Arial,sans-serif" font-size="25" font-weight="700" fill="#BC7D1D">Receive a qualified-data snapshot</text>
+<text x="2165" y="519.6" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="400" fill="#23364D">X/Y, I, f, T/B/Vg + calibration + snapshot IDs</text>
+<line x1="2530" y1="537" x2="2530" y2="559" stroke="#BC7D1D" stroke-width="1.7"/>
+<polygon points="2530,559 2533.15,552.0 2526.85,552.0" fill="#BC7D1D" stroke="none" stroke-width="1"/>
+<rect x="2143" y="559" width="774" height="102" rx="12" fill="#FFFFFF" stroke="#BC7D1D" stroke-width="1.7"/>
+<text x="2165" y="598.25" font-family="DejaVu Sans,Arial,sans-serif" font-size="25" font-weight="700" fill="#BC7D1D">Run models + estimate uncertainty</text>
+<text x="2165" y="643.6" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="400" fill="#23364D">Transport / circuit / thermal-response hypotheses</text>
+<line x1="2530" y1="661" x2="2530" y2="683" stroke="#BC7D1D" stroke-width="1.7"/>
+<polygon points="2530,683 2533.15,676.0 2526.85,676.0" fill="#BC7D1D" stroke="none" stroke-width="1"/>
+<rect x="2143" y="683" width="774" height="102" rx="12" fill="#FFFFFF" stroke="#BC7D1D" stroke-width="1.7"/>
+<text x="2165" y="722.25" font-family="DejaVu Sans,Arial,sans-serif" font-size="25" font-weight="700" fill="#BC7D1D">Compare predictions with experiment</text>
+<text x="2165" y="767.6" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="400" fill="#23364D">Residuals, validity range and competing explanations</text>
+<line x1="2530" y1="785" x2="2530" y2="807" stroke="#BC7D1D" stroke-width="1.7"/>
+<polygon points="2530,807 2533.15,800.0 2526.85,800.0" fill="#BC7D1D" stroke="none" stroke-width="1"/>
+<rect x="2143" y="807" width="774" height="102" rx="12" fill="#FFFFFF" stroke="#BC7D1D" stroke-width="1.7"/>
+<text x="2165" y="846.25" font-family="DejaVu Sans,Arial,sans-serif" font-size="25" font-weight="700" fill="#BC7D1D">Rank informative next measurements</text>
+<text x="2165" y="891.6" font-family="DejaVu Sans,Arial,sans-serif" font-size="20" font-weight="400" fill="#23364D">Model discrimination / uncertainty / time / constraints</text>
+<line x1="1990" y1="1278" x2="2090" y2="1278" stroke="#7653CF" stroke-width="2.1" stroke-dasharray="5 4"/>
+<line x1="2090" y1="1278" x2="2090" y2="461" stroke="#7653CF" stroke-width="2.1" stroke-dasharray="5 4"/>
+<line x1="2090" y1="461" x2="2143" y2="461" stroke="#7653CF" stroke-width="2.1" stroke-dasharray="5 4"/>
+<polygon points="2143,461 2134.0,456.95 2134.0,465.05" fill="#7653CF" stroke="none" stroke-width="1"/>
+<line x1="2143" y1="866" x2="2065" y2="866" stroke="#278565" stroke-width="2.1" stroke-dasharray="5 4"/>
+<line x1="2065" y1="866" x2="2065" y2="1335" stroke="#278565" stroke-width="2.1" stroke-dasharray="5 4"/>
+<line x1="2065" y1="1335" x2="1990" y2="1335" stroke="#278565" stroke-width="2.1" stroke-dasharray="5 4"/>
+<polygon points="1990,1335 1999.0,1339.05 1999.0,1330.95" fill="#278565" stroke="none" stroke-width="1"/>
+<rect x="2120" y="1040" width="820" height="560" rx="15" fill="#EDF3FC" stroke="#3B6CB0" stroke-width="1.8"/>
+<text x="2142" y="1084.97" font-family="DejaVu Sans,Arial,sans-serif" font-size="29" font-weight="700" fill="#3B6CB0">What changes after feedback?</text>
+<rect x="2143" y="1113" width="774" height="87" rx="7" fill="#FFFFFF" stroke="#D9E3EE" stroke-width="1"/>
+<text x="2159" y="1144.32" font-family="DejaVu Sans,Arial,sans-serif" font-size="24" font-weight="700" fill="#278565">Noisy but stable</text>
+<text x="2159" y="1181.46" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="400" fill="#23364D">Longer averaging / suitable filtering</text>
+<rect x="2143" y="1214" width="774" height="87" rx="7" fill="#FFFFFF" stroke="#D9E3EE" stroke-width="1"/>
+<text x="2159" y="1245.32" font-family="DejaVu Sans,Arial,sans-serif" font-size="24" font-weight="700" fill="#BC7D1D">Overload / reference drift</text>
+<text x="2159" y="1282.46" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="400" fill="#23364D">Correct range / reference; reacquire</text>
+<rect x="2143" y="1315" width="774" height="87" rx="7" fill="#FFFFFF" stroke="#D9E3EE" stroke-width="1"/>
+<text x="2159" y="1346.32" font-family="DejaVu Sans,Arial,sans-serif" font-size="24" font-weight="700" fill="#7653CF">Nonlinearity / possible heating</text>
+<text x="2159" y="1383.46" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="400" fill="#23364D">Lower drive; add frequency / return controls</text>
+<rect x="2143" y="1416" width="774" height="87" rx="7" fill="#FFFFFF" stroke="#D9E3EE" stroke-width="1"/>
+<text x="2159" y="1447.32" font-family="DejaVu Sans,Arial,sans-serif" font-size="24" font-weight="700" fill="#B94C61">Fault / uncertain command</text>
+<text x="2159" y="1484.46" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="400" fill="#23364D">Pause, local closure and state reconciliation</text>
+<text x="2143" y="1549.53" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#3B6CB0">Every revision preserves raw evidence and passes</text>
+<text x="2143" y="1575.78" font-family="DejaVu Sans,Arial,sans-serif" font-size="21" font-weight="700" fill="#3B6CB0">through the same execution authority.</text>
+<rect x="60" y="1740" width="920" height="143" rx="12" fill="#E9F6F7" stroke="#168D9D" stroke-width="1.7"/>
+<text x="82" y="1779.25" font-family="DejaVu Sans,Arial,sans-serif" font-size="25" font-weight="700" fill="#168D9D">LOCAL DEVICE LOOPS</text>
+<text x="82" y="1826.46" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="400" fill="#23364D">Reference / readout / local fault response</text>
+<text x="82" y="1853.96" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="400" fill="#23364D">No LLM in the timing-critical path</text>
+<rect x="1040" y="1740" width="920" height="143" rx="12" fill="#F1ECFC" stroke="#7653CF" stroke-width="1.7"/>
+<text x="1062" y="1779.25" font-family="DejaVu Sans,Arial,sans-serif" font-size="25" font-weight="700" fill="#7653CF">CENTRAL POINT / CHUNK FEEDBACK</text>
+<text x="1062" y="1826.46" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="400" fill="#23364D">Event-driven QC and bounded stage revisions</text>
+<text x="1062" y="1853.96" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="400" fill="#23364D">Dashboard follows state and qualified data</text>
+<rect x="2020" y="1740" width="920" height="143" rx="12" fill="#FFF4DE" stroke="#BC7D1D" stroke-width="1.7"/>
+<text x="2042" y="1779.25" font-family="DejaVu Sans,Arial,sans-serif" font-size="25" font-weight="700" fill="#BC7D1D">PLANNED ASYNCHRONOUS THEORY</text>
+<text x="2042" y="1826.46" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="400" fill="#23364D">Compute budget + uncertainty + snapshot checks</text>
+<text x="2042" y="1853.96" font-family="DejaVu Sans,Arial,sans-serif" font-size="22" font-weight="400" fill="#23364D">A local LLM is not a numerical physics solver</text>
+<text x="60" y="1941.39" font-family="DejaVu Sans,Arial,sans-serif" font-size="23" font-weight="400" fill="#62758C">Transport workflow design; the theory/compute coupling is planned. No measured curves or material mechanism claims are implied.</text>
+</svg>

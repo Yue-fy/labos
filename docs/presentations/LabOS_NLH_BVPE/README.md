@@ -4,6 +4,8 @@
 
 汇报可直接使用 [中英双语架构讲稿](System_Architecture/LabOS_Architecture_Presentation_ZH_EN.md)：包含一分钟介绍、完整讲述顺序、Hall/BVPE 示例、常见问答和术语表。
 
+进一步展开实际运行过程的 [输运闭环流程图与中英讲稿](Transport_Closed_Loop/README.md)：设备通信、自主校准、采集中的质量反馈、实验阶段调整，以及明确列为计划模块的服务器本地理论计算。
+
 当前交付为重新绘制的 **22 页全英文技术版**，详细展开中央与 PC Agent、完整光电拓扑、Hall 电路、BVPE 光路、跨 PC 时序及数据质量流程。下载 [英文 PowerPoint](English/LabOS_Technical_Overview_EN.pptx)、[英文 PDF](English/LabOS_Technical_Overview_EN.pdf)，或查看 [英文交付说明与六张独立矢量图](English/README.md)。下方说明对应保留的首版中文材料。
 
 这是一套 **19 页、16:9、中文系统能力展示**，适合约 15–20 分钟组会或方案交流。基于用户提供并确认的 PC A / PC B 装置清单，讲解中央 Agent、多 PC 协同、物理信号链与联合测量流程。所有示意图均为本系统重新绘制。

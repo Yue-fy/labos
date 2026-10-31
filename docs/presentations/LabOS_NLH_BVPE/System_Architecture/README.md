@@ -10,6 +10,7 @@ A redesigned English system-architecture figure showing **one central server and
 - [High-resolution PNG](LabOS_System_Architecture_EN.png): 5120 × 3840 pixels.
 - [Preview](Architecture_Preview.png): a smaller raster for quick review.
 - [Chinese/English presentation script](LabOS_Architecture_Presentation_ZH_EN.md): one-minute introductions, full narration in each language, a Hall/BVPE walkthrough, Q&A and a bilingual glossary.
+- [Transport workflow companion](../Transport_Closed_Loop/README.md): communication, autonomous calibration, point/chunk feedback and planned numerical-physics guidance, with an additional figure and bilingual guide.
 - [Complete ZIP](LabOS_System_Architecture_EN_Bundle.zip): all formats, scene source, documentation and integrity files.
 - [QA report](QA_Report.json) and [checksums](SHA256SUMS).
 

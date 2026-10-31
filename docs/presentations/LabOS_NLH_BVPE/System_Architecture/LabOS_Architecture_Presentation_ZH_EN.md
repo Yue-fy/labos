@@ -329,3 +329,9 @@ The repository's optional AI entry point produces a plan draft, followed by pref
 - [Sodemann & Fu, PRL 115, 216806](https://doi.org/10.1103/PhysRevLett.115.216806)：非线性 Hall 理论背景 / Nonlinear Hall theoretical context.
 - [Ma et al., Nature 565, 337–342](https://doi.org/10.1038/s41586-018-0807-6)：非线性 Hall 实验背景 / Nonlinear Hall experimental context.
 - [Osterhoudt et al., Nature Materials 18, 471–475](https://doi.org/10.1038/s41563-019-0297-4)：体光伏响应背景 / Bulk photovoltaic-response context.
+
+## 9. 进一步讲解运行闭环 / Explaining the execution loop in more depth
+
+关于设备怎样通信、自主校准怎样完成、中央如何根据实时数据调整实验，以及计划中的服务器本地理论计算，请继续使用 [输运闭环流程图与中英文讲稿](../Transport_Closed_Loop/LabOS_Transport_Workflow_ZH_EN.md)。该材料用非线性 Hall 的电流、频率、幅相与环境对照，把总体架构展开为具体运行步骤。
+
+For instrument communication, autonomous calibration, live experimental revisions and planned server-local physics calculations, continue with the [transport workflow and bilingual guide](../Transport_Closed_Loop/LabOS_Transport_Workflow_ZH_EN.md). It turns this architecture into operational steps using nonlinear Hall current, frequency, amplitude/phase and environmental controls.

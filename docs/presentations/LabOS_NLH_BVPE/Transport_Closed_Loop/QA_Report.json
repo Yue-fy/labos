@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "pages": 1,
+  "language": "English",
+  "native_objects": 186,
+  "raster_images_in_pptx": 0,
+  "missing_text": 0,
+  "text_overlaps": 0,
+  "out_of_page_text": 0,
+  "layout_bounds": "PASS",
+  "theory_coupling": "explicitly planned",
+  "device_control_code_changes": false
+}
