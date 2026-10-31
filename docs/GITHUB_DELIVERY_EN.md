@@ -43,18 +43,18 @@ separate portable runtime, install dependencies or restart a worker.
 
 ## Download the cryostat physical update
 
-The current physical overlay is version **0.2.7**, adding a dedicated dark a-axis voltage profile with no chopper/PM/XY/AUX
-access. The earlier two-SR830 optical profile remains available for separately
-commissioned use. It includes the LabOS-owned
-executor, pure Python VISA/serial dependencies, a disabled commissioning template,
-the verified overlay updater and START_HERE_PHYSICAL_PILOT_EN.md.
+The current physical overlay is **0.2.8**, adding an explicit optical_readback
+scope for laser OFF/ON PM and XX/XY data with no chopper serial session. It retains
+laser/power/electrical safeguards and does not establish BVPE or repair COM10.
+Read START_HERE_OPTICAL_READBACK_EN.md. Original optical and dark scopes remain
+available for their own separately commissioned tasks; no automatic fallback.
 
 ```powershell
-$ReleaseDir = 'C:\LabOS\updates\v0.2.7'
+$ReleaseDir = 'C:\LabOS\updates\v0.2.8'
 New-Item -ItemType Directory -Force -Path $ReleaseDir | Out-Null
-$Archive = Join-Path $ReleaseDir 'LabOS-Cryostat-Physical-Update-0.2.7.zip'
-$ReleaseURL = 'https://github.com/Yue-fy/labos/releases/download/v0.2.7'
-Invoke-WebRequest -UseBasicParsing -Uri ($ReleaseURL + '/LabOS-Cryostat-Physical-Update-0.2.7.zip') -OutFile $Archive
+$Archive = Join-Path $ReleaseDir 'LabOS-Cryostat-Physical-Update-0.2.8.zip'
+$ReleaseURL = 'https://github.com/Yue-fy/labos/releases/download/v0.2.8'
+Invoke-WebRequest -UseBasicParsing -Uri ($ReleaseURL + '/LabOS-Cryostat-Physical-Update-0.2.8.zip') -OutFile $Archive
 Invoke-WebRequest -UseBasicParsing -Uri ($ReleaseURL + '/SHA256SUMS') -OutFile (Join-Path $ReleaseDir 'SHA256SUMS')
 $ChecksumLines = @(Get-Content -LiteralPath (Join-Path $ReleaseDir 'SHA256SUMS') | Where-Object {
   $_ -match ('^[a-fA-F0-9]{64}  ' + [regex]::Escape([IO.Path]::GetFileName($Archive)) + '$')
@@ -71,7 +71,7 @@ directory; do not use overwrite/force switches on an installation or old evidenc
 A browser can download the same assets without signing in. GitHub CLI remains an
 optional alternative for users who already have it configured.
 
-For the current short test, follow **DARK_A_SHORT_TEST_EN.md** in the extracted
+For the current readback test, follow **OPTICAL_READBACK_EN.md** in the extracted
 overlay or repository. **START_HERE_PHYSICAL_PILOT_EN.md** also links to it. Cooperatively stop the
 old worker, apply the verified overlay to the actual existing LabOS installation,
 preserve all local configuration/state, and restart report cooperation. The

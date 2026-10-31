@@ -47,7 +47,7 @@ class ReadingFault(ValueError):
 
 
 class CryostatConfig(Model):
-    experiment_scope: Literal["optical_transport", "dark_a"] = "optical_transport"
+    experiment_scope: Literal["optical_transport", "dark_a", "optical_readback"] = "optical_transport"
     commissioned: StrictBool = False
     manual_route_confirmed: StrictBool = False
     aux_enabled: StrictBool = True
@@ -76,6 +76,11 @@ class CryostatConfig(Model):
 
     @model_validator(mode="after")
     def explicit_bindings(self):
+        if self.experiment_scope == "optical_readback" and (
+            self.aux_enabled or self.reference_hz != 8
+            or self.max_laser_current_a > 0.0218 or self.power_limit_w > 1e-6
+        ):
+            raise ValueError("Optical readback requires AUX excluded,8Hz, at most21.8mA and1uW")
         required_roles = set(SERIALS)
         if self.experiment_scope == "dark_a":
             required_roles = {"cld", "xx", "gate"}
@@ -571,12 +576,15 @@ class CryostatAdapter:
             raise ValueError("Gate output is active; pilot must not alter it")
         dark = self.config.experiment_scope == "dark_a"
         pm = {"out_of_scope": True} if dark else self.pm_state()
-        chopper = {"out_of_scope": True} if dark else self.chopper_state()
+        chopper = (
+            self.chopper_state() if self.config.experiment_scope == "optical_transport"
+            else {"out_of_scope": True}
+        )
         for role in self.config.readout_roles:
             self.time_constants[role] = self.lockin_settings(role)
         sine = self.number("xx", "SLVL?")
-        if dark and sine != 0.004:
-            raise ValueError("Dark a-axis preflight requires existing4mV RMS excitation")
+        if self.config.experiment_scope != "optical_transport" and sine != 0.004:
+            raise ValueError("Readback preflight requires existing4mV RMS excitation")
         self.owned = True
         return {
             "ready": True,
@@ -670,6 +678,10 @@ class CryostatAdapter:
         dark = self.config.experiment_scope == "dark_a"
         if dark != (plan.mode == "dark_a") or (dark and phase not in {"dark_a_1f", "dark_a_2f"}):
             raise ValueError("Plan/phase differs from the locally commissioned experiment scope")
+        if self.config.experiment_scope == "optical_readback" and (
+            plan.mode != "photoresponse" or phase not in {"dark_baseline", "illuminated"}
+        ):
+            raise ValueError("Optical readback supports only the finite OFF/ON photoresponse plan")
         if (
             plan.reference_hz != self.config.reference_hz
             or plan.settle_s
@@ -773,7 +785,9 @@ class CryostatAdapter:
             "simulated": False,
         }
         self.active_sample.update(power_w=power, measurement_plane="PM pickoff before sample")
-        if phase == "illuminated" and power > self.effective_power_limit_w:
+        if (phase == "illuminated" or self.config.experiment_scope == "optical_readback") and (
+            power > self.effective_power_limit_w
+        ):
             raise ReadingFault(
                 "Optical power guard exceeded; stop before further acquisition", power_evidence
             )
@@ -781,11 +795,13 @@ class CryostatAdapter:
         if power < 0 or power >= min(pm_before["range_w"], pm_after["range_w"]):
             raise ReadingFault("Power acquisition is invalid/saturated", power_evidence)
         channels = self._read_lockin_channels(power_evidence)
-        chopper = self.chopper_state()
+        chopper = (
+            self.chopper_state() if self.config.experiment_scope == "optical_transport" else None
+        )
         after = self.cld_state()
         if after["laser_enabled"] != (phase == "illuminated"):
             raise ValueError("Laser changed while acquiring")
-        return {
+        sample = {
             "channels": channels,
             "excluded_readout_roles": self.config.excluded_readout_roles,
             "power_w": power,
@@ -795,12 +811,19 @@ class CryostatAdapter:
             "laser_current_a": after["laser_current_a"],
             "excitation_v_rms": 0.004,
             "excitation_definition": "voltage drive; no external series resistor; sample current uncalibrated",
-            "chopper_phase_lock_verified_by_query": False,
-            "chopper_refout_hz": chopper["refout_frequency_hz"],
             "nominal_wavelength_nm": 730,
             "wavelength_basis": "operator-declared diode wavelength",
             "simulated": False,
         }
+        if chopper is not None:
+            sample.update(chopper_phase_lock_verified_by_query=False,
+                          chopper_refout_hz=chopper["refout_frequency_hz"])
+        else:
+            sample.update(experiment_scope="optical_readback", chopper={"out_of_scope": True},
+                          optical_modulation_verified=False,
+                          sample_current_calibrated=False,
+                          excluded_device_sessions=["chopper", "aux"])
+        return sample
 
     def _read_dark_a_sample(self, phase):
         if phase != self.phase or phase not in {"dark_a_1f", "dark_a_2f"}:

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "labos-mvp"
-version = "0.2.7"
+version = "0.2.8"
 description = "Central planning and outbound lab agents for traceable experiments"
 requires-python = ">=3.11"
 dependencies = ["pydantic>=2.10,<3", "httpx>=0.28,<1", "PyYAML>=6,<7"]

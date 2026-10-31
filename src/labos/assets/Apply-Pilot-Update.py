@@ -50,7 +50,7 @@ def apply_update(update, target):
     config = load_worker_config(target / "cooperation.yaml")
     states = [config.state_dir]
     from labos.pilot_worker import load_pilot_worker_config
-    for name in ("pilot-worker.yaml", "dark-a-worker.yaml"):
+    for name in ("pilot-worker.yaml", "dark-a-worker.yaml", "optical-readback-worker.yaml"):
         if (target / name).is_file():
             state = load_pilot_worker_config(target / name).state_dir
             if state not in states:

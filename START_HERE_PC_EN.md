@@ -3,9 +3,9 @@
 Read [GitHub delivery and PC updates](docs/GITHUB_DELIVERY_EN.md) to clone/pull
 this public repository and download verified packages without GitHub sign-in.
 
-For the existing cryostat PC, download the **v0.2.7 physical-update overlay** from
-the release and follow **START_HERE_DARK_A_EN.md** for the currently approved
-dark a-axis voltage short test. See the [dedicated guide](docs/DARK_A_SHORT_TEST_EN.md). Preserve
+For the existing cryostat PC, download the **v0.2.8 physical-update overlay** from
+the release and follow **START_HERE_OPTICAL_READBACK_EN.md** for the currently approved
+laser OFF/ON readbacks. See the [dedicated guide](docs/OPTICAL_READBACK_EN.md). Preserve
 the current working configuration, journals, production code and lyr environment.
 Run output-preserving preflight and report through existing HTTPS before any pilot.
 

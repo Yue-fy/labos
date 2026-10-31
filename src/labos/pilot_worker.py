@@ -136,6 +136,8 @@ class PilotWorker(Worker):
             scope = self.config.adapter_config.get("experiment_scope", "optical_transport")
             if (scope == "dark_a") != (task.pilot_plan.mode == "dark_a"):
                 raise ValueError("Task mode differs from the locally commissioned experiment scope.")
+            if scope == "optical_readback" and task.pilot_plan.mode != "photoresponse":
+                raise ValueError("Optical readback supports only the finite OFF/ON photoresponse plan.")
         except ValueError as exc:
             return {"backend": "pilot", "answer": {
                 "status": "needs_input", "summary": str(exc), "findings": [],

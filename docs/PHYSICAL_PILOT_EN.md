@@ -1,6 +1,10 @@
-# LabOS cryostat physical pilot, version 0.2.7
+# LabOS cryostat physical pilot, version 0.2.8
 
-For the latest operator-approved **dark a-axis voltage short test**, follow
+For the currently authorized **laser OFF/ON readback** without chopper serial
+communication, follow **OPTICAL_READBACK_EN.md**. Its explicit scope preserves
+laser/power/electrical protections and does not establish BVPE or repair COM10.
+
+For the earlier operator-approved **dark a-axis voltage short test**, follow
 **DARK_A_SHORT_TEST_EN.md** and derive a separate disabled dark-a-worker.yaml.
 The optical procedure below describes the older available capability and must
 not be used as authorization to repeat the failed optical task.

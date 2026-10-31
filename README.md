@@ -20,6 +20,8 @@ Version **0.2.5** adds a separate, locally commissioned cryostat physical pilot:
 
 Version **0.2.7** adds an isolated dark a-axis voltage short test: XX1f/2f at4mV RMS and8Hz, with no PM/chopper/XY/AUX sessions, no laser enable, and independently verified cleanup. See the [dark a-axis guide](docs/DARK_A_SHORT_TEST_EN.md). This voltage workflow does not establish calibrated current, an IV curve or nonlinear Hall attribution.
 
+Version **0.2.8** adds an explicitly commissioned laser OFF/ON readback scope using CLD/PM/XX/XY/gate without opening chopper serial. All laser/power/electrical guards remain, with a power ceiling in the dark baseline too. Modulation/BVPE is unverified; the old optical scope retains mandatory chopper checks. Failed-run summaries now follow actual protection status. See the [readback guide](docs/OPTICAL_READBACK_EN.md).
+
 The original execution Agent still supports simulated devices only. The optional physical pilot requires exact local bindings, current output-preserving preflight and a locally enabled profile. It is not evidence of completed hardware acceptance or BVPE/nonlinear Hall attribution.
 
 Version **0.2.6** adds an explicit two-SR830 cryostat profile for a locally excluded
@@ -38,7 +40,7 @@ or modify a running installation.
 
 ## Install and connect a Windows PC
 
-Download `LabOS-Agent-Windows-x64-0.2.7.zip` from the public release, extract the entire archive, and double-click **Install.cmd**. The portable package includes Python. See [QUICKSTART_EN.md](src/labos/assets/QUICKSTART_EN.md). Existing cryostat installations should use the smaller physical-update overlay and its dedicated guide.
+Download `LabOS-Agent-Windows-x64-0.2.8.zip` from the public release, extract the entire archive, and double-click **Install.cmd**. The portable package includes Python. See [QUICKSTART_EN.md](src/labos/assets/QUICKSTART_EN.md). Existing cryostat installations should use the smaller physical-update overlay and its dedicated guide.
 
 The generic package has no `config.yaml` or live credentials. First obtain the PC-specific configuration from the central server, run **Doctor.ps1**, and then double-click **Start-Agent.cmd**. Doctor checks connectivity and authentication; it does not access instruments. SSH is not a runtime dependency.
 
@@ -87,14 +89,14 @@ PCs initiate HTTP(S) requests to the central server. Across VLANs or NAT, use an
 
 ```bash
 .venv/bin/python scripts/build_windows_runtime.py
-.venv/bin/python scripts/build_delivery.py --output dist/v0.2.7 \
+.venv/bin/python scripts/build_delivery.py --output dist/v0.2.8 \
   --windows-runtime dist/delivery/windows-x64-runtime.zip
 ```
 
 To validate a complete portable ZIP on Windows without starting an Agent or accessing instruments:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_windows_delivery.ps1 -Archive C:\LabOS\LabOS-Agent-Windows-x64-0.2.7.zip
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_windows_delivery.ps1 -Archive C:\LabOS\LabOS-Agent-Windows-x64-0.2.8.zip
 ```
 
 ## System presentations

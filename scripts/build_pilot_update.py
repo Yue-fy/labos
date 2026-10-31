@@ -61,6 +61,9 @@ def build(output, wheels_dir):
         archive.write(
             ROOT / "src/labos/assets/DARK_A_SHORT_TEST_EN.md", "START_HERE_DARK_A_EN.md"
         )
+        archive.write(
+            ROOT / "src/labos/assets/OPTICAL_READBACK_EN.md", "START_HERE_OPTICAL_READBACK_EN.md"
+        )
         archive.write(wheels_dir / "MANIFEST.json", "PHYSICAL_DEPENDENCIES.json")
         archive.writestr(
             "payload-manifest.json",

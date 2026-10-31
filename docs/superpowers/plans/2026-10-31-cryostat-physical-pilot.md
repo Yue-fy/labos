@@ -147,3 +147,35 @@ though its raw result disproves this. Preserve that historical result unchanged.
   during diagnosis. Production code/lyr, prior task identities and journals stay.
 - A root-cause fix requires returned boundary evidence and a reproducing test;
   prepare/review/verify any change before a new version is locally deployed.
+
+## Task 7: explicit optical OFF/ON readback scope, independent of chopper serial
+
+Diagnostic100 localized corrupt command echoes/Commanderror to MC2000B COM10;
+probe102 shows100ms interquery idle does not eliminate it. Do not install that
+hypothesis as a repair or weaken the old decoder. The operator accepts optical
+instrument/readback demonstrations with weak/null signal and now requests plots.
+
+Implement a distinct local experiment_scope=optical_readback for photoresponse
+only: exact CLD/PM/XX/XY/gate sessions, AUXexcluded, no chopper session/query/write.
+The existing optical_transport scope keeps all original chopper guards and no
+fault-driven fallback. The new result explicitly leaves modulation/chopperphase
+unverified and supports no BVPE attribution. Mechanical chopper state is untouched.
+
+Retain exact stationlease/bindings/diagnosticack/26C TEC, all CLD protections,
+PM730nm/sensor/unit/range checks, gateOFF status only, SR830 reference/input/tau/
+harmonic/status and4mV minimum guards, cumulative I/O budgets, independent cleanup
+and durable no-replay. New scope caps21.8mA/1uW/8Hz and rejects extra AUX. Enforce
+power ceiling in its dark baseline too, before any emission enable.
+
+- Tests first: all six OFF/ON readbacks without any serial factory/query, explicit
+  provenance, guarded-power/temperature/gate/status failure, plan/scope mismatch
+  before intent, old strict chopper requirements retained, preparation/lock checks.
+- Derive a NEW disabled optical-readback-worker.yaml from the preserved actual
+  optical profile, keep oldfiles/journals, sourceconfig/leaseidentity and limits;
+  newstate data/optical-readback-pilot, start_after102. No policy auto-promotion.
+- Extend updater lock checks to this local profile; include the truthful reporting
+  fix in0.2.8. English guide and pinned public release, no experimental data.
+- Fresh actual new-scope preflight and local workerstart required before central
+  queues ONE NEW task; no replay of tasks64/96 or automatic acquisition retry.
+- Plot actual PMpower OFF/ON and rawXX/XY from returneddata; no synthetic response,
+  invented sensitivity, sample-current conversion or effect attribution.
