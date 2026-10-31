@@ -17,6 +17,7 @@ dependencies = ["pydantic>=2.10,<3", "httpx>=0.28,<1", "PyYAML>=6,<7"]
 [project.optional-dependencies]
 central = ["fastapi>=0.115,<1", "uvicorn>=0.34,<1", "h5py>=3.12,<4"]
 ai = ["openai>=1.68,<3"]
+physical = ["PyVISA==1.16.2", "pyserial==3.5"]
 [project.scripts]
 labos = "labos.cli:main"
 [tool.setuptools.packages.find]

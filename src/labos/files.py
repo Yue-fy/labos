@@ -16,6 +16,23 @@ def json_bytes(value: dict) -> bytes:
                       ensure_ascii=False, allow_nan=False).encode("utf-8")
 
 
+def contains_credential(value, credentials) -> bool:
+    """Check decoded strings and wire JSON, including numeric credentials."""
+    def decoded(item):
+        if isinstance(item, str):
+            return any(secret in item for secret in credentials)
+        if isinstance(item, dict):
+            return any(decoded(k) or decoded(v) for k, v in item.items())
+        if isinstance(item, (list, tuple)):
+            return any(decoded(v) for v in item)
+        return False
+
+    if decoded(value):
+        return True
+    wire = json_bytes(value)
+    return any(secret.encode("utf-8") in wire for secret in credentials)
+
+
 def atomic_write(path: Path, content: bytes):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")

@@ -1,0 +1,9 @@
+{
+  "instruction": "Review the approved cryostat production source evidence for a first 30-second PM100D power acquisition. Identify the exact existing open/read/status/close entry points, initialization writes, station/session ownership and lease interfaces. Account for truncation and request focused missing lines rather than guessing. Do not execute production code or access hardware. Propose the smallest integration step and preserve the established production environment.",
+  "requests": [
+    {"root": "production_src", "path": "attodry_control/pm100d.py", "kind": "outline"},
+    {"root": "production_src", "path": "attodry_control/pm100d.py", "kind": "read", "start_line": 1, "end_line": 120},
+    {"root": "production_src", "path": "attodry_control/hardware_lease.py", "kind": "outline"},
+    {"root": "production_docs", "path": "PHOTONICS_COMBINATION_SCAN_GUIDE.md", "kind": "read", "start_line": 1, "end_line": 70}
+  ]
+}

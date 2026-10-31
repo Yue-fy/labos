@@ -1,0 +1,13 @@
+{
+  "sample_id": "CrSBr 1",
+  "mode": "combined",
+  "laser_current_a": 0.0218,
+  "power_limit_w": 0.000001,
+  "reference_hz": 8.0,
+  "excitation_v_rms": 0.004,
+  "samples_per_phase": 3,
+  "interval_s": 0.0,
+  "settle_s": 15.0,
+  "phase_timeout_s": 60.0,
+  "max_run_s": 180.0
+}

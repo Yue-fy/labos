@@ -1,0 +1,67 @@
+{
+  "document_type": "labos_pc_intake",
+  "document_revision": "2026-10-31",
+  "executable": false,
+  "transport": "operator_relay",
+  "handoff_id": "REPLACE_WITH_HANDOFF_ID",
+  "report_id": "REPLACE_WITH_REPORT_ID",
+  "in_reply_to": null,
+  "observed_at": null,
+  "local_assistant": {
+    "product_or_client": null,
+    "model_name_if_known": null,
+    "can_inspect_local_files": null,
+    "can_run_local_terminal": null,
+    "operating_scope_summary": null
+  },
+  "pc": {
+    "operator_label": null,
+    "provisioned_agent_id": null,
+    "hostname": null,
+    "windows_version": null,
+    "os_bits": null,
+    "active_experiment_or_controller": null
+  },
+  "labos": {
+    "package_root": null,
+    "application_version": null,
+    "role_file_value": null,
+    "config_present": null,
+    "central_origin": null,
+    "install_result": "not_checked",
+    "doctor_result": "not_checked",
+    "execution_agent_online": null
+  },
+  "working_instrument_environment": {
+    "python_executable": null,
+    "python_version": null,
+    "python_bits": null,
+    "visa_backend": null,
+    "vendor_sdks": [],
+    "preserved_without_changes": null
+  },
+  "instruments": [],
+  "instrument_entry_example_not_inventory": {
+    "local_label": "REPLACE_WITH_LOCAL_LABEL",
+    "manufacturer": null,
+    "model": null,
+    "local_address": null,
+    "role_in_setup": null,
+    "identity_basis": "not_checked",
+    "identity_observed_at": null,
+    "reference_ids": [],
+    "current_live_identity_verified": false,
+    "session_owner": null,
+    "allowed_operations_already_established": [],
+    "physical_limits": null,
+    "stop_procedure_verified": false
+  },
+  "evidence": [],
+  "actions_performed": [],
+  "errors": [],
+  "existing_operator_scope": null,
+  "open_items": [],
+  "independent_next_work": [],
+  "next_owner": "central_assistant",
+  "secrets_redacted_and_report_reviewed": false
+}

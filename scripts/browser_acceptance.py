@@ -51,6 +51,8 @@ try:
             errors = []
             page.on("pageerror", lambda error: errors.append(str(error)))
             page.goto(url)
+            assert page.locator("html").get_attribute("lang") == "en"
+            assert page.get_by_role("heading", name="Experiment preparation").is_visible()
             page.locator("#token").fill(config.admin_token)
             page.locator("#connect").click()
             page.wait_for_function("document.getElementById('setup_id').options.length > 0")
@@ -60,10 +62,10 @@ try:
             page.locator("#evidence_content").fill("spectrum exposure: verify overload before interpretation <script>throw 1</script>")
             page.locator("#evidence_reviewed").check()
             page.locator("#import_evidence").click()
-            page.wait_for_function("document.getElementById('message').textContent.includes('已保存资料')")
+            page.wait_for_function("document.getElementById('message').textContent.includes('Saved reference')")
             page.locator("#evidence_query").fill("exposure")
             page.locator("#search_evidence").click()
-            page.get_by_role("button", name="引用到本次计划").click()
+            page.get_by_role("button", name="Cite in this plan").click()
             assert "ev_" in page.locator("#selected_sources").text_content()
             page.locator("#angle_stop_deg").fill("20")
             page.locator("#exposure_ms").fill("1")
@@ -72,13 +74,13 @@ try:
             page.locator("#start").click()
             page.wait_for_function("document.getElementById('runs').textContent.includes('COMPLETED')",
                                    timeout=30000)
-            page.get_by_role("button", name="查看／刷新复盘").first.click()
+            page.get_by_role("button", name="View / refresh review").first.click()
             page.wait_for_function("document.getElementById('review').textContent.includes('verified_by_software_readback')")
             review = json.loads(page.locator("#review").text_content())["body"]
             assert review["data_quality"]["accepted"] == 3
             assert review["evidence_citations"][0]["source"] == "lab:browser-protocol"
             with page.expect_download() as download_event:
-                page.get_by_role("button", name="下载 HDF5").first.click()
+                page.get_by_role("button", name="Download HDF5").first.click()
             download = download_event.value
             download.save_as(directory / download.suggested_filename)
             # A rejected run is still downloadable and never plotted as a qualified spectrum.
@@ -87,17 +89,17 @@ try:
             page.wait_for_function("!document.getElementById('start').disabled")
             page.locator("#start").click()
             page.wait_for_function("document.querySelector('#runs > div p')?.textContent.includes('FAILED')", timeout=30000)
-            page.get_by_role("button", name="查看／刷新复盘").first.click()
+            page.get_by_role("button", name="View / refresh review").first.click()
             page.wait_for_function("JSON.parse(document.getElementById('review').textContent).body.data_quality.rejected === 1")
             review = json.loads(page.locator("#review").text_content())["body"]
             assert review["data_quality"]["rejected"] == 1
             assert review["signal_summary"] is None
-            assert "尚无合格光谱" in page.locator("#plot_note").text_content()
+            assert "No qualified spectra" in page.locator("#plot_note").text_content()
             page.locator("#use_proposal").click()
             assert page.locator("#exposure_ms").input_value() == "0.5"
             assert page.locator("#start").is_disabled()
             with page.expect_download() as download_event:
-                page.get_by_role("button", name="下载 HDF5").first.click()
+                page.get_by_role("button", name="Download HDF5").first.click()
             rejected = directory / "rejected.h5"
             download_event.value.save_as(rejected)
             import h5py

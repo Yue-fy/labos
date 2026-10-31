@@ -4,15 +4,19 @@ import hmac
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse
+from pydantic import ValidationError
 
 from . import __version__
 from .config import CentralConfig
+from .cooperation import Correspondence, MAX_MESSAGE_BYTES, Message
 from .evidence import EvidenceDocument, EvidenceStore
 from .files import InstanceLock, export_hdf5
 from .models import Identifier, Model, Plan
+from .pilot_artifacts import MAX_PILOT_ARTIFACT_BYTES, PilotArtifacts
 from .runtime import Runtime
 from .store import Store
 
@@ -41,6 +45,8 @@ def create_app(config: CentralConfig):
         store.enroll(agent_id, enrollment.instruments)
     runtime = Runtime(config, store)
     evidence = EvidenceStore(config.data_dir)
+    correspondence = Correspondence(store)
+    pilot_artifacts = PilotArtifacts(store)
 
     @asynccontextmanager
     async def lifespan(app):
@@ -71,6 +77,11 @@ def create_app(config: CentralConfig):
     def agent(agent_id: str, identity=Depends(principal)):
         if agent_id not in config.agents or identity != ("agent", agent_id):
             raise HTTPException(403, "agent credential does not match this PC")
+
+    def correspondent(agent_id: str, identity=Depends(principal)):
+        if agent_id not in config.agents or identity not in {("operator", None), ("agent", agent_id)}:
+            raise HTTPException(403, "credential does not match this PC conversation")
+        return "central" if identity[0] == "operator" else "pc"
 
     def checked(function, *args, **kwargs):
         try:
@@ -181,6 +192,42 @@ def create_app(config: CentralConfig):
     def agent_health(agent_id: str):
         return {"agent_id": agent_id, "enrolled": True,
                 "instrument_ids": [d.id for d in config.agents[agent_id].instruments]}
+
+    @app.post("/api/agents/{agent_id}/messages")
+    async def post_message(agent_id: str, request: Request, sender=Depends(correspondent)):
+        content = bytearray()
+        async for chunk in request.stream():
+            content.extend(chunk)
+            if len(content) > MAX_MESSAGE_BYTES:
+                raise HTTPException(413, "message exceeds 64 KiB")
+        try:
+            message = Message.model_validate_json(content)
+        except ValidationError as exc:
+            raise HTTPException(422, "invalid correspondence envelope") from exc
+        credentials = [config.admin_token, *(a.token for a in config.agents.values())]
+        stored = checked(correspondence.add, agent_id, sender, message, credentials)
+        return {"message": stored, "effect": "stored_only"}
+
+    @app.get("/api/agents/{agent_id}/messages")
+    def get_messages(agent_id: str, after: int = Query(default=0, ge=0),
+                     limit: int = Query(default=100, ge=1, le=100),
+                     sender: Literal["central", "pc"] | None = None,
+                     identity=Depends(correspondent)):
+        return correspondence.list(agent_id, after, limit, sender)
+
+    @app.post("/api/agents/{agent_id}/pilot-artifacts", dependencies=[Depends(agent)])
+    async def pilot_artifact_upload(agent_id: str, request: Request, x_sha256: str = Header()):
+        content = bytearray()
+        async for chunk in request.stream():
+            if len(content) + len(chunk) > MAX_PILOT_ARTIFACT_BYTES:
+                raise HTTPException(413, "physical artifact too large")
+            content.extend(chunk)
+        credentials = [config.admin_token, *(a.token for a in config.agents.values())]
+        return checked(pilot_artifacts.put, agent_id, bytes(content), x_sha256, credentials)
+
+    @app.get("/api/pilot-artifacts/{agent_id}/{message_id}", dependencies=[Depends(operator)])
+    def pilot_artifact_get(agent_id: Identifier, message_id: Identifier):
+        return checked(pilot_artifacts.get, agent_id, message_id)
 
     @app.post("/api/agents/{agent_id}/heartbeat", dependencies=[Depends(agent)])
     def heartbeat(agent_id: str, body: Heartbeat):

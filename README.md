@@ -1,37 +1,66 @@
 # LabOS MVP
 
-中央规划、本地执行、可追溯数据。首版支持一台中央服务器、两台主动连接服务器的 Windows/Linux Agent 和三类**模拟仪器**。
+Central planning, local execution and traceable experimental data. The current release supports one central server, outbound Windows/Linux PC Agents and three types of **simulated instruments**.
 
-已经实现：独立凭证、会话隔离、预检查、资源独占、扫描、暂停/继续/停止、UNKNOWN 结果处理、本地 watchdog、数据缓存重传、HDF5 导出、中文控制台、可选 OpenAI 计划草稿。SSH 不是运行依赖。
+The product interface, controls, installation tools, diagnostics and runtime messages use **English**. Existing Chinese deployment guides and bilingual presentation materials remain available.
 
-v0.2 新增：过载/阈值资格检查、拒绝数据留存、计划/配置指纹、已核对资料与旧测试代码检索、带来源的草稿和版本化实验复盘。详见 [QUANTA 改进与操作说明](docs/QUANTA_IMPROVEMENTS_ZH.md)。
+Implemented: independent PC credentials, session isolation, preflight checks, exclusive device ownership, scans, pause/resume/stop, UNKNOWN outcome handling, local watchdogs, cached data upload, HDF5 export, an operator console and optional OpenAI plan drafts.
 
-系统能力展示：跨 PC 的非线性 Hall 与 BVPE 实验场景，22 页全英文技术版：[PowerPoint](docs/presentations/LabOS_NLH_BVPE/English/LabOS_Technical_Overview_EN.pptx) / [PDF](docs/presentations/LabOS_NLH_BVPE/English/LabOS_Technical_Overview_EN.pdf) / [完整交付包与独立矢量图](docs/presentations/LabOS_NLH_BVPE/English/README.md)。
+Version 0.2 adds acquisition quality checks, retained rejected data, plan/configuration fingerprints, reviewed references and existing test-code retrieval, source-linked drafts and versioned run reviews. See the [improvement guide (Chinese)](docs/QUANTA_IMPROVEMENTS_ZH.md).
 
-独立的 [LabOS 系统架构图](docs/presentations/LabOS_NLH_BVPE/System_Architecture/README.md)：一台中央服务器、知识/记忆、科学 Agent 与子 Agent、Skill 库、MCP 工具接口、云端/本地模型切换、执行协调器与通用 PC 群。用少量 PC 符号表示任意规模，不固定分配科研功能；提供英文 PDF、SVG、可编辑 PPT 和高清 PNG。
+Version **0.2.1** fixes Windows PowerShell installation quoting, saves installation logs, checks actual Agent/CLI imports and provides an English console and quick start. [Installation repair](docs/WINDOWS_INSTALL_FIX_EN.md) · [Chinese repair guide](docs/WINDOWS_INSTALL_FIX_ZH.md).
 
-报告讲解使用 [中英双语架构讲稿](docs/presentations/LabOS_NLH_BVPE/System_Architecture/LabOS_Architecture_Presentation_ZH_EN.md)，含完整中英文讲述、实验示例和常见问答。
+Version **0.2.2** adds durable, authenticated assistant correspondence with `labos cooperate send/pull`. Reports use the central HTTPS origin and per-PC credentials; they never execute hardware. See [HTTPS cooperation](src/labos/assets/COOPERATION_HTTPS_EN.md).
 
-运行流程另见 [输运闭环流程图与中英讲稿](docs/presentations/LabOS_NLH_BVPE/Transport_Closed_Loop/README.md)，详细展开通信、自主校准、质量反馈、阶段调整与计划中的理论计算耦合。
+Version **0.2.3** adds background cooperation workers: explicit tasks trigger report-only Codex runs, results return automatically, and the central worker reviews them once. A configured central loopback model can serve as fallback. See [automatic cooperation](src/labos/assets/AUTOMATIC_COOPERATION_EN.md).
 
-真实仪器驱动尚未启用；型号、SDK、连接方式和装置验证齐备后再接入。模拟数据均有显式标记。
+Version **0.2.4** adds two PC profiles: agent-assisted cooperation and a deterministic program connector requiring no local LLM. A separate restricted public HTTPS gateway supports PCs outside Tailscale. Registered `.py`/`.md` source excerpts help central review existing production drivers without importing them. See [PC profiles](docs/PC_PROFILES_EN.md), [program connector](src/labos/assets/PROGRAM_CONNECTOR_EN.md) and [public gateway](docs/PUBLIC_HTTPS_GATEWAY_EN.md).
 
-## 开发环境与本机验收
+Version **0.2.5** adds a separate, locally commissioned cryostat physical pilot: finite 730 nm photoresponse and dark second-harmonic acquisition with fixed reviewed instrument commands, per-transaction deadlines, independent cleanup, durable raw artifacts and replay inhibition. It does not run the complete legacy measurement application. See the [physical pilot guide](docs/PHYSICAL_PILOT_EN.md).
+
+The original execution Agent still supports simulated devices only. The optional physical pilot requires exact local bindings, current output-preserving preflight and a locally enabled profile. It is not evidence of completed hardware acceptance or BVPE/nonlinear Hall attribution.
+
+## Get code and PC updates from GitHub
+
+Use the private [Yue-fy/labos repository](https://github.com/Yue-fy/labos) and its
+[versioned releases](https://github.com/Yue-fy/labos/releases). See
+[GitHub delivery and PC updates](docs/GITHUB_DELIVERY_EN.md) for one-time access,
+clone/pull, verified package download and commissioning. Live credentials and
+device journals are not stored in GitHub. Pulling source does not enable outputs
+or modify a running installation.
+
+## Install and connect a Windows PC
+
+Download `LabOS-Agent-Windows-x64-0.2.5.zip` from the private release, extract the entire archive, and double-click **Install.cmd**. The portable package includes Python. See [QUICKSTART_EN.md](src/labos/assets/QUICKSTART_EN.md). Existing cryostat installations should use the smaller physical-update overlay and its dedicated guide.
+
+The generic package has no `config.yaml` or live credentials. First obtain the PC-specific configuration from the central server, run **Doctor.ps1**, and then double-click **Start-Agent.cmd**. Doctor checks connectivity and authentication; it does not access instruments. SSH is not a runtime dependency.
+
+For the first physical laboratory PC, see the [server/PC pilot guide (Chinese)](docs/PC_PILOT_ZH.md). Existing working instrument environments can remain on the PC; the server needs only the relevant reference code and device/environment information.
+
+## Collaborate with a PC's language-model assistant
+
+The optional local LLM assistant can inspect its PC, understand working instrument code and prepare integration evidence. The persistent PC execution Agent remains the runtime executor. Read the [English agent cooperation kit](src/labos/assets/README_AGENT_KIT_EN.md), with [PC-side instructions](src/labos/assets/PC_AGENT_GUIDE_EN.md), [central-side instructions](src/labos/assets/SERVER_AGENT_GUIDE_EN.md), [handoff conventions](src/labos/assets/AGENT_HANDOFF_EN.md), blank JSON reports and a cavity reference card.
+
+Refreshed delivery bundles include `AGENTS.md` and the guides at their root. With a provisioned 0.2.2 package, assistants can send and retrieve sanitized reports over HTTPS. Operator file relay remains a fallback. Report transport does not automatically wake a chat session or invoke an LLM.
+
+For unattended report processing, use the full 0.2.3 package and start the optional [background worker](src/labos/assets/AUTOMATIC_COOPERATION_EN.md). One-time PC startup configuration is required; subsequent explicit tasks and replies need no operator relay. It does not resume the IDE's private conversation or operate instruments.
+
+## Development and local acceptance
 
 ```bash
 uv venv .venv
 uv pip install --python .venv/bin/python -e '.[central,ai,dev]'
 .venv/bin/python -m pytest -q
 .venv/bin/python -m labos demo --directory runtime/demo-01
-# 完整 399 点实验；使用新的输出目录
+# Full 399-point simulation; use a fresh output directory.
 .venv/bin/python -m labos demo --directory runtime/full-demo-01 --full
 ```
 
-## 部署
+## Provisioning and deployment
 
-先看 [中文部署指南](docs/DEPLOYMENT_ZH.md)、[网络方案](docs/NETWORK_ZH.md) 和 [真实仪器接入](docs/HARDWARE_ZH.md)。交付文件位于 `dist/`。PC 暂未安排时不需要生成真实部署凭证。
+Read the [deployment guide](docs/DEPLOYMENT_ZH.md), [network design](docs/NETWORK_ZH.md) and [hardware integration requirements](docs/HARDWARE_ZH.md), currently available in Chinese.
 
-例：中央服务器在专用 LAN/VPN 的 `192.168.1.10:8000`：
+For a simulation deployment on a trusted LAN/VPN, replace the example address with the central server's actual reachable address:
 
 ```bash
 .venv/bin/python -m labos init --directory deployments/lab-01 \
@@ -43,21 +72,35 @@ uv pip install --python .venv/bin/python -e '.[central,ai,dev]'
 .venv/bin/python -m labos central --config deployments/lab-01/central/config.yaml
 ```
 
-分别复制 `pc-a.zip` / `pc-b.zip`，解压，执行 `Doctor.ps1` 验证，再双击 `Start-Agent.cmd`。不要把 `central/config.yaml` 或 `operator.token` 复制到实验室 PC。
+Copy each PC its own ZIP. Keep `central/config.yaml` and `operator.token` on the central server. Open the central URL in a browser and enter the operator token. Review parameters, run preflight, and click **Start simulated run**.
 
-中央页面在 `http://192.168.1.10:8000`；操作凭证读取 `deployments/lab-01/central/operator.token`。填写参数、预检查、点击 Start。数据保留在中央和采集 PC 各自的 `data/`。
+PCs initiate HTTP(S) requests to the central server. Across VLANs or NAT, use an allowed route, a managed VPN or a reachable HTTPS central endpoint. Windows scheduled startup is available after manual validation.
 
-## 构建交付
+## Build delivery packages
 
 ```bash
 .venv/bin/python scripts/build_windows_runtime.py
-.venv/bin/python scripts/build_delivery.py --windows-runtime dist/delivery/windows-x64-runtime.zip
+.venv/bin/python scripts/build_delivery.py --output dist/v0.2.5 \
+  --windows-runtime dist/delivery/windows-x64-runtime.zip
 ```
 
-网络采用 HTTP(S) 出站轮询；只有中央服务器需要被 PC 访问。连接跨 VLAN/NAT 时使用可路由的专用 VPN 或可访问的 HTTPS 中央入口。Windows 任务计划程序支持登录启动或经管理员选择的开机启动。
+To validate a complete portable ZIP on Windows without starting an Agent or accessing instruments:
 
-## 边界
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_windows_delivery.ps1 -Archive C:\LabOS\LabOS-Agent-Windows-x64-0.2.5.zip
+```
 
-中央 SQLite 与执行器要求单实例；不使用 uvicorn 多 worker/reload。中断的实验需要核对，不自动续跑未知物理动作。本地 watchdog 不能替代硬件联锁或断电保护。此版本没有通用 YAML 执行器、自动生成生产驱动、任意 Python/SCPI 接口和硬件快速同步。
+## System presentations
 
-OpenAI 可选：中央配置 `openai_model` 并设置 `OPENAI_API_KEY`，界面才能生成自然语言计划草稿。模型名称由部署者配置；草稿仍需预检查及 Start。实测与自动测试无需 API key。
+- [English technical overview: PowerPoint](docs/presentations/LabOS_NLH_BVPE/English/LabOS_Technical_Overview_EN.pptx) · [PDF](docs/presentations/LabOS_NLH_BVPE/English/LabOS_Technical_Overview_EN.pdf) · [Figures and bundle](docs/presentations/LabOS_NLH_BVPE/English/README.md).
+- [System architecture diagram](docs/presentations/LabOS_NLH_BVPE/System_Architecture/README.md): central server, knowledge/memory, scientific agents, skills, MCP, cloud/local model routing and a generic PC fleet.
+- [Bilingual architecture presentation notes](docs/presentations/LabOS_NLH_BVPE/System_Architecture/LabOS_Architecture_Presentation_ZH_EN.md).
+- [Transport closed-loop diagram and bilingual notes](docs/presentations/LabOS_NLH_BVPE/Transport_Closed_Loop/README.md): communication, calibration, quality feedback, stage updates and planned theory coupling.
+
+The diagrams describe implemented components together with explicitly identified planned capabilities. They do not establish that transport drivers, autonomous calibration or MCP are enabled. The implemented model fallback is limited to the configured correspondence worker.
+
+## Runtime boundaries
+
+The SQLite coordinator runs as a single central process; do not use multiple workers or reload. Interrupted physical actions require reconciliation rather than blind retries. The local software watchdog does not replace hardware interlocks. This release has no general YAML executor, arbitrary Python/SCPI execution interface, automatic production-driver generation or hardware timing guarantee.
+
+Optional AI drafts require `openai_model` in the central configuration and `OPENAI_API_KEY` on the central server. Drafts still require deterministic preflight and explicit Start. Tests and simulated experiments do not require an API key.

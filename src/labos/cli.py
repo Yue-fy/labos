@@ -107,9 +107,13 @@ def main(argv=None):
     demo = sub.add_parser("demo", help="run central and two agents as separate TCP processes")
     demo.add_argument("--directory", type=Path, default=Path("runtime/acceptance"))
     demo.add_argument("--full", action="store_true", help="run 399-point scan")
+    from .cooperation import add_parser, run as cooperate
+    add_parser(sub)
     args = parser.parse_args(argv)
     try:
-        if args.command == "init":
+        if args.command == "cooperate":
+            return cooperate(args)
+        elif args.command == "init":
             paths = provision(args.directory, args.server_url, args.allow_http, args.host, args.port)
             print(json.dumps({name: str(path) for name, path in paths.items()}, indent=2))
             print("SIMULATED configurations generated. Operator token is in central/operator.token.")

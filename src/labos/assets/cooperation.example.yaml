@@ -1,0 +1,10 @@
+role: pc
+agent_id: pc-a
+connection_config: config.yaml
+state_dir: data/cooperation
+poll_s: 10
+backend: codex
+codex_command: [codex]
+model_timeout_s: 180
+context_files: []
+source_roots: {}

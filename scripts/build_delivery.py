@@ -19,7 +19,7 @@ def build_release(output: Path, windows_runtime: Path | None = None) -> list[Pat
         with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as package:
             write_package(package, role)
             package.write(ROOT / "README.md", "README.md")
-            for doc in (ROOT / "docs").glob("*_ZH.md"):
+            for doc in sorted((ROOT / "docs").glob("*.md")):
                 if doc.name not in package.namelist():
                     package.write(doc, doc.name)
                 package.write(doc, "docs/" + doc.name)
@@ -35,7 +35,7 @@ def build_release(output: Path, windows_runtime: Path | None = None) -> list[Pat
                     if not name.startswith("python/") or ".." in name.split("/"):
                         raise ValueError("unsafe runtime archive")
                     package.writestr(name, runtime.read(name))
-            for doc in (ROOT / "docs").glob("*_ZH.md"):
+            for doc in sorted((ROOT / "docs").glob("*.md")):
                 if doc.name not in package.namelist():
                     package.write(doc, doc.name)
         packages.append(path)

@@ -1,0 +1,11 @@
+{
+  "instruction": "Prepare a LabOS-owned 730 nm photoresponse and dark second-harmonic Hall pilot using these read-only source outlines. The operator requires prompt laser/excitation OFF after each segment, low historically supported settings, and LabOS orchestration rather than launching the old complete procedure. Identify supported APIs, initialization writes, output-OFF/readback limitations, ownership and the exact missing source/history evidence. Do not invent safe values, execute code, enable outputs or claim an actual measurement. Return focused next source requests where needed.",
+  "requests": [
+    {"root": "production_src", "path": "attodry_control/cld_optical.py", "kind": "outline"},
+    {"root": "production_src", "path": "attodry_control/pm100d.py", "kind": "outline"},
+    {"root": "production_src", "path": "attodry_control/sr830.py", "kind": "outline"},
+    {"root": "production_src", "path": "attodry_control/sr865a.py", "kind": "outline"},
+    {"root": "production_src", "path": "attodry_control/chopper.py", "kind": "outline"},
+    {"root": "production_src", "path": "attodry_control/hardware_lease.py", "kind": "outline"}
+  ]
+}

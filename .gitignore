@@ -12,3 +12,9 @@ deployments/
 .superpowers/
 .env
 *.sqlite*
+# Live PC settings and local experimental reference material stay on their host.
+**/config.yaml
+**/cooperation.yaml
+**/pilot-worker.yaml
+**/program-connector.yaml
+subComputer/

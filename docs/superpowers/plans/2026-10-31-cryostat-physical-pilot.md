@@ -1,0 +1,77 @@
+# Cryostat physical pilot implementation plan
+
+> For agentic workers: use superpowers:executing-plans or subagent-driven-development task by task, with TDD and an independent final review.
+
+**Goal:** Implement a LabOS-owned finite 730nm photoresponse / dark transverse2f pilot with deterministic local protection and real typed data, without launching the existing complete procedure.
+
+**Architecture:** A separate opt-in physical worker receives `labos_pilot_task` documents over existing scoped HTTPS correspondence. A local commissioned profile selects a fixed LabOS adapter; peers cannot select commands or production entry points. The physical engine owns finite phases and cleanup. Existing source is reviewed as driver evidence; its whole application is never launched. Report workers remain report-only.
+
+**Tech stack:** Existing Python/Pydantic/httpx/SQLite. Windows vendor I/O runs in the commissioned local Python environment. No new external automation framework.
+
+**Spec:** `subComputer/cryostat/LABOS_BVPE_NLH_PILOT_EN.md`, with the operator clarification below superseding its earlier excitation-isolation requirement.
+
+## Current operator clarification
+
+Sample label CrSBr 1. No external series resistor. Electrode mapping may remain unverified and raw channels XX/XY/AUX are acceptable. The operator explicitly permits reducing SR830 to its minimum4mV RMS after tests, preferring zero only if supported. Do not label minimum output as OFF or derive sample current from contact-resistance assumptions. Do not automatically increase excitation. Laser OFF is still required.
+
+Historical 730nm records support21.8mA/approximately0.483uW PM-pickoff and22.7mA/approximately0.980uW; they are not sample-plane calibration or a current-source transport record. Conservative candidate pilot settings must remain within the commissioned local profile. Existing fault records, production files and lyr remain unchanged.
+
+## Global constraints
+
+- Keep product code, scripts and new reports English.
+- Existing model/report workers never receive device tools.
+- No gate/temperature/field/motion control. Check starting state without clearing faults or taking over another owner.
+- No whole legacy CLI/notebook invocation, no remote arbitrary shell/Python/SCPI interface.
+- Missing local commissioning facts keep physical execution disabled.
+- Keep partial raw data, plan/config hashes, actual readbacks and independent cleanup outcomes.
+- Use physical voltage/time/power units; no fabricated spectra, sample currents, device axes or physics claims.
+- Output errors and unknown outcomes inhibit replay; a minimum-amplitude readback is not a physical OFF claim.
+
+## Shared core interfaces
+
+`src/labos/pilot.py` exports:
+- `PilotPlan`: sample_id:str, mode:Literal['photoresponse','dark_hall','combined']; laser_current_a:float|None; power_limit_w:float|None; reference_hz:float; excitation_v_rms fixed0.004; samples_per_phase1..10; interval_s0..10; settle_s0..30; phase_timeout_s5..90; max_run_s5..300. Validate finite values and mode-specific requirements.
+- `PilotApproval`: enabled:bool=False; sample_id:str; laser_current_max_a:float|None; power_limit_max_w:float|None; reference_hz:float; excitation_v_rms fixed0.004; max_phase_s; max_run_s. Exact sample/reference match and plan<=local limits; no physical defaults.
+- `PilotEngine(adapter, clock=time.monotonic, sleep=time.sleep)`; `.run(plan, approval, cancel=None)->dict`. No subprocess/network/model code.
+- Adapter methods: `open()`, `preflight()->dict`, `configure(phase,plan)`, `laser_on(current_a)`, `read_sample(phase)->dict`, `laser_off()->dict`, `protect_excitation()->dict`, `close()`.
+- `preflight` returns `ready:True`, `laser_enabled:False`, and current identity/status evidence; engine refuses takeover otherwise. `laser_off` returns `laser_off_verified:bool`; `protect_excitation` returns `minimum_excitation_verified:bool` and `actual_v_rms`.
+- Phases: photoresponse/combined=`dark_baseline`, `illuminated`; dark_hall/combined adds `dark_hall_2f`. Laser remains OFF outside illuminated. Protect excitation and turn laser OFF independently at each phase end and final exit. Failed protection prevents the next phase. Once owned, exceptions/cancellation/deadlines enter cleanup; preflight refusal must not shut off another owner's active output.
+- Samples contain finite JSON, per-role raw channels, `power_w` for illuminated power guard, explicit phase and timestamps. Guard power before accepting a sample. Never assign spectrum or current metadata. Result dict includes status COMPLETED/FAILED/CANCELLED/UNKNOWN, samples, cleanup, error, acquisition_complete, protection_verified. UNKNOWN dominates unsuccessful protection. No true-OFF claim for excitation.
+
+## Task 1: finite engine and limits
+
+Files: `src/labos/pilot.py`, `tests/test_pilot.py`.
+- [ ] Write failing tests for local authorization/limits before device I/O, phase sequencing and no auto-amplitude escalation.
+- [ ] Implement models and engine using exact interface above.
+- [ ] Test over-power, malformed samples, backend failures, cancellation/timeouts, independent cleanup attempts and failed protection preventing further phases. Preflight laser-ON refusal performs no takeover.
+- [ ] Verify meaningful artifact content and safe terminal state using an explicit stateful simulated test bench; label tests as simulation, not hardware acceptance.
+
+## Task 2: durable physical worker
+
+Files: `src/labos/pilot_worker.py`, `tests/test_pilot_worker.py`.
+- [ ] Use a separate local config/state and deterministic responder, no model.
+- [ ] Accept only `labos_pilot_task` with validated `pilot_plan`. Local adapter is injected for tests; CLI defaults physical-disabled and fixed adapter ID, never peer-selected executable.
+- [ ] Commit execution intent before adapter creation, preserve finished result on delivery retry, refuse unknown execution replay.
+- [ ] Save report JSON atomically with SHA256 before delivery; attach bounded `pilot_result` to `labos_auto_result`, backend pilot, model_attempts0. Preserve result on network failure. Unknown physical outcomes latch a local block.
+- [ ] Doctor only validates runtime/config/authentication and does not open an instrument. Stop must signal active engine cancellation; never silently kill physical I/O as an emergency-stop claim.
+
+Main integrates central Task/Result schemas, zero-model attempt accounting and matching automatic review for pilot results, with actual API tests.
+
+## Task 3: reviewed cryostat adapter and deployment
+
+Main-owned files: `src/labos/cryostat_pilot.py`, `tests/test_cryostat_pilot.py`, Windows scripts/English guides, private commissioned configuration.
+- [ ] Collect and review actual CLD backend/interlocks, PM100D, SR830/SR865A, station lease and resource bindings through registered source roots.
+- [ ] Implement a fixed LabOS adapter with model/serial verification, lease compatibility and per-I/O bounds; no legacy whole-procedure import or invocation.
+- [ ] Keep physical profile disabled until actual SDK/resource binding and local ownership are established; missing facts cannot be guessed.
+- [ ] Test against replay resources at the vendor-I/O boundary and perform no output enable on this central server.
+- [ ] Prepare a small commissioning bundle with a read-only preflight phase and explicit physical enable configuration; retain original report-worker identity/cursor and production environment.
+
+## Review focus
+
+- Partial initialization and active foreign output must not become automatic takeover.
+- Cleanup failures must attempt all independent protections and persist UNKNOWN, not completed.
+- Process death/network replay must never repeat a possibly executed physical run.
+- Configuration/schema mistakes must fail before opening drivers; numerical values stay finite and locally bounded.
+- Tests with replay backends and successful networking never constitute real hardware acceptance.
+
+Actual physical pilot and new Windows worker acceptance remain pending until returned device evidence and commissioning satisfy the local profile. The operator has already authorized this finite test within conservative settings; do not ask for repeated general permission.

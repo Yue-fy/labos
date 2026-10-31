@@ -1,0 +1,39 @@
+{
+  "document_type": "labos_central_reply",
+  "document_revision": "2026-10-31",
+  "executable": false,
+  "transport": "operator_relay",
+  "handoff_id": "REPLACE_WITH_MATCHING_HANDOFF_ID",
+  "reply_id": "REPLACE_WITH_REPLY_ID",
+  "in_reply_to": "REPLACE_WITH_PC_REPORT_ID",
+  "created_at": null,
+  "target_pc_label": null,
+  "provisioned_agent_id": null,
+  "reviewed_evidence_ids": [],
+  "accepted_observations": [],
+  "unverified_observations": [],
+  "software_changes": {
+    "proposed": [],
+    "implemented_and_verified": []
+  },
+  "provisioning": {
+    "central_origin": null,
+    "package_version": null,
+    "package_sha256": null,
+    "pc_configuration_delivered_separately": false
+  },
+  "next_step": {
+    "commissioning_phase": null,
+    "owner": null,
+    "objective": null,
+    "existing_operator_scope": null,
+    "required_preconditions": [],
+    "steps_to_propose_or_perform_within_existing_scope": [],
+    "expected_artifacts": [],
+    "acceptance_criteria": [],
+    "stop_or_mismatch_conditions": []
+  },
+  "open_items": [],
+  "independent_pc_work": [],
+  "secrets_redacted_and_report_reviewed": false
+}

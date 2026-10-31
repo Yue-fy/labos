@@ -1,0 +1,7 @@
+role: pc
+agent_id: program-pc-01
+connection_config: config.yaml
+state_dir: data/program-connector
+poll_s: 10
+source_roots: {}
+programs: {}

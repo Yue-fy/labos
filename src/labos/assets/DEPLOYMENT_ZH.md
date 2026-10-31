@@ -2,9 +2,9 @@
 
 ## 交付文件
 
-- `LabOS-Central-0.2.0.zip`：中央服务、UI、CLI、固定依赖、部署文档及启动脚本；中央需要 Python 3.11+。如构建了 Windows 运行时，包内 `delivery/windows-x64-runtime.zip` 可用于生成 PC 包。
-- `LabOS-Agent-0.2.0.zip`：通用 Agent 源码包，需要 Python 3.11+ 或离线 wheelhouse。
-- `LabOS-Agent-Windows-x64-0.2.0.zip`：Windows 10/11 x64 便携模板，含 Python 和 Agent 依赖，无需安装 Python；**无真实凭证**。
+- `LabOS-Central-0.2.1.zip`：中央服务、UI、CLI、固定依赖、部署文档及启动脚本；中央需要 Python 3.11+。如构建了 Windows 运行时，包内 `delivery/windows-x64-runtime.zip` 可用于生成 PC 包。
+- `LabOS-Agent-0.2.1.zip`：通用 Agent 源码包，需要 Python 3.11+ 或离线 wheelhouse。
+- `LabOS-Agent-Windows-x64-0.2.1.zip`：Windows 10/11 x64 便携模板，含 Python 和 Agent 依赖，无需安装 Python；**无真实凭证**。
 
 v0.2 的资料导入、质量阈值、实验复盘与升级说明见 [QUANTA 改进指南](QUANTA_IMPROVEMENTS_ZH.md)。
 - `SHA256SUMS`：交付文件校验值。
@@ -46,10 +46,15 @@ Windows 中央包使用 `Install.ps1 -Role central`，运行 `.\.venv\Scripts\py
 
 ## 3. Windows PC 启动
 
-便携包解压后：
+完整解压便携包后，先双击 `Install.cmd`，或在该目录运行：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Install.ps1
+```
+
+安装日志保存在包根目录的 `install.log`。通用模板没有 `config.yaml`：安装成功后先取得中央生成的单 PC 配置，不能直接启动 Agent。已有配置的包再运行：
+
+```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Doctor.ps1
 ```
 
