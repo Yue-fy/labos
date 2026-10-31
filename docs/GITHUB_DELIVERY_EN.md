@@ -1,6 +1,6 @@
-# Private GitHub delivery and PC updates
+# GitHub delivery and PC updates
 
-Repository: **https://github.com/Yue-fy/labos** (private).
+Repository: **https://github.com/Yue-fy/labos** (public, as authorized by the operator).
 
 GitHub distributes source, English operating instructions and versioned packages.
 The existing authenticated HTTPS channel carries operational correspondence,
@@ -9,21 +9,19 @@ instrument command and does not grant new local hardware authority.
 
 ## One-time setup on a laboratory PC
 
-Install Git for Windows and, for command-line release downloads, GitHub CLI.
-Authenticate on that PC as Yue-fy or an account already granted repository access:
+Install Git for Windows. Reading this public repository and downloading release
+packages requires no GitHub sign-in:
 
 ```powershell
-gh auth login --hostname github.com --git-protocol https --web
-gh auth setup-git
-gh repo clone Yue-fy/labos C:\LabOS\repository
+git clone https://github.com/Yue-fy/labos.git C:\LabOS\repository
 Set-Location C:\LabOS\repository
-gh repo view Yue-fy/labos --json nameWithOwner,isPrivate
+git log -1 --oneline
 ```
 
-Complete browser/device authentication locally. Never copy the server's GitHub
-credential or LabOS operator credential to the PC. If an account lacks access,
-the owner must grant access or sign in locally with an authorized account. The
-repository and releases remain private; a release URL does not grant access.
+Pushing changes requires a GitHub account with write access; configure that
+account locally when needed. Never copy the server's GitHub or LabOS operator
+credential to the PC. Public code/package access does not grant access to the
+authenticated runtime API. Live settings, journals and raw data remain local.
 
 Keep the clone separate from the existing provisioned LabOS runtime. A clone has
 source and examples, not live config.yaml, portable Python or PC credentials.
@@ -53,11 +51,10 @@ the verified overlay updater and START_HERE_PHYSICAL_PILOT_EN.md.
 ```powershell
 $ReleaseDir = 'C:\LabOS\updates\v0.2.6'
 New-Item -ItemType Directory -Force -Path $ReleaseDir | Out-Null
-gh release download v0.2.6 --repo Yue-fy/labos `
-  --pattern LabOS-Cryostat-Physical-Update-0.2.6.zip `
-  --pattern SHA256SUMS --dir $ReleaseDir
-if ($LASTEXITCODE -ne 0) { throw 'Release download failed; check GitHub access.' }
 $Archive = Join-Path $ReleaseDir 'LabOS-Cryostat-Physical-Update-0.2.6.zip'
+$ReleaseURL = 'https://github.com/Yue-fy/labos/releases/download/v0.2.6'
+Invoke-WebRequest -UseBasicParsing -Uri ($ReleaseURL + '/LabOS-Cryostat-Physical-Update-0.2.6.zip') -OutFile $Archive
+Invoke-WebRequest -UseBasicParsing -Uri ($ReleaseURL + '/SHA256SUMS') -OutFile (Join-Path $ReleaseDir 'SHA256SUMS')
 $ChecksumLines = @(Get-Content -LiteralPath (Join-Path $ReleaseDir 'SHA256SUMS') | Where-Object {
   $_ -match ('^[a-fA-F0-9]{64}  ' + [regex]::Escape([IO.Path]::GetFileName($Archive)) + '$')
 })
@@ -70,7 +67,8 @@ Expand-Archive -LiteralPath $Archive -DestinationPath (Join-Path $ReleaseDir 'ex
 
 If that download/extraction directory already exists, inspect it and use a new
 directory; do not use overwrite/force switches on an installation or old evidence.
-An authenticated browser can download the same assets if GitHub CLI is unavailable.
+A browser can download the same assets without signing in. GitHub CLI remains an
+optional alternative for users who already have it configured.
 
 Follow the extracted **START_HERE_PHYSICAL_PILOT_EN.md**. Cooperatively stop the
 old worker, apply the verified overlay to the actual existing LabOS installation,
@@ -91,7 +89,7 @@ Central assistant: implement and verify changes, push source, publish versioned
 assets with checksums, notify the PC over existing correspondence, and inspect
 returned commissioning/measurement evidence.
 
-PC assistant: fetch the pinned version using its own GitHub access, preserve
+PC assistant: fetch the pinned public version, preserve
 configuration and production files, perform the documented local update/preflight,
 and send factual results. The existing report-only worker cannot silently install
 software or acquire instrument capabilities. A trusted local assistant/operator

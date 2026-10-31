@@ -1,10 +1,10 @@
 # Laboratory PC: start here
 
-Read [GitHub delivery and PC updates](docs/GITHUB_DELIVERY_EN.md) to authenticate,
-clone/pull this private repository and download verified versioned packages.
+Read [GitHub delivery and PC updates](docs/GITHUB_DELIVERY_EN.md) to clone/pull
+this public repository and download verified packages without GitHub sign-in.
 
 For the existing cryostat PC, download the **v0.2.6 physical-update overlay** from
-the private release and follow its **START_HERE_PHYSICAL_PILOT_EN.md**. Preserve
+the release and follow its **START_HERE_PHYSICAL_PILOT_EN.md**. Preserve
 the current working configuration, journals, production code and lyr environment.
 Run output-preserving preflight and report through existing HTTPS before any pilot.
 

@@ -27,16 +27,16 @@ an instrument timeout does not silently change the measurement configuration.
 
 ## Get code and PC updates from GitHub
 
-Use the private [Yue-fy/labos repository](https://github.com/Yue-fy/labos) and its
+Use the public [Yue-fy/labos repository](https://github.com/Yue-fy/labos) and its
 [versioned releases](https://github.com/Yue-fy/labos/releases). See
-[GitHub delivery and PC updates](docs/GITHUB_DELIVERY_EN.md) for one-time access,
+[GitHub delivery and PC updates](docs/GITHUB_DELIVERY_EN.md) for anonymous reads,
 clone/pull, verified package download and commissioning. Live credentials and
 device journals are not stored in GitHub. Pulling source does not enable outputs
 or modify a running installation.
 
 ## Install and connect a Windows PC
 
-Download `LabOS-Agent-Windows-x64-0.2.6.zip` from the private release, extract the entire archive, and double-click **Install.cmd**. The portable package includes Python. See [QUICKSTART_EN.md](src/labos/assets/QUICKSTART_EN.md). Existing cryostat installations should use the smaller physical-update overlay and its dedicated guide.
+Download `LabOS-Agent-Windows-x64-0.2.6.zip` from the public release, extract the entire archive, and double-click **Install.cmd**. The portable package includes Python. See [QUICKSTART_EN.md](src/labos/assets/QUICKSTART_EN.md). Existing cryostat installations should use the smaller physical-update overlay and its dedicated guide.
 
 The generic package has no `config.yaml` or live credentials. First obtain the PC-specific configuration from the central server, run **Doctor.ps1**, and then double-click **Start-Agent.cmd**. Doctor checks connectivity and authentication; it does not access instruments. SSH is not a runtime dependency.
 
