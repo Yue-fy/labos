@@ -123,3 +123,27 @@ explicitly authorized by the latest instruction.
 - Publish .7 source and overlay with an English local update/preflight/enable guide;
   actual preflight and a new unique physical task are required for real acceptance.
 - No I/V/resistance inference, excitation escalation or nonlinear Hall claim.
+
+## Task 6: truthful failed-run reporting and optical fault localization
+
+Real dark_a task completed with6samples and verified protection (rawSHA
+edb16bda7d766a274d09731fb7d517d4d126baed933e52986ef65e942e198e21).
+Fresh full optical preflight94 and startup95 passed, but the new authorized
+photoresponse task96 failed before preflight completion: UnicodeDecodeError,
+byte0xf2 atposition2, zero samples, preflightnull, cleanupempty and protectionfalse
+(rawSHA57987585528e1d85ad7ab881338c64f0c88bb2d5cc6c9e0db9cdf18c93b6c372).
+The worker emitted a hardcoded finding claiming independent protection even
+though its raw result disproves this. Preserve that historical result unchanged.
+
+- Correct the fixed finding using actual protection evidence; an unverified
+  result must say so and request independent local readbacks before another run.
+  Acquisition failure with verified cleanup must remain distinct.
+- Write behavioral worker/API regressions first for preflight rejection, failed
+  protection, successful cleanup after acquisition failure, and successful runs.
+- Do not infer the decoder's source from its message alone. Foreground handoff99
+  requests output reconciliation and a bounded, passive, read-only trace using
+  existing0.2.7 code: exact failing command, traceback and exception bytes.
+- No acquisition retry, decoder weakening, resets, output enable or limit increase
+  during diagnosis. Production code/lyr, prior task identities and journals stay.
+- A root-cause fix requires returned boundary evidence and a reproducing test;
+  prepare/review/verify any change before a new version is locally deployed.

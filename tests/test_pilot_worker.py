@@ -284,6 +284,8 @@ def test_intent_precedes_factory_and_real_data_is_persisted_before_delivery(
         assert report["plan"]["excitation_v_rms"] == 0.004
         assert report["config_sha256"] == body["pilot_result"]["config_sha256"]
         assert report["protection_verified"] is True
+        assert "verified laser OFF" in " ".join(body["answer"]["findings"])
+        assert body["answer"]["questions"] == []
         assert bench.events.count("open") == 1
         assert not bench.laser_enabled
         assert bench.excitation_v_rms == 0.004
@@ -728,3 +730,50 @@ def test_central_review_loads_uploaded_raw_data_and_stops_the_reply_cycle(tmp_pa
         pc.tick()
         central.tick()
         assert len(messages(api)) == 3 and len(reviewed) == 1
+
+
+@pytest.mark.parametrize('failure', ['preflight', 'cleanup'])
+def test_unverified_protection_is_never_reported_as_verified(tmp_path, central_config, failure):
+    class FailingBench(SimulatedBench):
+        def preflight(self):
+            if failure == 'preflight':
+                raise UnicodeDecodeError('ascii', b'ab\xf2', 2, 3, 'ordinal not in range(128)')
+            return super().preflight()
+    bench = FailingBench(protection_ok=failure != 'cleanup')
+    with TestClient(create_app(central_config)) as api:
+        send(api, 'pilot_task', task())
+        worker = module().PilotWorker(configuration(tmp_path, approval=approval()),
+                                      transport(api), lambda _: bench)
+        worker.tick()
+        result = messages(api)[-1]['body']
+        saved = artifact(worker, result)['report']
+        assert saved['protection_verified'] is False
+        assert 'not independently verified' in ' '.join(result['answer']['findings'])
+        assert result['answer']['questions']
+        if failure == 'preflight':
+            assert saved['cleanup'] == []
+            assert '0xf2' in saved['error']
+            assert bench.events == ['open', 'close']
+        else:
+            assert saved['status'] == 'UNKNOWN'
+            assert worker.status()['physical_blocked']
+
+
+def test_failed_acquisition_with_verified_cleanup_reports_protection_truthfully(tmp_path, central_config):
+    class FailedReading(SimulatedBench):
+        def read_sample(self, phase):
+            raise ValueError('invalid reading')
+    bench = FailedReading()
+    with TestClient(create_app(central_config)) as api:
+        send(api, 'pilot_task', task())
+        worker = module().PilotWorker(configuration(tmp_path, approval=approval()),
+                                      transport(api), lambda _: bench)
+        worker.tick()
+        result = messages(api)[-1]['body']
+        saved = artifact(worker, result)['report']
+        assert saved['status'] == 'FAILED' and saved['protection_verified'] is True
+        assert 'not independently verified' not in ' '.join(result['answer']['findings'])
+        assert 'verified' in ' '.join(result['answer']['findings'])
+        assert result['answer']['questions'] == []
+        assert bench.events.count('laser_off') == 2
+        assert bench.events.count('minimum_excitation') == 2

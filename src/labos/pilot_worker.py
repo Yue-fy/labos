@@ -200,11 +200,20 @@ class PilotWorker(Worker):
                    "plan_sha256": plan_hash, "config_sha256": config_hash,
                    "artifact": {"path": relative.as_posix(), "sha256": digest, "message_id": message["id"]}}
         completed = report["status"] == "COMPLETED"
+        protected = report["protection_verified"] is True
+        protection_finding = (
+            "Independent cleanup verified laser OFF and minimum 4 mV RMS excitation. "
+            "Minimum excitation is not OFF."
+            if protected else
+            "Outputs were not independently verified for this run; inspect the raw cleanup "
+            "records and obtain local readbacks before further physical operation."
+        )
         generated = {"backend": "pilot", "pilot_result": details, "answer": {
             "status": "completed" if completed else "failed",
             "summary": f"Physical pilot {report['status']}; {len(report['samples'])} raw samples preserved locally.",
-            "findings": ["The raw report records laser OFF and minimum 4 mV RMS excitation verification independently. Minimum excitation is not OFF."],
-            "questions": ["Reconcile the physical state locally before any further run."] if report["status"] == "UNKNOWN" else []}}
+            "findings": [protection_finding],
+            "questions": ["Reconcile the physical state locally before any further run."]
+            if report["status"] == "UNKNOWN" or not protected else []}}
         with self.physical_db() as db:
             db.execute("""INSERT INTO executions VALUES(?,?,?,?, 'finished',?)
                 ON CONFLICT(task_id) DO UPDATE SET state='finished',result_json=excluded.result_json""",
