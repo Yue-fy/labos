@@ -160,7 +160,8 @@ def export_hdf5(store, run_id: str) -> Path:
                                                                for a in artifacts], dtype=text_type)
             audit.create_dataset("artifact_sha256", data=[a["sha256"] for a in artifacts], dtype=text_type)
             h5.flush()
-        with temporary.open("rb") as handle:
+        # Windows requires a writable handle to flush the completed HDF5 file.
+        with temporary.open("r+b") as handle:
             os.fsync(handle.fileno())
         os.replace(temporary, path)
     finally:

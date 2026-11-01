@@ -16,7 +16,10 @@ def write_zip(path, members):
         for name, data in members:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", UserWarning)
-                archive.writestr(name, data)
+                member = zipfile.ZipInfo(name)
+                # Preserve unsafe test names that ZipInfo normalizes on Windows.
+                member.filename = name
+                archive.writestr(member, data)
 
 
 @pytest.fixture

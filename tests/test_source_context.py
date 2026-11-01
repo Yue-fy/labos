@@ -6,11 +6,13 @@ import pytest
 from labos.source_context import ReadOnlySources, SourceContextError
 
 
-def test_read_and_outline_do_not_import_production_code(tmp_path):
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_read_and_outline_do_not_import_production_code(tmp_path, newline):
     root = tmp_path / "production"
     root.mkdir()
     code = "raise RuntimeError('must never execute')\nclass Meter:\n    def read_power(self, timeout=1):\n        return 0.0\n"
-    (root / "meter.py").write_text(code)
+    code = code.replace("\n", newline)
+    (root / "meter.py").write_text(code, encoding="utf-8", newline="\n")
     sources = ReadOnlySources({"src": root})
     evidence = sources.collect(
         [
@@ -48,7 +50,7 @@ def test_symlink_cannot_escape_registered_root(tmp_path):
 
 
 def test_evidence_is_bounded_and_truncation_is_explicit(tmp_path):
-    (tmp_path / "guide.md").write_text("\U0001f52c" * 50000)
+    (tmp_path / "guide.md").write_text("\U0001f52c" * 50000, encoding="utf-8")
     evidence = ReadOnlySources({"docs": tmp_path}).collect(
         [{"root": "docs", "path": "guide.md", "kind": "read"} for _ in range(6)]
     )
@@ -283,7 +285,7 @@ def test_source_guard_interrupts_scan_and_closes_iterator(tmp_path, monkeypatch)
 
 def test_outline_bounds_traversal_and_retained_definitions(tmp_path):
     code = "\n".join(f"def function_{i}(): pass" for i in range(3000))
-    (tmp_path / "many.py").write_text(code)
+    (tmp_path / "many.py").write_text(code, encoding="utf-8", newline="\n")
     item = ReadOnlySources({"src": tmp_path}).collect(
         [{"root": "src", "path": "many.py", "kind": "outline"}])[0]
     assert item["truncated"]

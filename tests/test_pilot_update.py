@@ -91,8 +91,8 @@ def fixture(tmp_path):
     )
     payload = update / "overlay"
     payload.mkdir()
-    (payload / "Check-Pilot-Runtime.py").write_text("# new runtime check\n")
-    (target / "Check-Pilot-Runtime.py").write_text("# previous runtime check\n")
+    (payload / "Check-Pilot-Runtime.py").write_bytes(b"# new runtime check\n")
+    (target / "Check-Pilot-Runtime.py").write_bytes(b"# previous runtime check\n")
     (update / "payload-manifest.json").write_text(
         json.dumps(
             {

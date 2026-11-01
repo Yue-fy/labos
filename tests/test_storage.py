@@ -72,7 +72,7 @@ def artifact(store):
     return run, data
 
 
-def test_upload_integrity_deduplication_and_hdf5(tmp_path):
+def test_upload_integrity_deduplication_and_hdf5(tmp_path, monkeypatch):
     store = ready_store(tmp_path)
     run, data = artifact(store)
     content = json.dumps(data).encode()
@@ -84,11 +84,42 @@ def test_upload_integrity_deduplication_and_hdf5(tmp_path):
         store.accept_artifact("pc-b", content, "0" * 64)
     with pytest.raises(ValueError, match="ownership"):
         store.accept_artifact("pc-a", content, sha)
+    import os
+    original_fsync = os.fsync
+
+    def sync_writable_file(fd):
+        # Windows requires write access for fsync; this checks the same capability
+        # without changing any bytes, including when this test runs on POSIX.
+        os.write(fd, b"")
+        original_fsync(fd)
+
+    monkeypatch.setattr(os, "fsync", sync_writable_file)
     path = export_hdf5(store, run["id"])
     import h5py
     with h5py.File(path) as h5:
         assert h5["raw/counts"].shape == (1, 2)
         assert h5.attrs["simulated"]
+
+
+@pytest.mark.parametrize("failure", ["fsync", "replace"])
+def test_hdf5_export_failure_preserves_previous_file(tmp_path, monkeypatch, failure):
+    import os
+
+    store = ready_store(tmp_path)
+    run, data = artifact(store)
+    content = json.dumps(data).encode()
+    store.accept_artifact("pc-b", content, hashlib.sha256(content).hexdigest())
+    path = export_hdf5(store, run["id"])
+    previous = path.read_bytes()
+
+    def fail(*args):
+        raise OSError("injected export failure")
+
+    monkeypatch.setattr(os, failure, fail)
+    with pytest.raises(OSError, match="injected export failure"):
+        export_hdf5(store, run["id"])
+    assert path.read_bytes() == previous
+    assert list(path.parent.iterdir()) == [path]
 
 
 def test_nonfinite_measurement_is_rejected(tmp_path):
