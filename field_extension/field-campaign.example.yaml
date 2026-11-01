@@ -1,0 +1,21 @@
+enabled: false
+agent_id: cryostat-pc
+task_id: REPLACE_WITH_CENTRAL_TASK_ID
+message_id: REPLACE_WITH_CENTRAL_MESSAGE_ID
+message_sha256: REPLACE_WITH_CENTRAL_ENVELOPE_SHA256
+connection_config: C:/LabOS/agent.yaml
+optical_profile: C:/LabOS/optical-readback-worker.yaml
+optical_profile_sha256: REPLACE_WITH_ACTUAL_DISABLED_PROFILE_SHA256
+state_dir: C:/LabOS/data/finite-field-campaign
+magnetic_source_dir: C:/Production/src/attodry_control
+dll_path: C:/Production/vendor/attoDRYxyz64bit.dll
+magnetic_lease_profiles:
+  - C:/Production/config/three-lockin.local/photonics-cld-Bz-m2-to-p2-to-m2-42pts-power-5pts.local.toml
+  - C:/Production/config/three-lockin.local/photonics-cld-Bx-m2-to-p2-to-m2-42pts-power-5pts.local.toml
+temperature_setpoint_k: 180.0
+temperature_baseline_k: 180.0
+temperature_drift_max_k: 0.1
+transition_timeout_s: 900.0
+cleanup_timeout_s: 900.0
+max_campaign_s: 6300.0
+commissioning_max_age_s: 600

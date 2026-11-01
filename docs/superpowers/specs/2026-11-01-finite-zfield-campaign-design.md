@@ -46,7 +46,7 @@ This software protection survives an SDK-child stall; it does not promise laser 
 
 ## Readiness and transition policy
 
-Before deployment or physical dispatch, the read-only handoff must establish successful initialization, at least 12 complete states at roughly 1 Hz, raw call evidence, clear faults, live B/setpoint/control/T state, compatible Python/ABI and successful Disconnect/End. Refresh the disabled optical preflight and Doctor after releasing the SDK. Messages 156–160 now establish this read-only boundary: 149 allowlisted SDK calls, 12 states, actual and commanded X/Z zero, field control OFF, temperature control ON at a 180 K setpoint, sample 180.0001–180.0056 K, clean device faults, successful closure and optical preflight. Central reconstructed and verified the complete 147329-byte raw log against its SHA-256. This proves read-only communication, not write/ramp readiness.
+Before deployment or physical dispatch, the read-only handoff must establish successful initialization, at least 12 complete states at roughly 1 Hz, raw call evidence, clear faults, live B/setpoint/control/T state, compatible Python/ABI and successful Disconnect/End. Refresh the disabled optical preflight and Doctor after releasing the SDK.
 
 Use attoDRY's native target-field control with the controller's existing configured ramp behavior. The reviewed manufacturer-manual findings establish that magnetic field control manages the persistent-switch heater and current sweep; LabOS supplies a field target, not a magnet-current trajectory. Do not connect directly to APS100, program a sweep rate, bypass the native controller or infer a rate from a maximum setpoint step.
 

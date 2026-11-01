@@ -65,5 +65,8 @@
 
 - [ ] Write a central-store integration test, packaged-launcher subprocess smoke test and no-replay delivery test; observe RED before needed implementation.
 - [ ] Implement the minimal package/inspection pieces, run targeted and full tests/ruff, commit; obtain a fresh whole-branch review and fix important findings with RED→GREEN tests.
+
+## Operational continuation after software review
+
 - [ ] Build and verify the public source-only delivery. Send local Codex one concrete deployment/preflight/start handoff with the fixed draft task identity; no measurement locally. Accept full evidence before posting the one central task.
 - [ ] Monitor the finite campaign without replay, reassemble full raw data, independently validate each point and final zero/closure, plot data with actual field/power/temperature and retain quality flags. Request local closeout verification and preserve report cooperation/logs.

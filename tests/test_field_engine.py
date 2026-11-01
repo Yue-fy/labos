@@ -12,139 +12,253 @@ class Optical:
     def __init__(self):
         self.emission = False
         self.open_count = self.close_count = self.on_count = 0
-        self.excitation = .004
+        self.excitation = 0.004
         self.fail_read = False
-    def open(self): self.open_count += 1
-    def close(self): self.close_count += 1
-    def set_guard(self, *args): pass
-    def preflight(self): return {'ready': True, 'laser_enabled': self.emission}
-    def configure(self, phase, plan): self.laser_off()
-    def laser_on(self, current): assert current == .02; self.emission = True; self.on_count += 1
+
+    def open(self):
+        self.open_count += 1
+
+    def close(self):
+        self.close_count += 1
+
+    def set_guard(self, *args):
+        pass
+
+    def preflight(self):
+        return {"ready": True, "laser_enabled": self.emission}
+
+    def configure(self, phase, plan):
+        self.laser_off()
+
+    def laser_on(self, current):
+        assert current == 0.02
+        self.emission = True
+        self.on_count += 1
+
     def laser_off(self):
         self.emission = False
-        return {'laser_off_verified': True, 'emission_off_readback': True,
-                'zero_current_setpoint_verified': True}
+        return {
+            "laser_off_verified": True,
+            "emission_off_readback": True,
+            "zero_current_setpoint_verified": True,
+        }
+
     def protect_excitation(self):
-        return {'minimum_excitation_verified': True, 'actual_v_rms': .004}
+        return {"minimum_excitation_verified": True, "actual_v_rms": 0.004}
+
     def read_sample(self, phase):
-        if self.fail_read: raise OSError('acquisition failed')
-        channel = {'x_v': .002 if self.emission else 0., 'y_v': .001,
-                   'harmonic': 1, 'lia_status_raw': 0, 'error_status_raw': 0,
-                   'reference_hz': 8.}
-        return {'channels': {'xx': dict(channel), 'xy': dict(channel)},
-                'power_w': 475e-9 if self.emission else 0., 'simulated': False,
-                'laser_enabled': self.emission, 'excitation_v_rms': .004}
+        if self.fail_read:
+            raise OSError("acquisition failed")
+        channel = {
+            "x_v": 0.002 if self.emission else 0.0,
+            "y_v": 0.001,
+            "harmonic": 1,
+            "lia_status_raw": 0,
+            "error_status_raw": 0,
+            "reference_hz": 8.0,
+        }
+        return {
+            "channels": {"xx": dict(channel), "xy": dict(channel)},
+            "power_w": 475e-9 if self.emission else 0.0,
+            "simulated": False,
+            "laser_enabled": self.emission,
+            "excitation_v_rms": 0.004,
+        }
 
 
 class Magnet:
     def __init__(self, optical=None):
-        self.state = State(); self.targets = []; self.zero_count = self.close_count = 0
-        self.healthy = True; self.optical = optical
-        self.fail_at = None; self.fail_zero = False; self.stall_on_light = False
-    def set_guard(self, deadline): pass
-    def open(self, writes=False): return {'initial_state': asdict(self.state), 'writes_authorized': writes}
+        self.state = State()
+        self.targets = []
+        self.zero_count = self.close_count = 0
+        self.healthy = True
+        self.optical = optical
+        self.fail_at = None
+        self.fail_zero = False
+        self.stall_on_light = False
+
+    def set_guard(self, deadline):
+        pass
+
+    def open(self, writes=False):
+        return {"initial_state": asdict(self.state), "writes_authorized": writes}
+
     def move(self, z):
         assert not self.optical.emission
         self.targets.append(z)
-        if z == self.fail_at: raise OSError('field transition failed')
+        if z == self.fail_at:
+            raise OSError("field transition failed")
         from test_field_magnet import Vector
-        self.state = replace(self.state, field=Vector(0., z), field_setpoint=Vector(0., z),
-                             field_control_enabled=True)
-        return {'qualified': True, 'state': asdict(self.state), 'target_z_t': z}
+
+        self.state = replace(
+            self.state,
+            field=Vector(0.0, z),
+            field_setpoint=Vector(0.0, z),
+            field_control_enabled=True,
+        )
+        return {"qualified": True, "state": asdict(self.state), "target_z_t": z}
+
     def read(self):
         if self.stall_on_light and self.optical.emission:
             self.healthy = False
-            raise TimeoutError('SDK child stalled during illumination')
-        return {'state': asdict(self.state)}
+            raise TimeoutError("SDK child stalled during illumination")
+        return {"state": asdict(self.state)}
+
     def zero(self):
         assert not self.optical.emission
         self.zero_count += 1
-        if self.fail_zero: raise OSError('zero return failed')
+        if self.fail_zero:
+            raise OSError("zero return failed")
         self.state = State()
-        return {'zero_verified': True, 'initial_control_restored': True,
-                'state': asdict(self.state), 'post_restore_zero_states': [asdict(self.state)] * 11}
-    def close(self): self.close_count += 1; return {'closed': True}
+        return {
+            "zero_verified": True,
+            "initial_control_restored": True,
+            "state": asdict(self.state),
+            "post_restore_zero_states": [asdict(self.state)] * 11,
+        }
+
+    def close(self):
+        self.close_count += 1
+        return {"closed": True}
 
 
 def run(optical=None, magnet=None):
-    clock = Clock(); optical = optical or Optical(); magnet = magnet or Magnet(optical)
-    config = type('Settings', (), {'max_campaign_s': 6300., 'cleanup_timeout_s': 900.,
-        'temperature_baseline_k': 180., 'temperature_setpoint_k': 180., 'temperature_drift_max_k': .1})()
-    approval = PilotApproval(enabled=True, sample_id='CrSBr 1', laser_current_max_a=.0218,
-        power_limit_max_w=1e-6, reference_hz=8., max_phase_s=60., max_run_s=180.)
+    clock = Clock()
+    optical = optical or Optical()
+    magnet = magnet or Magnet(optical)
+    config = type(
+        "Settings",
+        (),
+        {
+            "max_campaign_s": 6300.0,
+            "cleanup_timeout_s": 900.0,
+            "temperature_baseline_k": 180.0,
+            "temperature_setpoint_k": 180.0,
+            "temperature_drift_max_k": 0.1,
+        },
+    )()
+    approval = PilotApproval(
+        enabled=True,
+        sample_id="CrSBr 1",
+        laser_current_max_a=0.0218,
+        power_limit_max_w=1e-6,
+        reference_hz=8.0,
+        max_phase_s=60.0,
+        max_run_s=180.0,
+    )
     result = CampaignEngine(optical, magnet, config, clock=clock, sleep=clock.sleep).run(
-        default_task('campaign-test-001'), approval)
+        default_task("campaign-test-001"), approval
+    )
     return result, optical, magnet
 
 
 def test_five_native_points_and_thirty_raw_samples_with_one_shared_session():
     result, optical, magnet = run()
-    assert result['status'] == 'COMPLETED'
-    assert [p['target_z_t'] for p in result['points']] == [-.5, -.25, 0., .25, .5]
-    assert sum(len(p['optical']['samples']) for p in result['points']) == 30
+    assert result["status"] == "COMPLETED"
+    assert [p["target_z_t"] for p in result["points"]] == [-0.5, -0.25, 0.0, 0.25, 0.5]
+    assert sum(len(p["optical"]["samples"]) for p in result["points"]) == 30
     assert optical.open_count == optical.close_count == 1
     assert optical.on_count == 5 and not optical.emission
     assert magnet.zero_count == magnet.close_count == 1
-    assert validate_campaign(result)['accepted'] is True
-    for p in result['points']:
-        for sample in p['optical']['samples']:
-            assert sample['magnetic_before']['state']['field']['bz_t'] == p['target_z_t']
-            assert sample['magnetic_after']['state']['field']['bz_t'] == p['target_z_t']
+    assert validate_campaign(result)["accepted"] is True
+    for p in result["points"]:
+        for sample in p["optical"]["samples"]:
+            assert sample["magnetic_before"]["state"]["field"]["bz_t"] == p["target_z_t"]
+            assert sample["magnetic_after"]["state"]["field"]["bz_t"] == p["target_z_t"]
 
 
 def test_first_transition_failure_stops_remaining_points_but_attempts_protected_zero():
-    optical = Optical(); magnet = Magnet(optical); magnet.fail_at = -.25
+    optical = Optical()
+    magnet = Magnet(optical)
+    magnet.fail_at = -0.25
     result, optical, magnet = run(optical, magnet)
-    assert result['status'] == 'FAILED'
-    assert magnet.targets == [-.5, -.25] and optical.on_count == 1
+    assert result["status"] == "FAILED"
+    assert magnet.targets == [-0.5, -0.25] and optical.on_count == 1
     assert magnet.zero_count == 1 and not optical.emission
-    assert validate_campaign(result)['accepted'] is False
+    assert validate_campaign(result)["accepted"] is False
 
 
 def test_sdk_stall_in_light_does_not_prevent_parent_laser_protection():
-    optical = Optical(); magnet = Magnet(optical); magnet.stall_on_light = True
+    optical = Optical()
+    magnet = Magnet(optical)
+    magnet.stall_on_light = True
     result, optical, magnet = run(optical, magnet)
-    assert result['status'] == 'UNKNOWN' and not optical.emission
-    assert optical.close_count == 1 and magnet.targets == [-.5]
+    assert result["status"] == "UNKNOWN" and not optical.emission
+    assert optical.close_count == 1 and magnet.targets == [-0.5]
     assert magnet.zero_count == 0  # No blind command into an uncertain child.
 
 
 def test_failed_final_zero_or_close_never_reports_completed():
-    optical = Optical(); magnet = Magnet(optical); magnet.fail_zero = True
+    optical = Optical()
+    magnet = Magnet(optical)
+    magnet.fail_zero = True
     result, optical, _ = run(optical, magnet)
-    assert len(result['points']) == 5 and result['status'] == 'UNKNOWN' and not optical.emission
-    assert validate_campaign(result)['accepted'] is False
+    assert len(result["points"]) == 5 and result["status"] == "UNKNOWN" and not optical.emission
+    assert validate_campaign(result)["accepted"] is False
 
 
 def test_log_failure_still_attempts_optical_protection_zero_and_closure():
-    clock = Clock(); optical = Optical(); magnet = Magnet(optical)
-    config = type('Settings', (), {'max_campaign_s': 6300., 'cleanup_timeout_s': 900.,
-        'temperature_baseline_k': 180., 'temperature_setpoint_k': 180., 'temperature_drift_max_k': .1})()
-    approval = PilotApproval(enabled=True, sample_id='CrSBr 1', laser_current_max_a=.0218,
-        power_limit_max_w=1e-6, reference_hz=8., max_phase_s=60., max_run_s=180.)
-    def failed_log(event): raise OSError('disk full')
+    clock = Clock()
+    optical = Optical()
+    magnet = Magnet(optical)
+    config = type(
+        "Settings",
+        (),
+        {
+            "max_campaign_s": 6300.0,
+            "cleanup_timeout_s": 900.0,
+            "temperature_baseline_k": 180.0,
+            "temperature_setpoint_k": 180.0,
+            "temperature_drift_max_k": 0.1,
+        },
+    )()
+    approval = PilotApproval(
+        enabled=True,
+        sample_id="CrSBr 1",
+        laser_current_max_a=0.0218,
+        power_limit_max_w=1e-6,
+        reference_hz=8.0,
+        max_phase_s=60.0,
+        max_run_s=180.0,
+    )
+
+    def failed_log(event):
+        raise OSError("disk full")
+
     result = CampaignEngine(optical, magnet, config, clock=clock, sleep=clock.sleep).run(
-        default_task('campaign-log-failure'), approval, event_sink=failed_log)
-    assert result['status'] != 'COMPLETED'
+        default_task("campaign-log-failure"), approval, event_sink=failed_log
+    )
+    assert result["status"] != "COMPLETED"
     assert not optical.emission and optical.close_count == 1
-    assert result['evidence_errors']
+    assert result["evidence_errors"]
 
 
 def test_missing_or_rejected_sample_cannot_pass_central_acceptance():
     result, _, _ = run()
-    result['points'][2]['optical']['samples'].pop()
-    with pytest.raises(ValueError): validate_campaign(result)
+    result["points"][2]["optical"]["samples"].pop()
+    with pytest.raises(ValueError):
+        validate_campaign(result)
 
 
 def test_disabled_cli_run_never_creates_a_hardware_intent(tmp_path, capsys):
     from labos_field.__main__ import main
-    config = {'enabled': False, 'task_id': 'not-running', 'message_id': 'msg_not_running',
-              'message_sha256': 'a' * 64, 'connection_config': 'missing.yaml',
-              'optical_profile': 'missing-optical.yaml', 'optical_profile_sha256': 'b' * 64,
-              'state_dir': str(tmp_path / 'state'), 'magnetic_source_dir': 'missing-src',
-              'dll_path': 'missing.dll', 'magnetic_lease_profiles': ['one.toml', 'two.toml'],
-              'temperature_baseline_k': 180.}
-    path = tmp_path / 'field.yaml'; path.write_text(yaml.safe_dump(config))
-    assert main(['run', '--config', str(path)]) == 1
-    assert 'disabled' in capsys.readouterr().out
-    assert not (tmp_path / 'state' / 'field-intents.sqlite').exists()
+
+    config = {
+        "enabled": False,
+        "task_id": "not-running",
+        "message_id": "msg_not_running",
+        "message_sha256": "a" * 64,
+        "connection_config": "missing.yaml",
+        "optical_profile": "missing-optical.yaml",
+        "optical_profile_sha256": "b" * 64,
+        "state_dir": str(tmp_path / "state"),
+        "magnetic_source_dir": "missing-src",
+        "dll_path": "missing.dll",
+        "magnetic_lease_profiles": ["one.toml", "two.toml"],
+        "temperature_baseline_k": 180.0,
+    }
+    path = tmp_path / "field.yaml"
+    path.write_text(yaml.safe_dump(config))
+    assert main(["run", "--config", str(path)]) == 1
+    assert "disabled" in capsys.readouterr().out
+    assert not (tmp_path / "state" / "field-intents.sqlite").exists()
