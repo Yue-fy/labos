@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import runpy
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def build(output):
     output = Path(output)
+    versions = runpy.run_path(str(ROOT / "src/labos_field/__init__.py"))
     files = {
         f"src/labos_field/{p.name}": p.read_bytes()
         for p in sorted((ROOT / "src/labos_field").glob("*.py"))
@@ -29,8 +31,8 @@ def build(output):
     files["payload-manifest.json"] = (
         json.dumps(
             {
-                "extension_version": "0.1.0",
-                "core_version": "0.2.8",
+                "extension_version": versions["__version__"],
+                "core_version": versions["CORE_VERSION"],
                 "files": {
                     name: hashlib.sha256(value).hexdigest() for name, value in sorted(files.items())
                 },

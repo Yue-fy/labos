@@ -9,7 +9,7 @@ from labos_field.records import Journal, artifact_messages, digest, reassemble
 from labos_field.channel import Channel
 
 
-def test_only_the_fixed_five_point_scope_is_accepted():
+def test_original_five_point_default_and_numeric_scope_are_preserved():
     task = default_task("field-test-001")
     assert task.targets_z_t == (-0.5, -0.25, 0.0, 0.25, 0.5)
     assert task.optical.samples_per_phase == 3

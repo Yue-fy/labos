@@ -123,7 +123,7 @@ class Magnet:
         return {"closed": True}
 
 
-def run(optical=None, magnet=None):
+def run(optical=None, magnet=None, task=None, event_sink=lambda event: None):
     clock = Clock()
     optical = optical or Optical()
     magnet = magnet or Magnet(optical)
@@ -148,7 +148,7 @@ def run(optical=None, magnet=None):
         max_run_s=180.0,
     )
     result = CampaignEngine(optical, magnet, config, clock=clock, sleep=clock.sleep).run(
-        default_task("campaign-test-001"), approval
+        task or default_task("campaign-test-001"), approval, event_sink=event_sink
     )
     return result, optical, magnet
 

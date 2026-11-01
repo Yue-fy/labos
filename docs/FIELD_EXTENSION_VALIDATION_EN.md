@@ -1,11 +1,17 @@
-# Field extension 0.1.0 — validation and execution decisions
+# Field extension 0.1.1 — validation and execution decisions
+
+## Hysteresis amendment
+
+The operator corrected the requested experiment to the exact nine-point return path in `2026-11-01-zfield-hysteresis.md`. Version0.1.1 adds this path while retaining the earlier five-point authority and inspection compatibility. The native SDK control, current/power/temperature limits, deadlines, independent optical protection, persistent no-replay journal and zero/closure procedure are unchanged. Every repeated-field visit has its own indexed point and raw sample events. Central acceptance validates all nine ordered raw target writes and54 samples; forward observations cannot stand in for return-leg evidence.
+
+The earlier0.1.0 experiment completed five points/30 physical samples and final native0T at core0.2.8. That evidence is retained privately; it does not commission a new task or prove a hysteresis mechanism. Actual PM pickoff in that scan was449.4–463.1nW, rather than an exactly controlled475nW.
 
 The extension is separate from the portable LabOS0.2.8 core. No staged0.2.9rc1 update, production procedure or vendor binary is part of this delivery. The approved flow is native target field → actual-field qualification → native optical pilot → verified protection → next target → final controlled zero.
 
 ## Software evidence
 
-- Full Linux suite: **508 passed,11 Windows-specific checks skipped**; no failure. Ruff and package/launcher checks pass. Windows DLL/live station commissioning remains required.
-- Fixed five-target authority, message/config digest binding, durable no-replay intent and unresolved-run latch are covered.
+- Full Linux suite: **513 passed,11 Windows-specific checks skipped**; no failure, one upstream Starlette/httpx deprecation warning. Ruff and package/launcher checks pass. Windows DLL/live station commissioning for the new extension remains required.
+- Exact five-point/nine-point authority, message/config digest binding, durable no-replay intent and unresolved-run latch are covered. New tests preserve54 indexed samples, reject incomplete/altered return paths, stop on the first descending-transition failure and reject borrowed forward-leg getter proofs. The0.1.1 central inspector also accepted the actual complete five-point0.1.0 artifact without changing it.
 - Stock central correspondence stores the new typed task and complete data parts without executing a legacy task or enqueuing arbitrary commands.
 - A complete synthetic SDK-wire fixture passes central inspection. Removing complete getter pairs, state/dwell records or mode-restoration commands, or contradicting raw pointer values, fails inspection.
 - SDK calls have contiguous indices and unique IDs. Field/temperature/control observations reference ten complete getter returns, with original pointer storage bytes. Qualification and sample context reference those observations; summaries alone cannot pass.

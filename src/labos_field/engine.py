@@ -11,7 +11,7 @@ from labos.files import json_bytes
 from labos.pilot import PilotEngine
 from . import __version__, CORE_VERSION
 from .magnet import validate_state, SOURCE_SHA, DLL_SHA, READS, WRITES
-from .models import CampaignTask, TARGETS
+from .models import CampaignTask, HYSTERESIS_TARGETS
 from .records import digest
 
 
@@ -65,10 +65,11 @@ def accept_point(point, config):
 class PointView:
     """Borrow campaign sessions; close releases only the point view."""
 
-    def __init__(self, optical, magnet, config, z, deadline, records, emit, check):
+    def __init__(self, optical, magnet, config, z, deadline, records, emit, check, point_index):
         self.optical, self.magnet, self.config, self.z = optical, magnet, config, z
         self.deadline = deadline
         self.records, self.emit, self.check = records, emit, check
+        self.point_index = point_index
 
     def set_guard(self, deadline, cancel):
         deadline = min(deadline, self.deadline)
@@ -116,6 +117,7 @@ class PointView:
             self.emit(
                 {
                     "event": "sample_raw_captured",
+                    "point_index": self.point_index,
                     "target_z_t": self.z,
                     "record_index": len(self.records) - 1,
                     "record": json.loads(json_bytes(record)),
@@ -129,6 +131,7 @@ class PointView:
             self.emit(
                 {
                     "event": "sample_context_completed",
+                    "point_index": self.point_index,
                     "target_z_t": self.z,
                     "record_index": len(self.records) - 1,
                     "record": record,
@@ -172,7 +175,9 @@ class CampaignEngine:
                 "sdk_values_server_cached_no_device_timestamp",
                 "pm_pickoff_not_calibrated_sample_power",
                 "sample_current_uncalibrated",
-                "single_ordered_sweep",
+                "single_hysteresis_cycle"
+                if task.targets_z_t == HYSTERESIS_TARGETS
+                else "single_ordered_sweep",
                 "optical_modulation_unverified",
             ],
         }
@@ -247,6 +252,7 @@ class CampaignEngine:
                     point["raw_reads"],
                     emit,
                     guard,
+                    index,
                 )
                 try:
                     point["optical"] = PilotEngine(view, self.clock, self.sleep).run(
@@ -346,7 +352,7 @@ def validate_campaign(result, *, expected_task=None, expected_message_sha=None, 
         temperature_drift_max_k=0.1,
     )
     points = result["points"]
-    if [p["target_z_t"] for p in points] != list(TARGETS):
+    if [p["target_z_t"] for p in points] != list(task.targets_z_t):
         raise ValueError("campaign field order or point count differs")
     for index, point in enumerate(points):
         if point.get("point_index") != index:
@@ -399,7 +405,7 @@ def validate_campaign(result, *, expected_task=None, expected_message_sha=None, 
                 z_writes.append(req["arguments_before"][0])
             if name == "setUserMagneticFieldX" and req["arguments_before"] != [0.0]:
                 raise ValueError("raw SDK attempted a nonzero transverse-axis command")
-        if z_writes != list(TARGETS) or any(
+        if z_writes != list(task.targets_z_t) or any(
             names.count(n) != 1
             for n in ("begin", "Connect", "Disconnect", "end", "sweepFieldToZero")
         ):
@@ -422,8 +428,8 @@ def validate_campaign(result, *, expected_task=None, expected_message_sha=None, 
         validate_raw_evidence(result, config)
     return {
         "accepted": True,
-        "points": 5,
-        "samples": 30,
+        "points": len(task.targets_z_t),
+        "samples": len(task.targets_z_t) * 6,
         "actual_zero_verified": True,
         "close_error": None,
     }

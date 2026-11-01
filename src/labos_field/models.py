@@ -19,6 +19,7 @@ from labos.models import Identifier, Model
 from labos.pilot import PilotPlan
 
 TARGETS = (-0.5, -0.25, 0.0, 0.25, 0.5)
+HYSTERESIS_TARGETS = TARGETS + tuple(reversed(TARGETS[:-1]))
 
 
 def optical_plan():
@@ -56,8 +57,10 @@ class CampaignTask(BaseModel):
             type(v) not in (int, float) for v in values
         ):
             raise ValueError("targets require numeric field values")
-        if tuple(values) != TARGETS:
-            raise ValueError("only the five ordered operator-selected Z targets are supported")
+        if tuple(values) not in (TARGETS, HYSTERESIS_TARGETS):
+            raise ValueError(
+                "only the fixed five-point or nine-point hysteresis Z path is supported"
+            )
         return tuple(float(v) for v in values)
 
     @model_validator(mode="after")

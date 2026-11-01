@@ -23,8 +23,8 @@ GETTERS = [
 ]
 
 
-def complete_evidence():
-    result, _, _ = run()
+def complete_evidence(task=None):
+    result, _, _ = run(task=task)
     events = []
     sequence = [0]
     moment = [0.0]
