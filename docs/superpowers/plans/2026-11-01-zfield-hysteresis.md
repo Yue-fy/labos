@@ -14,7 +14,7 @@
 
 - Keep 20mA fixed current,21.8mA current ceiling,1µW PM ceiling,4mV RMS,8Hz,180K setpoint/control.
 - Retain3dark+3illuminated readings per point,15s settling,60s phase/180s optical-point budgets and all existing magnetic/total deadlines.
-- Actual PM power is recorded, not chased; the previous fixed-current run measured mean454–458nW rather than exactly475nW.
+- Actual PM power is recorded, not chased; nominal475nW is a historical fixed-current condition, not an exact power-control guarantee.
 - No production workflow/Notebook, gate/temperature/motion scan, AUX/chopper session, core/candidate update, task replay or journal reset.
 - New task/config identity; reuse the persistent state directory so earlier unresolved intents cannot be bypassed.
 - Local disabled commissioning, Doctor and waiting-runner evidence precede dispatch. Supervise to closed/disabled; keep report backend.

@@ -4,7 +4,9 @@
 
 The operator corrected the requested experiment to the exact nine-point return path in `2026-11-01-zfield-hysteresis.md`. Version0.1.1 adds this path while retaining the earlier five-point authority and inspection compatibility. The native SDK control, current/power/temperature limits, deadlines, independent optical protection, persistent no-replay journal and zero/closure procedure are unchanged. Every repeated-field visit has its own indexed point and raw sample events. Central acceptance validates all nine ordered raw target writes and54 samples; forward observations cannot stand in for return-leg evidence.
 
-The earlier0.1.0 experiment completed five points/30 physical samples and final native0T at core0.2.8. That evidence is retained privately; it does not commission a new task or prove a hysteresis mechanism. Actual PM pickoff in that scan was449.4–463.1nW, rather than an exactly controlled475nW.
+The earlier0.1.0 deployment exercised five points/30 physical samples and final native zero at core0.2.8. That evidence is retained privately; it does not commission a new task or prove a hysteresis mechanism. Actual PM power is retained in the private raw records, rather than inferred from nominal475nW.
+
+Fresh whole-change review found no Critical, Important or Minor findings. Independent review checks covered copied forward samples/points, altered target-write order, changed trajectory and unrebound message content. Live Windows commissioning, the actual loop and physical closeout remain separate operational evidence requirements.
 
 The extension is separate from the portable LabOS0.2.8 core. No staged0.2.9rc1 update, production procedure or vendor binary is part of this delivery. The approved flow is native target field → actual-field qualification → native optical pilot → verified protection → next target → final controlled zero.
 
