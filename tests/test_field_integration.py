@@ -86,6 +86,28 @@ def test_central_acceptance_refuses_missing_raw_sdk_and_wrong_original_task():
         validate_campaign(result, expected_task=other)
 
 
+@pytest.mark.parametrize("unknown_result", [False, True])
+def test_preflight_respects_unresolved_latch_before_any_hardware_constructor(
+    tmp_path, monkeypatch, unknown_result
+):
+    import labos_field.__main__ as cli
+    from labos_field.records import Journal
+    from types import SimpleNamespace
+
+    journal = Journal(tmp_path)
+    journal.begin("old-task", "a" * 64, "b" * 64)
+    if unknown_result:
+        journal.finish("old-task", {"status": "UNKNOWN"})
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("hardware constructor reached despite unresolved prior campaign")
+
+    monkeypatch.setattr(cli, "optical_settings", forbidden)
+    monkeypatch.setattr(cli, "MagnetProcess", forbidden)
+    with pytest.raises(ValueError, match="unresolved"):
+        cli.preflight(SimpleNamespace(enabled=False, state_dir=tmp_path, task_id="different-task"))
+
+
 def test_preflight_sends_full_evidence_without_requiring_unqueued_task_reference(
     tmp_path, monkeypatch
 ):

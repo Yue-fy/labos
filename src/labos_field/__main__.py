@@ -79,6 +79,7 @@ def _logs(path):
 def preflight(config):
     if config.enabled:
         raise ValueError("preflight requires disabled campaign configuration")
+    Journal(config.state_dir).require_resolved()
     directory = config.state_dir / ("preflight-" + uuid.uuid4().hex[:12])
     directory.mkdir(parents=True)
     optical, _ = optical_settings(config)

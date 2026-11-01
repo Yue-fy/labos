@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import math
+import json
 import time
 from types import SimpleNamespace
 
@@ -64,9 +65,10 @@ def accept_point(point, config):
 class PointView:
     """Borrow campaign sessions; close releases only the point view."""
 
-    def __init__(self, optical, magnet, config, z, deadline):
+    def __init__(self, optical, magnet, config, z, deadline, records, emit, check):
         self.optical, self.magnet, self.config, self.z = optical, magnet, config, z
         self.deadline = deadline
+        self.records, self.emit, self.check = records, emit, check
 
     def set_guard(self, deadline, cancel):
         deadline = min(deadline, self.deadline)
@@ -105,9 +107,34 @@ class PointView:
             validate_state(before["state"], self.config, self.z, True)
             raw = self.optical.read_sample(phase)
             raw["magnetic_before"] = before
+            record = {
+                "phase": phase,
+                "raw": json.loads(json_bytes(raw)),
+                "acceptance": "captured_before_native_engine_validation",
+            }
+            self.records.append(record)
+            self.emit(
+                {
+                    "event": "sample_raw_captured",
+                    "target_z_t": self.z,
+                    "record_index": len(self.records) - 1,
+                    "record": json.loads(json_bytes(record)),
+                }
+            )
+            self.check()
             after = self.magnet.read()
             raw["magnetic_after"] = after
             validate_state(after["state"], self.config, self.z, True)
+            record["raw"] = json.loads(json_bytes(raw))
+            self.emit(
+                {
+                    "event": "sample_context_completed",
+                    "target_z_t": self.z,
+                    "record_index": len(self.records) - 1,
+                    "record": record,
+                }
+            )
+            self.check()
             return raw
         except Exception as exc:
             rejected = getattr(exc, "raw_sample", raw)
@@ -210,11 +237,35 @@ class CampaignEngine:
                 result["points"].append(point)
                 emit({"event": "field_qualified", "point": dict(point)})
                 guard()
-                view = PointView(self.optical, self.magnet, self.config, z, deadline)
-                point["optical"] = PilotEngine(view, self.clock, self.sleep).run(
-                    task.optical, approval
+                point["raw_reads"] = []
+                view = PointView(
+                    self.optical,
+                    self.magnet,
+                    self.config,
+                    z,
+                    deadline,
+                    point["raw_reads"],
+                    emit,
+                    guard,
                 )
-                emit({"event": "optical_point_finished", "point": point})
+                try:
+                    point["optical"] = PilotEngine(view, self.clock, self.sleep).run(
+                        task.optical, approval
+                    )
+                except BaseException as exc:
+                    point["optical"] = {
+                        "status": "CANCELLED",
+                        "error": f"{type(exc).__name__}: {exc}",
+                        "samples": [],
+                        "rejected_samples": [],
+                        "acquisition_complete": False,
+                        "protection_verified": False,
+                        "close_error": None,
+                        "partial_data_location": "point.raw_reads and sample_raw_captured events",
+                    }
+                    raise
+                finally:
+                    emit({"event": "optical_point_finished", "point": point})
                 guard()
                 accept_point(point, self.config)
             result["status"] = "COMPLETED"
@@ -366,6 +417,9 @@ def validate_campaign(result, *, expected_task=None, expected_message_sha=None, 
             values = [o["state"]["field"][axis] for o in observations]
             if max(values) - min(values) > 0.0005:
                 raise ValueError("raw final zero field is not stable")
+        from .evidence import validate_raw_evidence
+
+        validate_raw_evidence(result, config)
     return {
         "accepted": True,
         "points": 5,

@@ -1,5 +1,6 @@
 import pytest
 import yaml
+import time
 
 from labos_field.engine import CampaignEngine, validate_campaign
 from labos_field.models import default_task
@@ -238,6 +239,68 @@ def test_missing_or_rejected_sample_cannot_pass_central_acceptance():
     result["points"][2]["optical"]["samples"].pop()
     with pytest.raises(ValueError):
         validate_campaign(result)
+
+
+def test_operator_interrupt_retains_first_raw_sample_and_closes_outputs():
+    from labos_field.records import artifact_messages, reassemble
+
+    optical = Optical()
+    original = optical.read_sample
+    count = [0]
+
+    def interrupted(phase):
+        count[0] += 1
+        if count[0] == 2:
+            raise KeyboardInterrupt("operator stop")
+        return original(phase)
+
+    optical.read_sample = interrupted
+    result, optical, magnet = run(optical, Magnet(optical))
+    assert result["status"] != "COMPLETED" and not optical.emission
+    assert result["points"][0]["optical"]["status"] == "CANCELLED"
+    records = result["points"][0]["raw_reads"]
+    assert records[0]["raw"]["channels"]["xx"]["x_v"] == 0.0
+    assert records[0]["phase"] == "dark_baseline"
+    recovered = reassemble(artifact_messages("interrupted-task", result))
+    assert recovered["points"][0]["raw_reads"] == records
+    assert optical.close_count == 1 and magnet.zero_count == 1
+
+
+def delayed_illuminated_child(connection, config, state_dir):
+    connection.send({"ready": True})
+    request = connection.recv()
+    assert request["args"]["illuminated"] is True
+    time.sleep(0.5)
+    connection.send({"id": request["id"], "ok": True, "result": {"late": True}})
+    connection.close()
+
+
+def test_real_delayed_child_during_illumination_leaves_parent_free_to_close_laser(tmp_path):
+    from labos_field.rpc import MagnetProcess
+
+    optical = Optical()
+    rpc = MagnetProcess({}, tmp_path, target=delayed_illuminated_child)
+    assert rpc.connection.poll(5.0) and rpc.connection.recv()["ready"]
+
+    class ActualStall(Magnet):
+        def read(self):
+            if self.optical.emission:
+                try:
+                    rpc.call("read", {"illuminated": True}, timeout=0.05)
+                except Exception:
+                    self.healthy = False
+                    raise
+            return super().read()
+
+    try:
+        result, optical, magnet = run(optical, ActualStall(optical))
+        assert result["status"] == "UNKNOWN" and not optical.emission
+        assert optical.close_count == 1 and magnet.zero_count == 0
+        assert rpc.process.is_alive()  # Parent protected optics before the blocked child returned.
+    finally:
+        rpc.process.join(3.0)
+        rpc.connection.close()
+    assert rpc.process.exitcode == 0
 
 
 def test_disabled_cli_run_never_creates_a_hardware_intent(tmp_path, capsys):

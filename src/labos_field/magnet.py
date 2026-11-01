@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ctypes
+from collections import deque
 from dataclasses import asdict
 import hashlib
 import importlib
@@ -112,11 +113,12 @@ def _argument(value):
 
 
 class _Function:
-    def __init__(self, function, name, events, guard):
+    def __init__(self, function, name, events, guard, counter=None):
         object.__setattr__(self, "function", function)
         object.__setattr__(self, "name", name)
         object.__setattr__(self, "events", events)
         object.__setattr__(self, "guard", guard)
+        object.__setattr__(self, "counter", counter if counter is not None else [0])
 
     def __getattr__(self, name):
         return getattr(self.function, name)
@@ -126,9 +128,11 @@ class _Function:
 
     def __call__(self, *args):
         self.guard(self.name)
+        self.counter[0] += 1
         record = {
             "event": "sdk_call",
             "call_id": uuid.uuid4().hex,
+            "call_index": self.counter[0],
             "symbol": self.name,
             "started_monotonic_s": time.monotonic(),
             "arguments_before": [_argument(v) for v in args],
@@ -150,10 +154,13 @@ class _DLL:
     def __init__(self, raw, events, guard):
         self.raw, self.events, self.guard = raw, events, guard
         self.functions = {}
+        self.counter = [0]
 
     def __getattr__(self, name):
         if name not in self.functions:
-            self.functions[name] = _Function(getattr(self.raw, name), name, self.events, self.guard)
+            self.functions[name] = _Function(
+                getattr(self.raw, name), name, self.events, self.guard, self.counter
+            )
         return self.functions[name]
 
 
@@ -252,6 +259,14 @@ class MagnetSession:
         self.closed = False
         self.close_error = None
         self.control_started = False
+        self.recent_sdk_calls = deque(maxlen=10)
+        self.last_observation = None
+        self.qualification_buffer = None
+
+    def audit_event(self, event):
+        if event.get("event") == "sdk_call" and event.get("phase") == "returned":
+            self.recent_sdk_calls.append(event)
+        self.events(event)
 
     def guard(self, symbol=None):
         name = symbol.removeprefix("AttoDRY_Interface_") if symbol else None
@@ -262,10 +277,26 @@ class MagnetSession:
 
     def sample(self, state, elapsed=0.0, phase="read", waypoint=None):
         raw = asdict(state)
+        ids = [e["call_id"] for e in self.recent_sdk_calls]
+        if (
+            len(ids) == 10
+            and self.last_observation
+            and self.last_observation["sdk_call_ids"] == ids
+        ):
+            observation = self.last_observation
+        else:
+            observation = {
+                "state": raw,
+                "state_id": uuid.uuid4().hex,
+                "observed_monotonic_s": self.clock(),
+                "sdk_call_ids": ids,
+                "device_acquisition_timestamp": None,
+            }
+        self.last_observation = observation
         self.events(
             {
+                **observation,
                 "event": "magnetic_state",
-                "state": raw,
                 "elapsed_s": elapsed,
                 "phase": phase,
                 "waypoint_index": waypoint,
@@ -273,6 +304,8 @@ class MagnetSession:
                 "device_acquisition_timestamp": None,
             }
         )
+        if self.qualification_buffer is not None and phase == "field_stability":
+            self.qualification_buffer.append({**observation, "qualification_elapsed_s": elapsed})
         validate_state(raw, self.config)
         self.guard()
         return raw
@@ -292,7 +325,9 @@ class MagnetSession:
             lease.open()
             self.leases.append(lease)
         if self.driver is None:
-            self.driver, self.vector = load_reviewed_driver(self.config, self.events, self.guard)
+            self.driver, self.vector = load_reviewed_driver(
+                self.config, self.audit_event, self.guard
+            )
         self.driver.connect(monotonic=self.clock, sleeper=self.pause)
         state = self.read()["state"]
         validate_state(state, self.config, target=0.0)
@@ -301,6 +336,7 @@ class MagnetSession:
         return {
             "connected": True,
             "initial_state": state,
+            "initial_observation": self.last_observation,
             "writes_authorized": writes,
             "ramp_rate": "unknown_preserved_by_native_controller",
             "source_hashes": SOURCE_SHA,
@@ -309,10 +345,9 @@ class MagnetSession:
 
     def read(self):
         self.guard()
-        state = self.sample(self.driver.read_state())
+        self.sample(self.driver.read_state())
         return {
-            "state": state,
-            "observed_monotonic_s": self.clock(),
+            **self.last_observation,
             "freshness": "SDK server-cached values; no device acquisition timestamp",
         }
 
@@ -334,13 +369,33 @@ class MagnetSession:
             **self.kwargs(),
             on_command=self.events,
         )
-        confirmed = self.driver.wait_for_field(target, **self.kwargs())
+        self.qualification_buffer = []
+        try:
+            confirmed = self.driver.wait_for_field(target, **self.kwargs())
+            observations = self.qualification_window(self.qualification_buffer)
+        finally:
+            self.qualification_buffer = None
         state = asdict(confirmed)
         validate_state(state, self.config, target=z, require_control=True)
-        return {"qualified": True, "target_z_t": z, "state": state}
+        return {
+            "qualified": True,
+            "target_z_t": z,
+            "state": state,
+            "state_id": observations[-1]["state_id"],
+            "qualification_observations": observations,
+        }
+
+    @staticmethod
+    def qualification_window(observations):
+        values = list(observations)
+        if not values:
+            raise ValueError("missing field qualification observations")
+        cutoff = values[-1]["qualification_elapsed_s"] - 10.0
+        while len(values) > 1 and values[1]["qualification_elapsed_s"] < cutoff:
+            values.pop(0)
+        return values
 
     def observe_zero(self, control):
-        started = self.clock()
         states = []
         while True:
             observation = self.read()
@@ -351,7 +406,10 @@ class MagnetSession:
                 values = [x["state"]["field"][axis] for x in states]
                 if max(values) - min(values) > 0.0005:
                     raise ValueError("zero-field observation is not stable")
-            if self.clock() - started >= 10.0 and len(states) >= 3:
+            if (
+                states[-1]["observed_monotonic_s"] - states[0]["observed_monotonic_s"] >= 10.0
+                and len(states) >= 3
+            ):
                 return states
             self.pause(1.0)
 
@@ -362,19 +420,26 @@ class MagnetSession:
         if self.control_started and before["field_control_enabled"] is not True:
             raise ValueError("field control changed unexpectedly; no blind control/zero write")
         if before["field_control_enabled"] is True:
-            confirmed = self.driver.request_zero_field(**self.kwargs(), on_command=self.events)
+            self.qualification_buffer = []
+            try:
+                confirmed = self.driver.request_zero_field(**self.kwargs(), on_command=self.events)
+                controlled = self.qualification_window(self.qualification_buffer)
+            finally:
+                self.qualification_buffer = None
             validate_state(asdict(confirmed), self.config, target=0.0, require_control=True)
             self.driver.ensure_field_control(
                 self.initial_control, **self.kwargs(), on_command=self.events
             )
         else:
             validate_state(before, self.config, target=0.0, require_control=self.initial_control)
+            controlled = []
         states = self.observe_zero(self.initial_control)
         return {
             "zero_verified": True,
             "initial_control_restored": True,
             "state": states[-1]["state"],
             "post_restore_zero_observations": states,
+            "controlled_zero_qualification": controlled,
         }
 
     def close(self):

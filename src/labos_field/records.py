@@ -48,6 +48,15 @@ class Journal:
                 (task_id, message_sha, config_sha, "intent"),
             )
 
+    def require_resolved(self):
+        with self.db() as db:
+            if db.execute(
+                "SELECT 1 FROM executions WHERE state IN ('intent','unresolved')"
+            ).fetchone():
+                raise ValueError(
+                    "unresolved magnetic campaign requires local reconciliation before any device access"
+                )
+
     def finish(self, task_id, result):
         raw = json_bytes(result)
         atomic_write(self.root / (task_id + ".json"), raw)
