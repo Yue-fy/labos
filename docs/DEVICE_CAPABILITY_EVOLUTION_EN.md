@@ -110,9 +110,12 @@ Discovery has two stages: local OS/configured-resource evidence first, then an i
 
 ## Delivery order and acceptance
 
+Report-plane process health is an immediate parallel work item. Persist actual child exit reasons/stdout/stderr, supervise the real long-running process with bounded restart/backoff, and preserve identity, cursors and journals. A report-only restart must never resume a physical attempt. Progress should cover acquisition, cleanup, delivery and final disarming; LLM availability should not determine deterministic shutdown or completion reporting.
+
 | Increment | Deliverable | Evidence required before claiming completion |
 | --- | --- | --- |
 | 0: guidance | Four source routes, lifecycle review, manual provenance and honest discovery workflow | Linked PC/server guides and inspectable documentation-only delivery; implemented in this branch |
+| 0b: report-plane supervision | Durable exit diagnostics, process supervision and truthful phase/status reporting | Unexpected report-process exit is detected and recovered without identity/journal reset or any physical replay; physical UNKNOWN stays blocked |
 | 1: bounded existing template | Offline field-plan compiler and one station envelope | Original5/9 traces unchanged; two other qualified plans use the same binary; invalid units/limits/travel/duration/hash fail before adapter construction; no physical deployment claim |
 | 2: portable read-only slice | Manifest registry, typed scalar record, a no-laser policy and protocol simulator | Simulated scalar device traverses central validation/local execution/artifact acceptance with zero output authority; one selected actual meter qualified later |
 | 3: qualification and discovery | Per-operation evidence/grants, invalidation, local inventory and scoped identity tool | Changed code/SDK/binding prevents affected execution on both sides; copying a manifest never authorizes output; no unknown-port probing |
