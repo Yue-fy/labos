@@ -25,6 +25,15 @@ Version **0.2.7** adds an isolated dark a-axis voltage short test: XX1f/2f at4mV
 
 Version **0.2.8** adds an explicitly commissioned laser OFF/ON readback scope using CLD/PM/XX/XY/gate without opening chopper serial. All laser/power/electrical guards remain, with a power ceiling in the dark baseline too. Modulation/BVPE is unverified; the old optical scope retains mandatory chopper checks. Failed-run summaries now follow actual protection status. See the [readback guide](docs/OPTICAL_READBACK_EN.md).
 
+Version **0.2.9rc1** is a maintenance **candidate**, tag **v0.2.9-rc.1**,
+pending onsite commissioning and hardware checks. It adds durable physical
+claim authority, bounded evidence/model processing, transactional update
+recovery and offline/native validation. Stable **v0.2.8** remains the older
+release. See the [candidate release notes](docs/RELEASE_0.2.9rc1_EN.md),
+[integrated validation](docs/validation/2026-11-01-0.2.9rc1-integrated.md) and
+[staged update instructions](docs/GITHUB_DELIVERY_EN.md). Installing the
+candidate never enables measurement.
+
 The original execution Agent still supports simulated devices only. The optional physical pilot requires exact local bindings, current output-preserving preflight and a locally enabled profile. It is not evidence of completed hardware acceptance or BVPE/nonlinear Hall attribution.
 
 Version **0.2.6** adds an explicit two-SR830 cryostat profile for a locally excluded
@@ -43,7 +52,7 @@ or modify a running installation.
 
 ## Install and connect a Windows PC
 
-Download `LabOS-Agent-Windows-x64-0.2.8.zip` from the public release, extract the entire archive, and double-click **Install.cmd**. The portable package includes Python. See [QUICKSTART_EN.md](src/labos/assets/QUICKSTART_EN.md). Existing cryostat installations should use the smaller physical-update overlay and its dedicated guide.
+For the older stable release, download `LabOS-Agent-Windows-x64-0.2.8.zip`, extract the entire archive, and double-click **Install.cmd**. For candidate `0.2.9rc1`, use the exact candidate ZIP and coordinated staged update instructions above; keep physical workers stopped until separate onsite commissioning. The portable package includes Python. See [QUICKSTART_EN.md](src/labos/assets/QUICKSTART_EN.md). Existing cryostat installations should use the smaller physical-update overlay and its dedicated guide.
 
 The generic package has no `config.yaml` or live credentials. First obtain the PC-specific configuration from the central server, run **Doctor.ps1**, and then double-click **Start-Agent.cmd**. Doctor checks connectivity and authentication; it does not access instruments. SSH is not a runtime dependency.
 
@@ -99,14 +108,14 @@ PCs initiate HTTP(S) requests to the central server. Across VLANs or NAT, use an
 
 ```bash
 .venv/bin/python scripts/build_windows_runtime.py
-.venv/bin/python scripts/build_delivery.py --output dist/v0.2.8 \
+.venv/bin/python scripts/build_delivery.py --output dist/candidate-0.2.9rc1-new-001 \
   --windows-runtime dist/delivery/windows-x64-runtime.zip
 ```
 
 To validate a complete portable ZIP on Windows without starting an Agent or accessing instruments:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_windows_delivery.ps1 -Archive C:\LabOS\LabOS-Agent-Windows-x64-0.2.8.zip
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\verify_windows_delivery.ps1 -Archive C:\LabOS\LabOS-Agent-Windows-x64-0.2.9rc1.zip
 ```
 
 ## System presentations

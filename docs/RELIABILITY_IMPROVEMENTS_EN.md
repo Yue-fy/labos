@@ -6,6 +6,11 @@ final campaign/CI acceptance or proof of instrument commissioning. Follow
 work, [PHYSICAL_AUTHORITY_EN.md](PHYSICAL_AUTHORITY_EN.md) for claim semantics,
 and [PORTABLE_UPDATE_RECOVERY_EN.md](PORTABLE_UPDATE_RECOVERY_EN.md) for recovery.
 
+Candidate **0.2.9rc1** (tag **v0.2.9-rc.1**) is separate from the older
+stable **v0.2.8** release. See the [candidate release notes](https://github.com/Yue-fy/labos/blob/v0.2.9-rc.1/docs/RELEASE_0.2.9rc1_EN.md),
+[integrated validation report](https://github.com/Yue-fy/labos/blob/v0.2.9-rc.1/docs/validation/2026-11-01-0.2.9rc1-integrated.md)
+and [staged central/PC update instructions](https://github.com/Yue-fy/labos/blob/v0.2.9-rc.1/docs/GITHUB_DELIVERY_EN.md).
+
 ## Separate components and authority
 
 Report cooperation, the deterministic approved-program connector, the generic
