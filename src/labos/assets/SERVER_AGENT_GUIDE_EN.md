@@ -8,6 +8,8 @@ Match the report to the PC, report revision, setup and referenced code hashes. C
 
 Identify what is already usable: working SDKs, Python environment, driver functions and local data formats. Preserve the PC's production environment. Request focused excerpts and missing facts rather than a full environment copy.
 
+Existing code is optional. Use [DEVICE_ONBOARDING_EN.md](DEVICE_ONBOARDING_EN.md) to select among site/vendor code, reviewed open source, manual-derived drafts and explicit manual procedures. Keep software capability, physical station bindings and operating grants separate. Review constructor/open effects before requesting a live identity check.
+
 For cavity, [CAVITY_REFERENCE_EN.md](CAVITY_REFERENCE_EN.md) is a starting point, not a live hardware inventory. Do not assume a historical address, sample wiring, frequency calibration or voltage limit is current.
 
 ## 2. Return a concrete bounded next step
@@ -61,7 +63,7 @@ The PC assistant can diagnose SDK issues and propose adapters or revised acquisi
 
 For an implemented adaptive workflow, changes must be versioned against the current setup, calibration and stage boundary, with local validation still enforcing limits. Do not present planned adaptive calibration, theoretical guidance, MCP tools or planner-wide cloud/local model failover as existing runtime features. The 0.2.3 report worker supports its own optional loopback-model fallback only. A theory calculation and a local LLM are separate resources.
 
-If a connection or action outcome is unknown, request state reconciliation rather than repeating the physical operation. Use the supported central recovery flow, keep the original command IDs, and preserve the PC's journal and raw data.
+If a connection or action outcome is unknown, request state reconciliation rather than repeating the physical operation. Use the recovery procedure supported by that exact installed execution path, keep the original command IDs, and preserve the PC's journal and raw data. The generic simulated runtime's central recovery flow does not clear a physical pilot/SDK uncertainty latch. If no reviewed physical recovery procedure applies, retain the block and obtain local physical-state reconciliation; a new task ID, profile or process does not resolve it.
 
 ## 6. Close the handoff
 

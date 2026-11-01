@@ -10,7 +10,7 @@ Inspect package files and existing logs without displaying configuration secrets
 
 Identify the existing working Python executable, version and bitness from established environment records or local interpreter introspection. Record the relevant VISA backend, vendor SDKs and DLL dependencies. Keep this separate from the bundled LabOS interpreter, which may use a different Python version.
 
-For each instrument, collect the model, local address, intended role, controlling library and evidence source. Start with existing settings and code. Do not automatically open every VISA resource or scan the network.
+For each instrument, collect the model, local address, intended role, controlling library and evidence source. Existing settings/code are one source. When code is unavailable, follow [DEVICE_ONBOARDING_EN.md](DEVICE_ONBOARDING_EN.md): review a vendor SDK or maintained open-source driver, draft from the programming manual, or prepare a manual-device procedure. Do not automatically open every VISA resource or scan the network.
 
 Use [PC_INTAKE_TEMPLATE.json](PC_INTAKE_TEMPLATE.json). Keep unknown values `null` and explain the gap. An old Notebook's saved output is historical evidence, not a live identity check.
 
@@ -25,6 +25,8 @@ Copy `instrument_entry_example_not_inventory` into the `instruments` list for ea
 - Record units, sample/terminal roles, reference wiring, error handling and current stopping behavior. Existing numeric setpoints are historical settings, not validated limits for a new experiment.
 
 For a cavity station, use [CAVITY_REFERENCE_EN.md](CAVITY_REFERENCE_EN.md) as historical reference only. Other stations, including cryostat, must use their own intake and review. Do not copy the entire production environment or overwrite the original Notebook. Prepare focused excerpts or a separate proposed adapter folder.
+
+If working code does not exist, continue with the source-selection table, constructor/lifecycle review, protocol fixtures and installation evidence in [DEVICE_ONBOARDING_EN.md](DEVICE_ONBOARDING_EN.md). Library support does not authorize driver construction or output. Manual-derived commands retain the manufacturer document revision and both printed/PDF page references; GUI-only devices remain explicit human steps.
 
 ## 3. Validate the package locally
 

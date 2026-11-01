@@ -1,6 +1,6 @@
 # LabOS agent cooperation kit
 
-Document revision: 2026-10-31. Software baseline: LabOS 0.2.4; verify the installed version separately.
+Document revision: 2026-11-01. Software baseline: LabOS 0.2.8; verify the installed version separately. These documents do not install planned generic hardware capabilities.
 
 An experimental PC may have its own language-model assistant. That assistant can inspect the local environment, understand working instrument code, prepare adapters and explain failures. The central assistant coordinates the experiment and deployment. The PC's persistent execution Agent handles the runtime queue and device ownership.
 
@@ -20,6 +20,7 @@ An LLM is not required on every PC. Having one does not automatically add a comm
 | --- | --- |
 | [AGENTS.md](AGENTS.md) | Entry instructions for an assistant |
 | [PC_AGENT_GUIDE_EN.md](PC_AGENT_GUIDE_EN.md) | Local inspection, installation, code adaptation and PC-side reporting |
+| [DEVICE_ONBOARDING_EN.md](DEVICE_ONBOARDING_EN.md) | Onboarding with existing code, open source, a programming manual or a manual device procedure |
 | [SERVER_AGENT_GUIDE_EN.md](SERVER_AGENT_GUIDE_EN.md) | Central-side integration, provisioning and task coordination |
 | [AGENT_HANDOFF_EN.md](AGENT_HANDOFF_EN.md) | Shared report format, ownership and exchange sequence |
 | [COOPERATION_HTTPS_EN.md](COOPERATION_HTTPS_EN.md) | Implemented authenticated report send/receive tools |
@@ -30,7 +31,7 @@ An LLM is not required on every PC. Having one does not automatically add a comm
 
 ## Put the documents on an existing PC
 
-The refreshed full delivery packages include these documents at their root. For an already extracted package, unpack **LabOS-Agent-Cooperation-Docs-0.2.4.zip** into a new `agent-kit` subfolder, for example `C:\LabOS\cavity-pc\agent-kit`. This document-only ZIP does not replace scripts, configuration, data or drivers. Automatic processing requires the full 0.2.4 software and a separately started worker.
+Full delivery packages include their corresponding document revision at the root. For an already extracted package, unpack a verified document-only kit into a new `agent-kit` subfolder, for example `C:\LabOS\cavity-pc\agent-kit`. The onboarding update is **LabOS-Device-Onboarding-Docs-20261101.zip**. A document-only ZIP does not replace scripts, configuration, data or drivers. Automatic processing still requires the appropriate installed software and a separately configured worker.
 
 If a site already has an `AGENTS.md`, keep it and explicitly point the assistant to this kit. Automatic discovery of `AGENTS.md` depends on the assistant product; an explicit instruction works even when automatic discovery is unavailable.
 
@@ -44,8 +45,11 @@ If the kit is at the package root, use the root paths instead.
 Use the actual station's intake/review; read CAVITY_REFERENCE_EN.md only
 when the operator identifies that reference as relevant to this station.
 
-First inspect the local package, existing control code and working environment
+First inspect the local package, device evidence and working environment
 without opening instrument sessions or executing the reference Notebook.
+Existing code is optional: read DEVICE_ONBOARDING_EN.md and continue offline
+with a reviewed vendor/open-source candidate, a manual-derived draft, or an
+explicit manual-device procedure. Do not instantiate drivers for discovery.
 Prepare handoff/pc-intake.json from PC_INTAKE_TEMPLATE.json and a short English
 summary. Mark unknowns explicitly and distinguish reference facts from current
 observations. With a provisioned 0.2.2 package, send the report over the
