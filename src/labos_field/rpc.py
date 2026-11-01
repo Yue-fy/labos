@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import multiprocessing
+import math
 import os
 from pathlib import Path
 import time
@@ -81,10 +82,17 @@ class MagnetProcess:
         child.close()
         self.healthy = True
         self.pid = self.process.pid
+        self.deadline = math.inf
+
+    def set_guard(self, deadline):
+        self.deadline = deadline
 
     def call(self, operation, args=None, timeout=5.):
         if not self.healthy:
             raise ValueError('magnetic child state is uncertain; no further commands')
+        timeout = min(timeout, self.deadline - time.monotonic())
+        if timeout <= 0:
+            raise TimeoutError('parent magnetic stage deadline exceeded before request')
         ident = uuid.uuid4().hex
         try:
             self.connection.send({'id': ident, 'operation': operation, 'args': args or {},
