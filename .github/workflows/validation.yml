@@ -106,6 +106,31 @@ jobs:
         run: |
           cmd.exe /d /c "python scripts/build_delivery.py --output dist/ci --windows-runtime dist/delivery/windows-x64-runtime.zip > validation-logs\delivery-build.log 2>&1"
           if ($LASTEXITCODE -ne 0) { throw 'Generic delivery build failed; see delivery-build.log.' }
+      - name: Verify portable source bytes in the native-built Central ZIP
+        run: |
+          @'
+          from pathlib import Path
+          import subprocess
+          import zipfile
+          from labos import __version__
+
+          archive = Path('dist/ci') / f'LabOS-Central-{__version__}.zip'
+          with zipfile.ZipFile(archive) as package:
+              for script in ('install.sh', 'start-central.sh', 'doctor.sh'):
+                  for member in (script, 'src/labos/assets/' + script):
+                      content = package.read(member)
+                      assert content.startswith(b'#!/usr/bin/env bash\n'), member
+                      assert b'\r' not in content, member
+                      print('LF shell:', member)
+              sources = [name for name in package.namelist() if name.endswith('.py')]
+              assert sources, 'No packaged Python source found'
+              for member in sources:
+                  source = member if member.startswith('src/labos/') else 'src/labos/assets/' + member
+                  canonical = subprocess.check_output(['git', 'show', 'HEAD:' + source])
+                  assert package.read(member) == canonical, 'Git blob mismatch: ' + member
+              print(f'PASS: six LF shell copies and {len(sources)} canonical Python source files in {archive}')
+          '@ | python - > validation-logs/source-bytes.log
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged source bytes are not portable; see source-bytes.log.' }
       - name: Parse and smoke test the exact new ZIP under Windows PowerShell 5.1
         run: |
           $ErrorActionPreference = 'Stop'

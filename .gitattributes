@@ -1,0 +1,3 @@
+# Keep packaged source portable even when Windows Git enables core.autocrlf.
+# Auto-detection leaves binary assets unchanged.
+* text=auto eol=lf

@@ -232,13 +232,14 @@ The conservative legacy nonzero-attempt migration applies to unclassified/model-
 
 ### Task 15: Native Windows and Linux continuous validation
 
-**Files:** Create `.github/workflows/validation.yml`; update `scripts/verify_windows_delivery.ps1` for explicit retained log output if needed; English validation guide. Prepare the 0.2.9rc1 candidate metadata in `pyproject.toml` and `src/labos/__init__.py` before triggering native CI; Task8 completes release QA afterward. No production runtime behavior change.
+**Files:** Create `.github/workflows/validation.yml` and checkout line-ending policy `.gitattributes`; update `scripts/verify_windows_delivery.ps1` for explicit retained log output if needed; English validation guide. Prepare the 0.2.9rc1 candidate metadata in `pyproject.toml` and `src/labos/__init__.py` before triggering native CI; Task8 completes release QA afterward. No production runtime behavior change.
 
 **Interfaces:** Public GitHub Actions read-only contents permission, push/pull_request/workflow_dispatch triggers (never pull_request_target). Use immutable verified official action SHAs; checkout persist-credentials:false. No production config/token/provider secret/hardware or live endpoint in any job.
 
 - [ ] Ubuntu and Windows Python3.11/3.14 unit/lint matrix; preserve intentional platform skips with honest reporting. Add a native Windows job building the actual pinned embedded runtime and current generic Windows package, parsing all shipped PowerShell assets with Windows PowerShell5.1, then running existing verify_windows_delivery.ps1 through Windows PowerShell5.1 against the exact new ZIP. It must run embedded python/python.exe and reject absent config without starting Agent/server/instruments.
 - [ ] Pin verified official refs: checkout3d3c42e5aac5ba805825da76410c181273ba90b1(v7), setup-python6d4fd22b20465ccc0f7354476588e8df7c9ca0e0(v7), upload-artifactcf430e030ddbb5b0abf93d22962f4752f3646cd9(v7). No arbitrary action version guesses. Sources https://github.com/actions/checkout and https://github.com/actions/setup-python verified2026-10-31.
 - [ ] Retain generic checksum/install/test logs on failure, never personalized bundles. Use finite job timeouts/concurrency cancellation and no auto deploy/release/physical activation.
+- [ ] Verify a native-built central ZIP retains LF shell shebangs and canonical Python source bytes, even with Windows Git defaults; enforce a portable checkout policy rather than treating OS-dependent archive bytes as identical.
 - [ ] Validate YAML and PowerShell parse locally. After controller pushes the reviewed feature branch under existing authorization, inspect actual Actions results; fix real portability failures through reviewed scoped work. Do not claim native success before observing it.
 - [ ] Commit workflow/docs/report; no artificial unit tests mirroring YAML.
 
@@ -268,3 +269,15 @@ The conservative legacy nonzero-attempt migration applies to unclassified/model-
 - [ ] Check other shipped example templates only for inherited affirmative physical observations; do not broaden driver authority or rewrite historical evidence.
 - [ ] Verify actual newly built generic/physical template payloads have fresh defaults; confirm updater preservation of an existing stopped operator configuration remains covered. Focused regression and lint; integrated full suite remains Task8.
 - [ ] Document current onsite observation/preflight as required; no device/network/model calls or local activation.
+
+
+### Task 18: Observed Windows unit/runtime portability failures
+
+**Files:** `src/labos/files.py`; `tests/test_pilot_update.py`, `tests/test_source_context.py`, `tests/test_windows_runtime_builder.py`; narrowly affected export tests only if additional meaningful coverage is needed.
+
+**Evidence:** Actual initial Actions run41256130299 Windows Python3.11 unit result:94 failed,905 passed,46 skipped. JUnit identifies86 updater fixture byte/newline failures,3 source fixture encoding/hash failures,4 real HDF5 export failures with EBADF, and1 duplicate-distribution wheel fixture lost to case-insensitive filenames. Inspect the3.14 JUnit too before assuming identical causes. Linux cells and native Windows installer job passed; none supersedes these failures.
+
+- [ ] Fix the actual Windows HDF5 temporary-file flush failure using a valid owned handle without changing snapshot selection, raw/audit data, atomic replacement or failure preservation. Existing native failing export integration tests are RED evidence; verify native GREEN after publication.
+- [ ] Make synthetic fixture encodings/newline bytes explicit where tests assert exact bytes. Preserve the production source collector's hash of actual original bytes, updater's exact-byte preservation and all transaction/lock/authority assertions. Never normalize protected production files to satisfy tests.
+- [ ] Make duplicate-distribution wheel fixtures represent two real distinct files on Windows as well as Linux (for example different versions of the same normalized distribution), keeping rejection coverage rather than silently skipping it.
+- [ ] Run focused affected tests and lint; run full suite once for any runtime code fix. Independently review; controller will observe actual Windows3.11/3.14 and native jobs on the updated candidate. No broad dependency changes, hidden blanket skips, hardware/provider/live config/service access or measurement.

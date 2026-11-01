@@ -33,6 +33,13 @@ try {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root 'Install.ps1')
     if ($LASTEXITCODE -ne 0) { throw 'Installer failed. See install.log in the extracted delivery.' }
     if (-not (Test-Path -LiteralPath (Join-Path $Root 'install.log'))) { throw 'Installer did not preserve its log.' }
+    Push-Location -LiteralPath $Root
+    try {
+        & cmd.exe /d /c 'Install.cmd <NUL'
+        if ($LASTEXITCODE -ne 0) { throw 'The batch installer failed with noninteractive stdin.' }
+    } finally {
+        Pop-Location
+    }
     & (Join-Path $Root 'python\python.exe') --version
     if ($LASTEXITCODE -ne 0) { throw 'The actual embedded Python could not start.' }
     & (Join-Path $Root 'python\python.exe') -m labos --help
