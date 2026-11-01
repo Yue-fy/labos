@@ -33,6 +33,7 @@ DOCUMENT_JSON = {
     'PC_INTAKE_TEMPLATE.json', 'PM100D_SOURCE_REQUESTS.json', 'SERVER_REPLY_TEMPLATE.json',
 }
 PROFILE_KEYS = {'agent_id', 'connection_config', 'state_dir', 'backend', 'programs', 'role'}
+LEGACY_ID = r'[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}'
 
 
 def _hash(content):
@@ -270,7 +271,7 @@ def _discover(target, profiles, yaml):
     return root, explicit, records, protected
 
 
-def _payload_name(name):
+def _portable_path(name):
     if not isinstance(name, str) or not name or '\\' in name or ':' in name:
         raise ValueError('Invalid payload path')
     path = PurePosixPath(name)
@@ -282,6 +283,11 @@ def _payload_name(name):
                 or any(ord(c) < 32 for c in part)
                 or re.fullmatch(r'(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?', part, re.I)):
             raise ValueError('Invalid portable payload path')
+    return path
+
+
+def _payload_name(name):
+    path = _portable_path(name)
     if len(path.parts) == 1:
         allowed = path.suffix in {'.py', '.ps1', '.cmd', '.md', '.json'}
         if not allowed and name != 'pilot-worker.example.yaml':
@@ -399,12 +405,91 @@ def _load_journal(backup, target):
         raise RuntimeError('Corrupt or incomplete transaction ' + backup.name) from exc
 
 
+def _unique_json_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError('Duplicate legacy manifest key')
+        value[key] = item
+    return value
+
+
+def _check_completed_legacy(backup):
+    """Recognize old completion evidence as history, never as rollback proof.
+
+    7aff1dc copied the builder's {version, files} manifest only after all writes.
+    Its files map hashes NEW payload bytes, not the archived originals. Originals
+    are an optional subset: introduced files had no original to copy. No target
+    bytes or legacy evidence are changed or inferred by this classification.
+    """
+    try:
+        _no_symlinks(backup)
+        if not re.fullmatch(LEGACY_ID, backup.name):
+            raise ValueError('Invalid legacy backup ID')
+        datetime.strptime(backup.name[:16], '%Y%m%dT%H%M%SZ')
+        marker = backup / 'applied-manifest.json'
+        if _snapshot(marker) is None:
+            raise ValueError('Missing legacy completion manifest')
+        manifest = json.loads(marker.read_text(encoding='utf-8'),
+                              object_pairs_hook=_unique_json_object)
+        if (not isinstance(manifest, dict) or set(manifest) != {'version', 'files'}
+                or not isinstance(manifest['version'], str) or not manifest['version'].strip()
+                or not isinstance(manifest['files'], dict) or not manifest['files']):
+            raise ValueError('Invalid legacy completion manifest')
+        entries = manifest['files']
+        aliases, directories = {}, set()
+        for name, digest in entries.items():
+            path = _portable_path(name)
+            # Preserve the old updater's payload policy, not the stronger modern
+            # one: old packages included nested YAML examples and wheel metadata.
+            if (len(path.parts) == 1 and path.suffix not in {'.py', '.ps1', '.cmd', '.md', '.json'}
+                    and name != 'pilot-worker.example.yaml'
+                    or len(path.parts) > 1 and not name.startswith(
+                        ('src/labos/', 'python/Lib/site-packages/'))
+                    or name.casefold() in {'applied-manifest.json', 'transaction.json'}
+                    or not _valid_digest(digest)):
+                raise ValueError('Invalid legacy payload inventory')
+            for part in path.parts:
+                portable = part.translate(str.maketrans('¹²³', '123'))
+                if re.fullmatch(r'(com[1-9]|lpt[1-9])(\..*)?', portable, re.I):
+                    raise ValueError('Invalid portable legacy path')
+            for prefix in (path, *path.parents[:-1]):
+                text = str(prefix)
+                alias = text.casefold()
+                if alias in aliases and aliases[alias] != text:
+                    raise ValueError('Legacy payload paths alias on Windows')
+                aliases[alias] = text
+            directories.update(str(parent) for parent in path.parents if str(parent) != '.')
+        if directories.intersection(entries):
+            raise ValueError('Legacy payload file/directory conflict')
+        # The old updater could create only these original-file paths and their
+        # parent directories, followed by the completion marker. Reject extras,
+        # including any transaction journal, special files and symlink parents.
+        pending = [backup]
+        while pending:
+            for entry in pending.pop().iterdir():
+                _no_symlinks(entry)
+                name = entry.relative_to(backup).as_posix()
+                if entry.is_dir() and name in directories:
+                    pending.append(entry)
+                elif entry.is_file() and name in {*entries, 'applied-manifest.json'}:
+                    continue
+                else:
+                    raise ValueError('Unrecognized legacy backup evidence')
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        raise RuntimeError('Corrupt or incomplete legacy backup ' + backup.name
+                           + '; preserve evidence for maintenance review') from exc
+
+
 def _check_unresolved(target):
     root = target / BACKUPS
     if root.exists():
         for backup in sorted(root.iterdir()):
             if not backup.is_dir():
                 raise RuntimeError('Unrecognized update backup evidence: ' + backup.name)
+            if re.fullmatch(LEGACY_ID, backup.name):
+                _check_completed_legacy(backup)
+                continue
             journal = _load_journal(backup, target)
             if journal['status'] not in TERMINAL:
                 raise RuntimeError('Unresolved update transaction ' + backup.name
@@ -520,6 +605,9 @@ def apply_update(update, target, profiles=None):
 
 def recover_update(target, transaction_id):
     """Restore one verified transaction without importing LabOS or a YAML parser."""
+    if isinstance(transaction_id, str) and re.fullmatch(LEGACY_ID, transaction_id):
+        raise ValueError('Legacy backup rollback is unsupported: original hashes and profile '
+                         'proof were not recorded; preserve all evidence for maintenance review')
     if not isinstance(transaction_id, str) or not re.fullmatch(
             r'[0-9]{8}T[0-9]{6}Z-[0-9a-f]{32}', transaction_id):
         raise ValueError('Invalid update transaction ID')

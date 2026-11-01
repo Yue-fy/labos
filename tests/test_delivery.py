@@ -265,3 +265,37 @@ def test_personalized_archive_complete_before_publication(tmp_path, agent_config
 
     monkeypatch.setattr(os, "link", inspect_source)
     build_agent_bundle(agent_config, tmp_path / "pc.zip")
+
+
+def test_pc_profile_asset_links_work_from_repository_and_all_delivery_locations(tmp_path, monkeypatch):
+    from pathlib import Path
+    import re
+    from urllib.parse import urlsplit
+    from scripts import build_pilot_update
+
+    root = Path(__file__).parents[1]
+    runtime = tmp_path / 'runtime.zip'
+    with zipfile.ZipFile(runtime, 'w') as archive:
+        archive.writestr('python/python.exe', b'synthetic-runtime')
+    wheels = tmp_path / 'wheels'
+    wheels.mkdir()
+    (wheels / 'MANIFEST.json').write_text('{}')
+    monkeypatch.setattr(build_pilot_update, 'WHEELS', {})
+    overlay = build_pilot_update.build(tmp_path / 'overlay.zip', wheels)
+    guides = [('docs/PC_PROFILES_EN.md', (root / 'docs/PC_PROFILES_EN.md').read_text())]
+    for path in [*build_release(tmp_path / 'release', runtime), overlay]:
+        with zipfile.ZipFile(path) as archive:
+            for name in archive.namelist():
+                if name.endswith('PC_PROFILES_EN.md'):
+                    guides.append((name, archive.read(name).decode('utf-8')))
+    assert len(guides) == 6  # repository, root/docs generic pairs, Windows root
+    for location, text in guides:
+        links = re.findall(r'\[[^\]]+\]\(([^)]+)\)', text)
+        for asset in ('NETWORK_EN.md', 'AUTOMATIC_COOPERATION_EN.md'):
+            link, = [link for link in links if link.endswith('/' + asset)]
+            url = urlsplit(link)
+            assert (url.scheme, url.netloc) == ('https', 'github.com'), (location, link)
+            prefix = '/Yue-fy/labos/blob/v0.2.9-rc.1/'
+            assert url.path.startswith(prefix), (location, link)
+            source = root / url.path.removeprefix(prefix)
+            assert source.is_file(), (location, link)

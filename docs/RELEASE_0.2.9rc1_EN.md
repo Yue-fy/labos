@@ -25,7 +25,10 @@ promote stable, merge into main, deploy a service or authorize a measurement.
   SQLite connection closure and Windows startup ownership aid diagnosis.
 - Portable overlays retain verified originals and transactional recovery
   evidence, discover and lock declared worker profiles, and preserve local
-  configuration/state. Delivery builders validate archive paths and refuse
+  configuration/state. Strictly validated completed backups from the previous
+  updater remain untouched history and permit forward updates; their legacy
+  evidence does not support new-format rollback. Incomplete/ambiguous evidence
+  still blocks maintenance. Delivery builders validate archive paths and refuse
   output overwrite. New examples carry no inherited station commissioning facts.
 - CI adds Ubuntu/Windows Python 3.11/3.14 checks and actual Windows PowerShell
   5.1 embedded-delivery checks, including the real `Install.cmd`, source-byte
@@ -58,7 +61,11 @@ file-presence check failed and remains preserved; v2's separate evidence and
 limitations are recorded in the
 [integrated report](https://github.com/Yue-fy/labos/blob/v0.2.9-rc.1/docs/validation/2026-11-01-0.2.9rc1-integrated.md).
 
-Final documentation-source CI, package QA, whole-branch review and publication
+The final review fixes legacy updater-history compatibility and delivered PC
+profile links. The integrated report distinguishes this later updater change
+from the earlier campaign; report/acquisition modules retain their campaign bytes.
+
+Final source CI after these fixes, package QA, review recheck and publication
 remain release acceptance requirements. Their actual disposition and immutable
 final commit/run/archive identities belong in external `QA_Report.json`.
 Checkpoint acceptance does not establish final release acceptance.

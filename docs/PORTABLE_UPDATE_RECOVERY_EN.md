@@ -99,8 +99,9 @@ configuration; identity keys turn them into candidates and prevent replacement.
 ## Transaction evidence
 
 The installation updater lock is acquired before inspecting earlier transactions.
-Every nonterminal, missing or corrupt journal blocks a new apply. Backups are
-versioned under `data/pilot-update-backups/TRANSACTION_ID/`; previous backups are
+Every nonterminal, missing or corrupt new-format journal blocks a new apply.
+Strictly validated completed legacy archives are the exception described below.
+Backups are versioned under `data/pilot-update-backups/TRANSACTION_ID/`; previous backups are
 never overwritten. `transaction.json` binds the canonical installation, package
 version, transaction ID, complete root candidate paths/hashes, explicit profiles,
 canonical profile/connection hashes and state locks, and each payload path's old
@@ -124,6 +125,34 @@ transaction ID. A process interruption does not run automatic recovery. A crash
 after the last replacement but before commit still requires explicit recovery.
 A commit marker already published before a subsequent flush error is treated as
 the commit boundary and is not silently rolled back.
+
+## Retained backups from the previous updater
+
+Successful older updates retained directories named
+`YYYYMMDDTHHMMSSZ-<8 lowercase hex characters>`. The old updater copied
+`applied-manifest.json` only after finishing every payload replacement. The new
+updater recognizes this completed archival history without moving, rewriting or
+deleting any retained bytes. Recognition requires a valid UTC timestamp/name,
+the old builder's exact `version`/nonempty `files` manifest structure, SHA-256
+digest syntax, safe portable old payload paths, and a regular-file/directory
+inventory confined to the recorded originals and completion marker. Duplicate
+keys, Windows path aliases, extra files/directories and symlinks refuse.
+
+These manifest digests describe the **payload installed by that historical
+update**, not its retained originals. Originals can be a subset of the manifest: newly introduced files had
+no original to save. The old record contains neither original-file hashes nor
+profile/configuration snapshots. Recognition trusts intact local completion
+evidence; it cannot prove missing originals, authenticate a deliberately forged
+record, or grant modern rollback guarantees. Current destination files need not
+match that historical payload after subsequent legitimate updates.
+
+`--recover` explicitly refuses legacy backup IDs: legacy rollback is unsupported.
+It never invents missing hashes/profiles or restores legacy bytes. Missing,
+malformed or ambiguous legacy completion evidence still blocks a new apply;
+keep the entire archive and reconcile it through deliberate local maintenance
+review. Ordinary recognized completed history requires no deletion or movement.
+New-format transactions use a 32-hex suffix and always require their own valid
+`transaction.json`; a legacy marker cannot replace that journal.
 
 ## Explicit recovery
 

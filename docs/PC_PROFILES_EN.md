@@ -49,7 +49,7 @@ live addresses. Keep model/admin endpoints private. The public gateway permits
 only health and scoped PC endpoints; a PC credential cannot read another PC's
 conversation and the public gateway rejects the operator credential. See
 [gateway operation](PUBLIC_HTTPS_GATEWAY_EN.md) and
-[network diagnosis](../src/labos/assets/NETWORK_EN.md).
+[network diagnosis](https://github.com/Yue-fy/labos/blob/v0.2.9-rc.1/src/labos/assets/NETWORK_EN.md).
 
 ## First deployment
 
@@ -61,7 +61,7 @@ existing production environments, working Codex paths, source registration and
 journals when maintaining an installation; never transplant another PC's identity.
 
 For report-only work, follow
-[automatic cooperation](../src/labos/assets/AUTOMATIC_COOPERATION_EN.md).
+[automatic cooperation](https://github.com/Yue-fy/labos/blob/v0.2.9-rc.1/src/labos/assets/AUTOMATIC_COOPERATION_EN.md).
 For a program-only profile, `Install-Program-Connector.cmd` validates the runtime,
 checks authenticated HTTPS and installs current-user startup. It needs no local
 model. Do not start the generic `Start-Agent.cmd` for either profile unless that

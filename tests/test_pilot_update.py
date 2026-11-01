@@ -868,3 +868,176 @@ def test_apply_restores_import_search_path_after_using_trusted_base_parser(tmp_p
     before = sys.path[:]
     updater()['apply_update'](update, target)
     assert sys.path == before
+
+
+def completed_legacy_fixture(tmp_path):
+    """Run the unmodified 7aff1dc updater, whose final copy proves completion.
+
+    All paths/configuration are disposable; parsing the synthetic worker profile
+    and acquiring temporary file locks starts no workers, providers or devices.
+    The version/files shape is the actual 7aff1dc overlay builder's manifest.
+    """
+    update, target = fixture(tmp_path)
+    manifest_path = update / 'payload-manifest.json'
+    manifest = json.loads(manifest_path.read_text())
+    manifest['version'] = '0.2.8'
+    manifest_path.write_text(json.dumps(manifest))
+    add_payload(update, 'src/labos/assets/legacy.example.yaml', b'enabled: false\n')
+    add_payload(update, 'python/Lib/site-packages/legacy.dist-info/METADATA', b'Version: 1\n')
+    original = target / 'src/labos/assets/legacy.example.yaml'
+    original.parent.mkdir(parents=True)
+    original.write_bytes(b'# original legacy template\r\nenabled: false\r\n')
+    old_script = APPLY.parents[3] / 'tests/fixtures/Apply-Pilot-Update-7aff1dc.py'
+    backup = runpy.run_path(str(old_script))['apply_update'](update, target)
+    assert not (backup / 'transaction.json').exists()
+    assert (backup / 'applied-manifest.json').read_bytes() == manifest_path.read_bytes()
+    assert (backup / 'Check-Pilot-Runtime.py').read_bytes() == b'# previous runtime check\n'
+    # This dependency was newly introduced, so the old updater stored no original.
+    assert not (backup / 'python').exists()
+    # Stage a modern-compatible successor while retaining the old completion
+    # manifest verbatim; the old nested YAML is historical evidence only.
+    successor = json.loads(manifest_path.read_text())
+    del successor['files']['src/labos/assets/legacy.example.yaml']
+    manifest_path.write_text(json.dumps(successor))
+    return update, target, backup
+
+
+def retained_tree(path):
+    result = {}
+    for entry in path.rglob('*'):
+        name = entry.relative_to(path).as_posix()
+        if entry.is_symlink():
+            result[name] = ('symlink', str(entry.readlink()))
+        elif entry.is_file():
+            result[name] = ('file', entry.read_bytes())
+        else:
+            result[name] = ('directory', None)
+    return result
+
+
+def test_completed_actual_legacy_update_allows_forward_apply_without_changing_history(tmp_path):
+    update, target, legacy = completed_legacy_fixture(tmp_path)
+    before = retained_tree(legacy)
+    add_payload(update, 'Check-Pilot-Runtime.py', b'# next runtime check\n')
+    backup = updater()['apply_update'](update, target)
+    assert backup != legacy
+    assert (target / 'Check-Pilot-Runtime.py').read_bytes() == b'# next runtime check\n'
+    assert retained_tree(legacy) == before
+    updater()['recover_update'](target, backup.name)
+    assert (target / 'Check-Pilot-Runtime.py').read_bytes() == b'# new runtime check\n'
+    assert retained_tree(legacy) == before
+
+
+@pytest.mark.parametrize('fault', [
+    'missing', 'truncated', 'array', 'missing_version', 'empty_version', 'extra_field',
+    'empty_files', 'bad_digest', 'unsafe_path', 'windows_alias', 'superscript_alias',
+    'case_alias', 'directory_case_alias', 'marker_alias',
+    'file_parent_conflict', 'duplicate_key', 'unexpected_file', 'unexpected_directory',
+    'marker_directory', 'new_journal', 'invalid_date', 'unknown_id',
+])
+def test_incomplete_or_ambiguous_legacy_archive_refuses_before_payload_mutation(tmp_path, fault):
+    update, target, backup = completed_legacy_fixture(tmp_path)
+    marker = backup / 'applied-manifest.json'
+    manifest = json.loads(marker.read_text())
+    if fault == 'missing':
+        marker.unlink()
+    elif fault == 'truncated':
+        marker.write_text('{"version":"0.2.8","files":')
+    elif fault == 'array':
+        marker.write_text('[]')
+    elif fault == 'duplicate_key':
+        marker.write_text('{"version":"0.2.8","version":"0.2.9","files":{}}')
+    elif fault == 'unexpected_file':
+        (backup / 'unlisted.py').write_bytes(b'unknown evidence')
+    elif fault == 'unexpected_directory':
+        (backup / 'unlisted').mkdir()
+    elif fault == 'marker_directory':
+        marker.unlink()
+        marker.mkdir()
+    elif fault == 'new_journal':
+        (backup / 'transaction.json').write_text('{}')
+    elif fault in {'invalid_date', 'unknown_id'}:
+        backup = backup.rename(backup.with_name(
+            '20260230T235959Z-a1b2c3d4' if fault == 'invalid_date' else 'unrecognized-history'))
+    else:
+        if fault == 'missing_version':
+            del manifest['version']
+        elif fault == 'empty_version':
+            manifest['version'] = ''
+        elif fault == 'extra_field':
+            manifest['status'] = 'completed'
+        elif fault == 'empty_files':
+            manifest['files'] = {}
+        elif fault == 'bad_digest':
+            manifest['files']['Check-Pilot-Runtime.py'] = 'not-a-sha256'
+        else:
+            name = {'unsafe_path': '../escape.py', 'windows_alias': 'CON.md',
+                    'superscript_alias': 'LPT¹.md',
+                    'case_alias': 'check-pilot-runtime.py',
+                    'directory_case_alias': 'src/labos/ASSETS/another.py',
+                    'marker_alias': 'Applied-manifest.json',
+                    'file_parent_conflict': 'src/labos/assets/legacy.example.yaml/child.py'}[fault]
+            manifest['files'][name] = '0' * 64
+        marker.write_text(json.dumps(manifest))
+    before = retained_tree(backup)
+    with pytest.raises(RuntimeError):
+        updater()['apply_update'](update, target)
+    assert (target / 'Check-Pilot-Runtime.py').read_bytes() == b'# new runtime check\n'
+    assert retained_tree(backup) == before
+
+
+@pytest.mark.parametrize('location', ['archive', 'marker', 'original', 'parent'])
+def test_legacy_archive_symlinks_refuse_without_following_or_changing_evidence(tmp_path, location):
+    update, target, backup = completed_legacy_fixture(tmp_path)
+    outside = tmp_path / 'outside-evidence'
+    if location == 'archive':
+        backup.rename(outside)
+        backup.symlink_to(outside, target_is_directory=True)
+    else:
+        path = {'marker': backup / 'applied-manifest.json',
+                'original': backup / 'Check-Pilot-Runtime.py',
+                'parent': backup / 'src'}[location]
+        path.rename(outside)
+        path.symlink_to(outside, target_is_directory=location == 'parent')
+    evidence = retained_tree(outside) if outside.is_dir() else outside.read_bytes()
+    before = retained_tree(backup)
+    with pytest.raises((ValueError, RuntimeError)):
+        updater()['apply_update'](update, target)
+    assert (target / 'Check-Pilot-Runtime.py').read_bytes() == b'# new runtime check\n'
+    assert retained_tree(backup) == before
+    assert (retained_tree(outside) if outside.is_dir() else outside.read_bytes()) == evidence
+
+
+def test_explicit_legacy_recovery_is_unsupported_and_preserves_all_bytes(tmp_path):
+    _, target, backup = completed_legacy_fixture(tmp_path)
+    before = retained_tree(target)
+    with pytest.raises(ValueError, match='Legacy.*rollback.*unsupported'):
+        updater()['recover_update'](target, backup.name)
+    assert retained_tree(target) == before
+
+
+@pytest.mark.parametrize('status', ['preparing', 'prepared', 'applying', 'rolling_back', 'malformed'])
+def test_completed_legacy_history_does_not_hide_unresolved_new_transactions(tmp_path, status):
+    update, target, legacy = completed_legacy_fixture(tmp_path)
+    backup = target / 'data/pilot-update-backups/20261101T020000Z-0123456789abcdef0123456789abcdef'
+    backup.mkdir()
+    if status == 'malformed':
+        (backup / 'transaction.json').write_text('{')
+        match = 'Corrupt or incomplete transaction ' + backup.name
+    else:
+        api = updater()
+        journal = {'schema_version': 1, 'transaction_id': backup.name, 'target': str(target),
+                   'files': {'Check-Pilot-Runtime.py': {'old': None, 'new': '0' * 64}},
+                   'root_candidates': {}, 'explicit_profiles': {}, 'profiles': [{
+                       'path': str(target / 'cooperation.yaml'),
+                       'state_dir': str(target / 'data/cooperation'),
+                       'connection': str(target / 'config.yaml'), 'sha256': '0' * 64,
+                       'connection_sha256': '0' * 64, 'kind': 'report'}]}
+        api['_save_journal'](backup, journal, status)
+        match = 'Unresolved update transaction'
+    before = retained_tree(target / 'data/pilot-update-backups')
+    with pytest.raises(RuntimeError, match=match):
+        updater()['apply_update'](update, target)
+    assert (target / 'Check-Pilot-Runtime.py').read_bytes() == b'# new runtime check\n'
+    assert retained_tree(target / 'data/pilot-update-backups') == before
+    assert legacy.exists()

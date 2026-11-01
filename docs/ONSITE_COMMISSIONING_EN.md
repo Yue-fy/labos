@@ -30,6 +30,9 @@ vendor environment, configuration, journals, raw artifacts and previous backups.
    interpreter or standard library. Retain the update directory and transaction
    ID under `data/pilot-update-backups/`. Unknown edits or missing evidence
    require deliberate reconciliation; recovery never guesses or overwrites them.
+   Valid completed backups from the older updater remain untouched archival
+   history; their 8-hex IDs do not support new-format `--recover`. See the
+   recovery guide before reviewing any incomplete or ambiguous legacy archive.
 
 ## Record wiring and calibration facts
 
