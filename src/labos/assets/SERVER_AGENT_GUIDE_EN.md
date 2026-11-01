@@ -1,5 +1,14 @@
 # Guide for the central server's LLM assistant
 
+Read [QUICKSTART_EN.md](QUICKSTART_EN.md) for role selection and
+[NETWORK_EN.md](NETWORK_EN.md) for connection checks. Report cooperation, the
+approved-program connector, generic simulated execution Agent and commissioned
+finite physical pilot are separate components. The physical overlay ships root
+`ONSITE_COMMISSIONING_EN.md`, `PHYSICAL_AUTHORITY_EN.md`,
+`PORTABLE_UPDATE_RECOVERY_EN.md` and `RELIABILITY_IMPROVEMENTS_EN.md`; generic
+source releases put them under `docs/`. A report connection is not a hardware
+test; an identified device is not an implemented driver.
+
 Read [AGENTS.md](AGENTS.md), [AGENT_HANDOFF_EN.md](AGENT_HANDOFF_EN.md), and the incoming PC report. You coordinate integration and deployment; the local assistant has access to its PC's actual environment. Keep those observations distinct from the server's reference files.
 
 ## 1. Review the PC intake
@@ -22,7 +31,7 @@ Use [SERVER_REPLY_TEMPLATE.json](SERVER_REPLY_TEMPLATE.json). Cite the intake re
 
 The reply is a document, not a runtime task. Do not submit it to `/api/runs` or assume a receiving LLM will execute it automatically. Use the provisioned [HTTPS correspondence tools](COOPERATION_HTTPS_EN.md); operator relay remains an offline fallback.
 
-For automatic report analysis in 0.2.3, use the explicit `labos_auto_task` protocol and a configured [background cooperation worker](AUTOMATIC_COOPERATION_EN.md). It returns reports and centrally reviews matching results once. Ordinary handoff documents keep their existing behavior; the interactive IDE chats are separate.
+For automatic report analysis, use the explicit `labos_auto_task` protocol and a configured [background cooperation worker](AUTOMATIC_COOPERATION_EN.md). It returns reports and centrally reviews matching results once. Ordinary handoff documents keep their existing behavior; the interactive IDE chats are separate.
 
 ## 3. Provision only what the runtime actually supports
 
@@ -59,7 +68,7 @@ The first physical pilot should progress from reviewed reads to individual bound
 
 The PC assistant can diagnose SDK issues and propose adapters or revised acquisition settings. The central assistant evaluates these suggestions against the global plan and available evidence. The central runtime and PC execution Agent retain a single scheduled execution path.
 
-For an implemented adaptive workflow, changes must be versioned against the current setup, calibration and stage boundary, with local validation still enforcing limits. Do not present planned adaptive calibration, theoretical guidance, MCP tools or planner-wide cloud/local model failover as existing runtime features. The 0.2.3 report worker supports its own optional loopback-model fallback only. A theory calculation and a local LLM are separate resources.
+For an implemented adaptive workflow, changes must be versioned against the current setup, calibration and stage boundary, with local validation still enforcing limits. Do not present planned adaptive calibration, theoretical guidance, MCP tools or planner-wide cloud/local model failover as existing runtime features. The report worker supports its own optional loopback-model fallback only. A theory calculation and a local LLM are separate resources.
 
 If a connection or action outcome is unknown, request state reconciliation rather than repeating the physical operation. Use the supported central recovery flow, keep the original command IDs, and preserve the PC's journal and raw data.
 

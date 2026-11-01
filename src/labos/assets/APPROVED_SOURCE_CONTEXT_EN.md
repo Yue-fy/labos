@@ -1,23 +1,24 @@
 # Approved production source context
 
-Version 0.2.4 can collect bounded `.py` and `.md` source excerpts from directories
+The source-context collector can collect bounded `.py` and `.md` source excerpts from directories
 registered by the local operator. It reads text and parses Python ASTs. It never
 imports production modules, opens instruments or grants the report model shell
 tools. Register approved source trees only; source text is disclosed to the
 central analyst. Do not register home directories, credentials or configuration
 trees. Filtering known provisioned credentials is not general secret detection.
 
-For the cryostat PC, merge these entries into the existing `cooperation.yaml`,
-preserving all other settings, especially the native Codex command and state:
+For an agent-assisted PC, register operator-approved paths in `cooperation.yaml`,
+preserving other settings, the native Codex command and journals. These reserved
+example paths are placeholders and must be replaced with inspected local roots:
 
 ```yaml
 source_roots:
-  production_src: 'C:/Users/LK_Setup/Yuanrong Li/Integration-photonics/src'
-  production_docs: 'C:/Users/LK_Setup/Yuanrong Li/Integration-photonics/docs'
+  production_src: 'C:/LabOS-approved/example-project/src'
+  production_docs: 'C:/LabOS-approved/example-project/docs'
 ```
 
 For a program-only PC, register its own approved paths in
-`program-connector.yaml`. Do not assume the cryostat paths exist on other PCs.
+`program-connector.yaml`. Do not assume these example paths exist.
 
 Tasks can include `context.source_requests`, a list of at most six entries:
 
@@ -35,6 +36,28 @@ Evidence includes file SHA-256, requested
 path, line ranges when applicable and a truncation flag. Limits: 1 MiB input per
 file, 4096 content bytes per excerpt, 12 KiB total evidence. A returned excerpt
 is not evidence that the whole file or driver was reviewed.
+
+Each index examines at most 10,000 directory entries and retains at most 1,000
+directories, including the requested directory, before stopping. Entries are
+iterated individually; only the bounded matching names are sorted. The `scan`
+metadata records entries, retained directories, opened directories and the limit
+that stopped the scan. Reaching a scan or 250-match limit sets `truncated: true`,
+even if few supported files were found. A truncated index is not a complete
+inventory. The standalone collector applies the same limits.
+
+The main AST traversal visits at most 10,000 nodes, retains at most 250 definitions
+and 80 imports, and stops when the excerpt content allowance is reached. Signatures and
+imports exceeding 256 subtree nodes, 32 levels of depth or 4096 text characters
+are explicitly omitted before rendering. Outline
+`scan` metadata reports visited nodes, definitions and the stopping limit; file
+hashes still describe the exact original bytes. The collector uses lazy AST
+traversal rather than collecting all children before counting them.
+
+During worker preparation, source collection checks the same cancellation and
+monotonic deadline guard used for provider dispatch, between filesystem operations
+and AST traversal steps. It closes active directory iterators on cancellation.
+A blocked OS filesystem operation or Python parsing call cannot be interrupted by
+these cooperative checks; this is not a hard real-time completion guarantee.
 
 To send the first evidence for central automatic analysis, from the installed
 LabOS directory in PowerShell:

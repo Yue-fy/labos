@@ -39,6 +39,11 @@ def build(output, wheels_dir):
             payload[name] = archive.read(name)
         # Only the disabled commissioning template is part of this update.
         payload["pilot-worker.example.yaml"] = archive.read("pilot-worker.example.yaml")
+    # Read canonical checkout sources directly; no duplicate asset copies.
+    for name in ("PHYSICAL_AUTHORITY_EN.md", "PORTABLE_UPDATE_RECOVERY_EN.md",
+                 "ONSITE_COMMISSIONING_EN.md", "RELIABILITY_IMPROVEMENTS_EN.md"):
+        payload[name] = (ROOT / "docs" / name).read_bytes()
+    payload["rehearse_commissioning.py"] = (ROOT / "scripts/rehearse_commissioning.py").read_bytes()
     for name, expected in WHEELS.items():
         content = (wheels_dir / name).read_bytes()
         if hashlib.sha256(content).hexdigest() != expected:

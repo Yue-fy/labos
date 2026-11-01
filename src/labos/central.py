@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import ValidationError
 
 from . import __version__
@@ -16,6 +16,7 @@ from .cooperation import Correspondence, MAX_MESSAGE_BYTES, Message
 from .evidence import EvidenceDocument, EvidenceStore
 from .files import InstanceLock, export_hdf5
 from .models import Identifier, Model, Plan
+from .pilot_authority import MAX_CLAIM_BYTES, Commission, PilotAuthority, PilotClaim
 from .pilot_artifacts import MAX_PILOT_ARTIFACT_BYTES, PilotArtifacts
 from .runtime import Runtime
 from .store import Store
@@ -46,6 +47,7 @@ def create_app(config: CentralConfig):
     runtime = Runtime(config, store)
     evidence = EvidenceStore(config.data_dir)
     correspondence = Correspondence(store)
+    pilot_authority = PilotAuthority(store)
     pilot_artifacts = PilotArtifacts(store)
 
     @asynccontextmanager
@@ -197,9 +199,9 @@ def create_app(config: CentralConfig):
     async def post_message(agent_id: str, request: Request, sender=Depends(correspondent)):
         content = bytearray()
         async for chunk in request.stream():
-            content.extend(chunk)
-            if len(content) > MAX_MESSAGE_BYTES:
+            if len(content) + len(chunk) > MAX_MESSAGE_BYTES:
                 raise HTTPException(413, "message exceeds 64 KiB")
+            content.extend(chunk)
         try:
             message = Message.model_validate_json(content)
         except ValidationError as exc:
@@ -215,6 +217,31 @@ def create_app(config: CentralConfig):
                      identity=Depends(correspondent)):
         return correspondence.list(agent_id, after, limit, sender)
 
+    @app.get("/api/agents/{agent_id}/pilot-claims", dependencies=[Depends(agent)])
+    def pilot_claim_status(agent_id: str):
+        return pilot_authority.status(agent_id)
+
+    @app.post("/api/agents/{agent_id}/pilot-claims", dependencies=[Depends(agent)])
+    async def pilot_claim(agent_id: str, request: Request):
+        content = bytearray()
+        async for chunk in request.stream():
+            if len(content) + len(chunk) > MAX_CLAIM_BYTES:
+                raise HTTPException(413, "physical claim too large")
+            content.extend(chunk)
+        try:
+            body = PilotClaim.model_validate_json(content)
+        except ValidationError as exc:
+            raise HTTPException(422, "invalid physical claim") from exc
+        return checked(pilot_authority.claim, agent_id, body)
+
+    @app.get("/api/pilot-authority/{agent_id}", dependencies=[Depends(operator)])
+    def authority_status(agent_id: Identifier):
+        return pilot_authority.status(agent_id)
+
+    @app.post("/api/pilot-authority/{agent_id}/commission", dependencies=[Depends(operator)])
+    def authority_commission(agent_id: Identifier, body: Commission):
+        return checked(pilot_authority.commission, agent_id, body)
+
     @app.post("/api/agents/{agent_id}/pilot-artifacts", dependencies=[Depends(agent)])
     async def pilot_artifact_upload(agent_id: str, request: Request, x_sha256: str = Header()):
         content = bytearray()
@@ -227,7 +254,8 @@ def create_app(config: CentralConfig):
 
     @app.get("/api/pilot-artifacts/{agent_id}/{message_id}", dependencies=[Depends(operator)])
     def pilot_artifact_get(agent_id: Identifier, message_id: Identifier):
-        return checked(pilot_artifacts.get, agent_id, message_id)
+        return Response(checked(pilot_artifacts.get_bytes, agent_id, message_id),
+                        media_type="application/json")
 
     @app.post("/api/agents/{agent_id}/heartbeat", dependencies=[Depends(agent)])
     def heartbeat(agent_id: str, body: Heartbeat):
@@ -255,9 +283,9 @@ def create_app(config: CentralConfig):
             checked(store.session, db, agent_id, x_boot_id)
         content = bytearray()
         async for chunk in request.stream():
-            content.extend(chunk)
-            if len(content) > 2_000_000:
+            if len(content) + len(chunk) > 2_000_000:
                 raise HTTPException(413, "artifact too large")
+            content.extend(chunk)
         try:
             measurement_id = store.accept_artifact(agent_id, bytes(content), x_sha256)
         except (ValueError, KeyError) as exc:

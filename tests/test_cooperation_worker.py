@@ -67,7 +67,7 @@ def bridge(api, drop=None):
         response = api.request(req.method, str(req.url), content=req.content, headers=req.headers)
         if drop and req.method == "POST" and drop.pop():
             raise httpx.ReadTimeout("response lost after storage")
-        return httpx.Response(response.status_code, json=response.json())
+        return httpx.Response(response.status_code, content=response.content, headers=response.headers)
 
     return httpx.MockTransport(request)
 
@@ -151,6 +151,7 @@ def test_numeric_credential_in_context_is_rejected_before_inference(tmp_path, ce
     body["context"]["value"] = int(credential)
     envelope = {
         "id": "numeric_secret",
+        "agent_id": "pc-a",
         "sequence": 1,
         "sender": "central",
         "kind": "note",
@@ -456,7 +457,7 @@ def test_permanent_reply_rejection_does_not_block_next_task(tmp_path, central_co
             response = api.request(
                 req.method, str(req.url), content=req.content, headers=req.headers
             )
-            return httpx.Response(response.status_code, json=response.json())
+            return httpx.Response(response.status_code, content=response.content, headers=response.headers)
 
         worker = Worker(
             connection(tmp_path, central_config, "pc"), httpx.MockTransport(request), Reports()
@@ -534,3 +535,300 @@ def test_missing_source_registration_returns_actionable_report_without_model(
         assert reply["answer"]["status"] == "needs_input"
         assert "registered" in reply["answer"]["summary"]
         assert reply["model_attempts"] == 0
+
+
+def pilot_review_fixture(api, *, mutation=None, noncanonical=True):
+    from test_pilot_artifacts import auth, fixture_payload, queue
+    import hashlib
+
+    plan, payload = fixture_payload()
+    payload['report']['note'] = 'Mätning 光'
+    queue(api, plan)
+    if mutation == 'message':
+        payload['message_id'] = 'wrong_message'
+    elif mutation == 'task':
+        payload['report']['task_id'] = 'wrong_task'
+    elif mutation == 'plan':
+        payload['report']['plan']['reference_hz'] = 9.0
+    elif mutation == 'sample_shape':
+        payload['report']['samples'] = [3]
+    elif mutation == 'plan_hash':
+        payload['plan_sha256'] = '0' * 64
+    data = json.dumps(payload, ensure_ascii=False, indent=2).encode() + b'\n' if noncanonical else json.dumps(payload, separators=(',', ':')).encode()
+    if mutation == 'malformed_json':
+        data = b'{ broken JSON'
+    digest = hashlib.sha256(data).hexdigest()
+    # Mutated transport evidence bypasses upload only in the binding rejection cases.
+    if mutation not in {'message', 'task', 'plan', 'plan_hash', 'reference_shape', 'malformed_json', 'sample_shape'}:
+        assert api.post('/api/agents/pc-a/pilot-artifacts', content=data,
+                        headers={**auth('A'), 'X-SHA256': digest}).status_code == 200
+    send(api, 'physical_result', {
+        'protocol': 'labos-agent-v1', 'document_type': 'labos_auto_result',
+        'task_id': 'pilot-001', 'executable': False, 'backend': 'pilot', 'model_attempts': 0,
+        'answer': {'status': 'completed', 'summary': 'Finite test.', 'findings': [], 'questions': []},
+        'pilot_result': {'artifact': [] if mutation == 'reference_shape' else {
+            'message_id': 'msg_pilot_001', 'sha256': digest}},
+    }, sender='pc', reference='msg_pilot_001')
+    return data
+
+
+@pytest.mark.parametrize('noncanonical', [False, True])
+def test_central_verifies_original_artifact_bytes_before_review(tmp_path, central_config, noncanonical):
+    reviewed = []
+
+    class Reviewer:
+        def respond(self, message, context):
+            reviewed.append(message)
+            return {'backend': 'test', 'answer': Answer(status='completed', summary='Verified.', findings=[], questions=[]).model_dump()}
+
+    with TestClient(create_app(central_config)) as api:
+        data = pilot_review_fixture(api, noncanonical=noncanonical)
+        worker = Worker(connection(tmp_path, central_config, 'central'), bridge(api), Reviewer())
+        worker.tick()
+        assert len(reviewed) == 1
+        import hashlib
+        assert reviewed[0]['stored_pilot_evidence']['sha256'] == hashlib.sha256(data).hexdigest()
+        assert reviewed[0]['original_task']['task_id'] == 'pilot-001'
+        assert messages(api)[-1]['body']['model_attempts'] == 1
+        worker.tick()
+        assert len(reviewed) == 1 and len(messages(api)) == 3
+
+
+@pytest.mark.parametrize('fault', ['503', 'timeout', '404', 'checksum', 'message', 'task', 'plan', 'plan_hash', 'reference_shape', 'malformed_json', 'sample_shape'])
+def test_evidence_failure_spends_no_inference_attempts_and_recovers_without_replay(
+    tmp_path, central_config, monkeypatch, fault
+):
+    calls = []
+    clock = [1000.0]
+    monkeypatch.setattr('labos.cooperation_worker.time.time', lambda: clock[0])
+
+    class Reviewer:
+        def respond(self, message, context):
+            calls.append(message)
+            return {'backend': 'test', 'answer': Answer(status='completed', summary='Verified.', findings=[], questions=[]).model_dump()}
+
+    with TestClient(create_app(central_config)) as api:
+        data = pilot_review_fixture(api, mutation=fault)
+
+        def request(req):
+            if '/pilot-artifacts/' in req.url.path:
+                if fault == 'timeout':
+                    raise httpx.ReadTimeout('temporary evidence failure')
+                if fault in {'503', '404'}:
+                    return httpx.Response(int(fault))
+                # Canonicalization has the same semantic object and a different byte hash.
+                content = json.dumps(json.loads(data), sort_keys=True).encode() if fault == 'checksum' else data
+                return httpx.Response(200, content=content)
+            response = api.request(req.method, str(req.url), content=req.content, headers=req.headers)
+            return httpx.Response(response.status_code, content=response.content, headers=response.headers)
+
+        config = connection(tmp_path, central_config, 'central')
+        worker = Worker(config, httpx.MockTransport(request), Reviewer())
+        for _ in range(2):
+            worker.tick()
+            clock[0] += 61
+        assert calls == []
+        with worker.db() as db:
+            row = db.execute("SELECT * FROM inbox WHERE id='physical_result'").fetchone()
+        assert row['attempts'] == 0 and row['response'] is None
+        if fault in {'503', 'timeout'}:
+            assert row['state'] == 'pending'
+            restarted = Worker(config, bridge(api), Reviewer())
+            restarted.tick()
+            restarted.tick()
+            assert len(calls) == 1
+            assert messages(api)[-1]['body']['model_attempts'] == 1
+            assert len(messages(api)) == 3
+        else:
+            assert row['state'] == 'rejected'
+            assert 'evidence' in row['error']
+            assert len(messages(api)) == 2
+
+
+def page_message(sequence=1, **changes):
+    return {"id": f"message_{sequence}", "agent_id": "pc-a", "sender": "central",
+            "sequence": sequence, "kind": "note", "in_reply_to": None,
+            "body": {"document_type": "ordinary"}, **changes}
+
+
+@pytest.mark.parametrize("bad", [
+    "<html>upstream failure</html>", {}, {"messages": {}, "next_cursor": 0},
+    {"messages": [], "next_cursor": 1}, {"messages": [], "next_cursor": -1},
+    {"messages": [], "next_cursor": 2**63},
+    {"messages": [page_message()], "next_cursor": 0},
+    {"messages": [page_message(agent_id="other")], "next_cursor": 1},
+    {"messages": [page_message(sender="pc")], "next_cursor": 1},
+    {"messages": [page_message(sequence=True)], "next_cursor": 1},
+    {"messages": [page_message(sequence=2**63)], "next_cursor": 2**63},
+    {"messages": [page_message(sequence=0)], "next_cursor": 0},
+    {"messages": [page_message(), page_message()], "next_cursor": 1},
+    {"messages": [page_message(2), page_message(1)], "next_cursor": 1},
+    {"messages": [page_message(), {"id": "broken"}], "next_cursor": 2},
+    {"messages": [page_message(i) for i in range(1, 102)], "next_cursor": 101},
+])
+def test_entire_invalid_page_is_atomic_and_next_tick_recovers(tmp_path, central_config, bad):
+    responses = [bad, {"messages": [page_message()], "next_cursor": 1}]
+    def transport(request):
+        assert request.method == "GET"
+        payload = responses.pop(0)
+        return (httpx.Response(200, text=payload) if isinstance(payload, str)
+                else httpx.Response(200, json=payload))
+    worker = Worker(connection(tmp_path, central_config, "pc"), httpx.MockTransport(transport), Reports())
+    assert worker.tick()["phase"] == "protocol_unavailable"
+    with worker.db() as db:
+        assert db.execute("SELECT value FROM state WHERE key='cursor'").fetchone()[0] == "0"
+        assert db.execute("SELECT COUNT(*) FROM inbox").fetchone()[0] == 0
+        assert db.execute("SELECT COUNT(*) FROM backend_invocations").fetchone()[0] == 0
+    worker.tick()
+    assert worker.status()["counts"] == {"archived": 1}
+
+
+def test_parent_lookup_resumes_after_restart_with_two_pages_per_tick(tmp_path, central_config):
+    config = connection(tmp_path, central_config, "central")
+    requested = []
+    parent = page_message(501, id="old_parent", body=task())
+    result = page_message(502, id="result", sender="pc", kind="reply", in_reply_to="old_parent",
+                          body={"protocol": "labos-agent-v1", "document_type": "labos_auto_result",
+                                "task_id": "task_demo", "backend": "test", "model_attempts": 0,
+                                "answer": {"status": "completed", "summary": "done", "findings": [], "questions": []}})
+    posts = []
+    def transport(request):
+        if request.method == "POST":
+            posts.append(json.loads(request.content))
+            return httpx.Response(200, json={})
+        after = int(request.url.params["after"])
+        if request.url.params["sender"] == "pc":
+            return httpx.Response(200, json={"messages": [result] if after == 0 else [],
+                                           "next_cursor": 502})
+        requested.append(after)
+        batch = ([page_message(i) for i in range(after + 1, after + 101)]
+                 if after < 500 else [parent] if after == 500 else [])
+        return httpx.Response(200, json={"messages": batch,
+                                       "next_cursor": batch[-1]["sequence"] if batch else after})
+    worker = Worker(config, httpx.MockTransport(transport), Reports())
+    worker.tick()
+    assert requested == [0, 100]
+    assert worker.status()["counts"] == {"pending": 1}
+    worker.client.close()
+    worker = Worker(config, httpx.MockTransport(transport), Reports())
+    worker.tick()
+    assert requested == [0, 100, 200, 300]
+    with worker.db() as db:
+        assert db.execute("SELECT COUNT(*) FROM backend_invocations").fetchone()[0] == 0
+    worker.tick()
+    assert requested == [0, 100, 200, 300, 400, 500]
+    assert len(posts) == 1
+    assert worker.status()["counts"] == {"sent": 1}
+    assert worker.find_own_message("message_1")["sequence"] == 1
+    assert len(requested) == 6
+
+
+@pytest.mark.parametrize("field,value", [("kind", []), ("id", "bad.id"), ("body", []),
+                                         ("agent_id", None), ("sequence", 1.5)])
+def test_invalid_envelope_field_is_protocol_unavailable(tmp_path, central_config, field, value):
+    worker = Worker(connection(tmp_path, central_config, "pc"),
+                    httpx.MockTransport(lambda _: httpx.Response(200, json={
+                        "messages": [page_message(**{field: value})], "next_cursor": 1})), Reports())
+    assert worker.tick()["phase"] == "protocol_unavailable"
+    assert worker.status()["cursor"] == 0
+
+
+def test_parent_scan_stop_preserves_progress_without_model_spend(tmp_path, central_config, monkeypatch):
+    from labos.cooperation_budget import Operation, OperationStopped
+    config = connection(tmp_path, central_config, "central")
+    stopped = [False]
+    requests = []
+    def transport(request):
+        after = int(request.url.params["after"])
+        requests.append(after)
+        stopped[0] = after == 100
+        return httpx.Response(200, json={"messages": [page_message(i) for i in range(after + 1, after + 101)],
+                                       "next_cursor": after + 100})
+    worker = Worker(config, httpx.MockTransport(transport), Reports())
+    operation = Operation(180, stopped=lambda: stopped[0])
+    with pytest.raises(OperationStopped):
+        worker.find_own_message("unseen", operation.check)
+    with worker.db() as db:
+        assert db.execute("SELECT value FROM state WHERE key='own_cursor'").fetchone()[0] == "100"
+        assert db.execute("SELECT COUNT(*) FROM own_messages").fetchone()[0] == 100
+        assert db.execute("SELECT COUNT(*) FROM backend_invocations").fetchone()[0] == 0
+    assert requests == [0, 100]
+
+
+def test_parent_nonprogress_page_preserves_cache_and_can_recover(tmp_path, central_config):
+    config = connection(tmp_path, central_config, "central")
+    from labos.correspondence_page import ProtocolUnavailable
+    pages = [{"messages": [page_message()], "next_cursor": 1},
+             {"messages": [page_message()], "next_cursor": 1},
+             {"messages": [], "next_cursor": 1}]
+    worker = Worker(config, httpx.MockTransport(lambda _: httpx.Response(200, json=pages.pop(0))), Reports())
+    with pytest.raises(ProtocolUnavailable):
+        worker.find_own_message("missing")
+    assert worker.find_own_message("message_1")["sequence"] == 1
+    assert worker.find_own_message("missing") is None
+    assert not pages
+
+
+def test_source_preparation_observes_same_operation_before_provider(tmp_path, central_config, monkeypatch):
+    from labos.cooperation_budget import Operation
+    clock = [0.0]
+    operation = Operation(180, clock=lambda: clock[0])
+    (tmp_path / "guide.md").write_text("evidence")
+    config = connection(tmp_path, central_config, "pc")
+    config.source_roots = {"src": tmp_path}
+    body = task()
+    body["context"]["source_requests"] = [{"root": "src", "path": "guide.md"}]
+    with TestClient(create_app(central_config)) as api:
+        send(api, "source_deadline", body)
+        worker = Worker(config, bridge(api), Reports())
+        monkeypatch.setattr(worker, "new_operation", lambda: operation)
+        resolve = worker.sources.resolve
+        def slow_resolve(request):
+            clock[0] = 181
+            return resolve(request)
+        monkeypatch.setattr(worker.sources, "resolve", slow_resolve)
+        worker.tick()
+        reply = messages(api)[-1]["body"]
+        assert reply["model_attempts"] == 0
+        assert reply["answer"]["status"] == "failed"
+
+
+def test_invalid_page_preserves_existing_pending_job_and_nonzero_cursor(tmp_path, central_config):
+    config = connection(tmp_path, central_config, "pc")
+    config.start_after = 5
+    responses = [{"messages": [page_message(4)], "next_cursor": 4},
+                 {"messages": [], "next_cursor": 5}]
+    worker = Worker(config, httpx.MockTransport(lambda _: httpx.Response(200, json=responses.pop(0))), Reports())
+    with worker.db() as db:
+        db.execute("INSERT INTO inbox(id,sequence,envelope,state) VALUES(?,?,?,'pending')",
+                   ("queued", 5, json.dumps(page_message(5, id="queued"))))
+    assert worker.tick()["phase"] == "protocol_unavailable"
+    assert worker.status()["cursor"] == 5
+    assert worker.status()["counts"] == {"pending": 1}
+    with worker.db() as db:
+        assert db.execute("SELECT COUNT(*) FROM backend_invocations").fetchone()[0] == 0
+    worker.tick()
+    assert worker.status()["counts"] == {"archived": 1}
+
+
+def test_malformed_parent_page_leaves_review_pending_then_recovers(tmp_path, central_config):
+    with TestClient(create_app(central_config)) as api:
+        send(api, "parent", task())
+        pc = Worker(connection(tmp_path, central_config, "pc"), bridge(api), Reports())
+        pc.tick()
+        bad = [True]
+        def transport(request):
+            if request.method == "GET" and request.url.params.get("sender") == "central" and bad:
+                bad.pop()
+                return httpx.Response(200, text="<html>unavailable</html>")
+            response = api.request(request.method, str(request.url), content=request.content, headers=request.headers)
+            return httpx.Response(response.status_code, content=response.content, headers=response.headers)
+        worker = Worker(connection(tmp_path, central_config, "central"), httpx.MockTransport(transport), Reports())
+        assert worker.tick()["phase"] == "protocol_unavailable"
+        assert worker.status()["counts"] == {"pending": 1}
+        with worker.db() as db:
+            assert db.execute("SELECT COUNT(*) FROM backend_invocations").fetchone()[0] == 0
+            assert db.execute("SELECT value FROM state WHERE key='own_cursor'").fetchone()[0] == "0"
+        worker.tick()
+        assert worker.status()["counts"] == {"sent": 1}
+        assert messages(api)[-1]["body"]["document_type"] == "labos_auto_review"

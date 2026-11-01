@@ -47,7 +47,7 @@ lyr unchanged. Do not run its measurement programs or import its drivers.
 3. Apply the verified overlay using the existing portable Python:
 
    ```powershell
-   & '<existing LabOS>\python\python.exe' -B '<extracted update>\Apply-Pilot-Update.py' --target '<existing LabOS>'
+   & '<existing LabOS>\python\python.exe' -I '<extracted update>\Apply-Pilot-Update.py' --target '<existing LabOS>'
    ```
 
    The updater checks report/original/dark-a worker locks and backs up replaced

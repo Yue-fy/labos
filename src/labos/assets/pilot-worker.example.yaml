@@ -7,7 +7,7 @@ start_after: 57
 adapter_id: cryostat_v1
 approval:
   enabled: false
-  sample_id: CrSBr 1
+  sample_id: example-sample
   laser_current_max_a: 0.0218
   power_limit_max_w: 0.000001
   reference_hz: 8.0
@@ -41,7 +41,7 @@ adapter_config:
     output: null
   chopper_refout_hz: null
   chopper_input_hz: null
-  chopper_phase_lock_manually_confirmed: true
-  chopper_phase_lock_confirmation_note: 'Operator reported MC2000B running and Locked in the central conversation on 2026-10-31. Manual observation; not query-verified. Recheck if the setup changes.'
+  chopper_phase_lock_manually_confirmed: false
+  chopper_phase_lock_confirmation_note: ''
   cld_acknowledged_connection_diagnostics: null
   cld_acknowledgement_note: ''

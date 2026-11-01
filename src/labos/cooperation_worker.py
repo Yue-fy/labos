@@ -6,7 +6,7 @@ import hashlib
 import ipaddress
 import json
 import os
-import sqlite3
+import re
 import ssl
 import subprocess
 import time
@@ -20,7 +20,10 @@ from pydantic import Field, model_validator
 
 from .config import AgentConfig, CentralConfig, load_config
 from .cooperation import MAX_MESSAGE_BYTES
-from .cooperation_models import Answer, Responder
+from .correspondence_page import MAX_SEQUENCE, ProtocolUnavailable, validate_page
+from .cooperation_budget import InputTooLarge, InvocationBudgetExhausted, Operation, OperationStopped
+from .cooperation_models import Answer, Responder, compile_payloads
+from .sqlite_state import owned_connection
 from .files import InstanceLock, atomic_write, contains_credential, json_bytes
 from .models import Identifier, Model
 from .source_context import ReadOnlySources, SourceContextError
@@ -28,12 +31,28 @@ from .source_context import ReadOnlySources, SourceContextError
 PROTOCOL = "labos-agent-v1"
 
 
+class LookupIncomplete(RuntimeError):
+    """The bounded scan has not yet established whether the parent exists."""
+
+
+def evidence_delivery_blocked(details, reason, **facts):
+    """Delivery diagnosis is not a verified raw artifact or physical reconciliation."""
+    return {**details, "artifact": {**details.get("artifact", {}), "availability": "local_only"},
+            "evidence_delivery": {"status": "blocked", "reason": reason,
+                                  "central_raw_artifact_verified": False, **facts}}
+
+
+def delivery_failure_answer():
+    return {"status": "failed", "summary": "Evidence delivery blocked; raw evidence is not centrally verified.",
+            "findings": [], "questions": ["Inspect the preserved local evidence and reconcile delivery before further physical operation."]}
+
+
 class WorkerConfig(Model):
     role: Literal["pc", "central"]
     agent_id: Identifier
     connection_config: Path
     state_dir: Path = Path("data/cooperation")
-    start_after: int = Field(default=0, ge=0)
+    start_after: int = Field(default=0, ge=0, le=MAX_SEQUENCE)
     poll_s: float = Field(default=10, ge=1, le=300)
     backend: Literal["codex", "local"] = "codex"
     codex_command: list[str] = Field(default_factory=lambda: ["codex"], min_length=1)
@@ -73,6 +92,7 @@ class Task(Model):
     program_id: Identifier | None = None
     parameters: dict = Field(default_factory=dict)
     pilot_plan: dict | None = None
+    experiment_scope: Literal["optical_transport", "optical_readback", "dark_a"] | None = None
 
     @model_validator(mode="after")
     def program_identity(self):
@@ -133,9 +153,6 @@ class Worker:
         self.check_credentials(self.context)
         self.sources = ReadOnlySources(config.source_roots)
         verify = ssl.create_default_context(cafile=str(self.connection.ca_file)) if config.role == "pc" and self.connection.ca_file else True
-        self.client = httpx.Client(base_url=url, headers={"Authorization": "Bearer " + credential},
-                                  timeout=15, trust_env=False, verify=verify, transport=transport,
-                                  proxy=self.connection.proxy_url if config.role == "pc" else None)
         self.path = f"/api/agents/{config.agent_id}/messages"
         self.peer = "pc" if config.role == "central" else "central"
         config.state_dir.mkdir(parents=True, exist_ok=True)
@@ -154,31 +171,56 @@ class Worker:
                 id TEXT PRIMARY KEY, sequence INTEGER UNIQUE NOT NULL, envelope TEXT NOT NULL,
                 state TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0,
                 retry_at REAL NOT NULL DEFAULT 0, response TEXT, error TEXT)""")
+            db.execute("""CREATE TABLE IF NOT EXISTS backend_invocations (
+                message_id TEXT NOT NULL, ordinal INTEGER NOT NULL CHECK(ordinal BETWEEN 1 AND 2),
+                backend TEXT NOT NULL, PRIMARY KEY(message_id, ordinal))""")
+            db.execute("CREATE TABLE IF NOT EXISTS own_messages (id TEXT PRIMARY KEY, sequence INTEGER UNIQUE NOT NULL, envelope TEXT NOT NULL)")
+            db.execute("INSERT OR IGNORE INTO state VALUES('own_cursor','0')")
+            # Old attempts counted responder cycles, each of which might have called two backends.
+            # Cached replies remain deliverable; unknown pending outcomes consume the allowance.
+            if not getattr(responder, "deterministic", False):
+                db.execute("""UPDATE inbox SET attempts=2 WHERE state='pending' AND attempts>0
+                    AND NOT EXISTS (SELECT 1 FROM backend_invocations WHERE message_id=inbox.id)""")
         self.responder = responder or Responder(config)
+        self.client = httpx.Client(base_url=url, headers={"Authorization": "Bearer " + credential},
+                                  timeout=15, trust_env=False, verify=verify, transport=transport,
+                                  proxy=self.connection.proxy_url if config.role == "pc" else None)
 
     def db(self):
-        db = sqlite3.connect(self.database, timeout=10)
-        db.row_factory = sqlite3.Row
-        return db
+        return owned_connection(self.database, timeout=10, rows=True)
 
     def check_credentials(self, text):
         if contains_credential(text, self.credentials):
             raise ValueError("credential found in model input or output")
 
-    def find_own_message(self, message_id):
-        after = 0
-        while True:
-            r = self.client.get(self.path, params={"sender": self.config.role, "after": after})
-            r.raise_for_status()
-            batch = r.json()
+    def find_own_message(self, message_id, guard=None):
+        check = guard or (lambda: None)
+        check()
+        with self.db() as db:
+            cached = db.execute("SELECT envelope FROM own_messages WHERE id=?", (message_id,)).fetchone()
+            after = int(db.execute("SELECT value FROM state WHERE key='own_cursor'").fetchone()[0])
+        if cached:
+            return json.loads(cached[0])
+        for _ in range(2):
+            check()
+            response = self.client.get(self.path, params={"sender": self.config.role, "after": after, "limit": 100})
+            response.raise_for_status()
+            batch = validate_page(response, self.config.agent_id, self.config.role, after)
+            check()
+            with self.db() as db:
+                for message in batch["messages"]:
+                    db.execute("INSERT OR IGNORE INTO own_messages VALUES(?,?,?)",
+                               (message["id"], message["sequence"], json.dumps(message)))
+                db.execute("UPDATE state SET value=? WHERE key='own_cursor'", (str(batch["next_cursor"]),))
             for message in batch["messages"]:
                 if message["id"] == message_id:
                     return message
             if not batch["messages"]:
                 return None
             after = batch["next_cursor"]
+        raise LookupIncomplete("parent lookup incomplete")
 
-    def eligible(self, message):
+    def eligible(self, message, operation_guard=None):
         body = message["body"]
         if body.get("protocol") != PROTOCOL:
             return False
@@ -191,7 +233,7 @@ class Worker:
             result = Result.model_validate(body)
             if message.get("kind") != "reply":
                 raise ValueError("an automatic result must reply to its task")
-            parent = self.find_own_message(message.get("in_reply_to"))
+            parent = self.find_own_message(message.get("in_reply_to"), operation_guard.check if operation_guard else None)
             if not parent or parent["body"].get("document_type") not in {"labos_auto_task", "labos_program_task", "labos_pilot_task"}:
                 return False
             return Task.model_validate(parent["body"]).task_id == result.task_id
@@ -201,102 +243,163 @@ class Worker:
         with self.db() as db:
             cursor = int(db.execute("SELECT value FROM state WHERE key='cursor'").fetchone()[0])
         try:
-            response = self.client.get(self.path, params={"sender": self.peer, "after": cursor})
+            response = self.client.get(self.path, params={"sender": self.peer, "after": cursor, "limit": 100})
             response.raise_for_status()
-            batch = response.json()
+            batch = validate_page(response, self.config.agent_id, self.peer, cursor)
             with self.db() as db:
                 for message in batch["messages"]:
                     db.execute("INSERT OR IGNORE INTO inbox(id,sequence,envelope,state) VALUES(?,?,?,'pending')",
                                (message["id"], message["sequence"], json.dumps(message)))
                 db.execute("UPDATE state SET value=? WHERE key='cursor'", (str(batch["next_cursor"]),))
+        except ProtocolUnavailable:
+            return self.write_status("protocol_unavailable")
         except httpx.HTTPError:
             return self.write_status("network_unavailable")
         with self.db() as db:
             row = db.execute("SELECT * FROM inbox WHERE state IN ('pending','ready') AND retry_at<=? ORDER BY sequence LIMIT 1",
                              (time.time(),)).fetchone()
-        if row:
-            self.process(row)
-        return self.write_status("listening")
+        phase = self.process(row) if row else None
+        return self.write_status(phase or "listening")
 
-    def process(self, row):
+    def new_operation(self):
+        """Task preparation may consume this same operation's callable check guard."""
+        return Operation(getattr(self.config, "model_timeout_s", 180),
+                         stopped=(self.config.state_dir / "stop.request").exists)
+
+    def invocation_history(self, message_id):
+        with self.db() as db:
+            attempts = db.execute("SELECT attempts FROM inbox WHERE id=?", (message_id,)).fetchone()[0]
+            history = tuple(r[0] for r in db.execute(
+                "SELECT backend FROM backend_invocations WHERE message_id=? ORDER BY ordinal", (message_id,)))
+        if history or getattr(self.responder, "deterministic", False):
+            return history
+        return ("legacy_unknown",) * min(2, attempts)
+
+    def reserve_backend(self, message_id, backend):
+        with self.db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT attempts FROM inbox WHERE id=?", (message_id,)).fetchone()
+            count = db.execute("SELECT COUNT(*) FROM backend_invocations WHERE message_id=?", (message_id,)).fetchone()[0]
+            used = max(row[0], count)
+            if used >= 2:
+                raise InvocationBudgetExhausted("Backend invocation allowance exhausted")
+            db.execute("INSERT INTO backend_invocations VALUES(?,?,?)", (message_id, used + 1, backend))
+            db.execute("UPDATE inbox SET attempts=? WHERE id=?", (used + 1, message_id))
+        # The transaction is committed before permission to dispatch returns.
+
+    def generate(self, row, model_input, operation):
+        if getattr(self.responder, "deterministic", False):
+            return self.responder.respond(model_input, self.context)
+        operation.check()
+        prepared = compile_payloads(self.config, model_input, self.context)
+        operation.check()
+        history = self.invocation_history(row["id"])
+        if len(history) >= 2:
+            raise InvocationBudgetExhausted("Backend invocation allowance exhausted")
+        def reserve(backend):
+            self.reserve_backend(row["id"], backend)
+        budgeted = getattr(self.responder, "respond_budgeted", None)
+        if budgeted is not None:
+            return budgeted(model_input, self.context, operation, reserve, history, prepared)
+        # Explicit compatibility adapter: a legacy callable is one invocation, never retried on TypeError.
+        reserve("legacy_responder")
+        operation.check()
+        generated = self.responder.respond(model_input, self.context)
+        operation.check()
+        return generated
+
+    def process(self, row, operation_guard=None):
+        operation = operation_guard or self.new_operation()
         message = json.loads(row["envelope"])
         if row["state"] == "pending":
             try:
+                operation.check()
                 self.check_credentials(message)
-                eligible = self.eligible(message)
+                eligible = (self.eligible(message, operation) if self.config.role == "central"
+                            else self.eligible(message))
+            except LookupIncomplete:
+                return "preparing"
+            except ProtocolUnavailable:
+                return "protocol_unavailable"
+            except OperationStopped:
+                return "stopped"
             except (ValueError, TypeError, KeyError):
                 self.update(row["id"], state="rejected", error="invalid automation input")
                 return
-            except httpx.HTTPError:
+            except httpx.HTTPError as exc:
+                self.evidence_failure(row, exc)
                 return
             if not eligible:
                 self.update(row["id"], state="archived")
                 return
-            attempts = row["attempts"] + 1
+            # Retrieve and bind review evidence before spending any inference attempt.
+            model_input = message
+            if message['body']['document_type'] == 'labos_auto_result':
+                try:
+                    model_input = self.review_input(message, operation)
+                except OperationStopped:
+                    return "stopped"
+                except httpx.HTTPError as exc:
+                    self.evidence_failure(row, exc)
+                    return
+                except (ValueError, TypeError, KeyError, OverflowError, RecursionError):
+                    self.update(row['id'], state='rejected', error='invalid review evidence; local reconciliation required')
+                    return
+            delivery_blocked = model_input.get("evidence_delivery_blocked") is True
             source_evidence = []
             try:
-                model_input = message
                 requests = message["body"].get("context", {}).get("source_requests")
                 if requests is not None and message["body"]["document_type"] in {"labos_auto_task", "labos_program_task"}:
-                    source_evidence = self.sources.collect(requests)
+                    source_evidence = self.sources.collect(requests, operation.check)
                     try:
                         self.check_credentials(source_evidence)
                     except ValueError:
                         source_evidence = []
                         raise SourceContextError("Collected source contains a configured credential; evidence was not exported") from None
                     model_input = {**message, "approved_source_evidence": source_evidence}
-                if message["body"]["document_type"] == "labos_auto_result":
-                    model_input = {**message, "original_task": self.find_own_message(message["in_reply_to"])["body"]}
-                    pilot_result = message['body'].get('pilot_result')
-                    if message['body'].get('backend') == 'pilot' and pilot_result is not None:
-                        from .pilot_artifacts import review_snapshot
-                        reference = pilot_result.get('artifact', {})
-                        if reference.get('message_id') != message['in_reply_to']:
-                            raise ValueError('pilot artifact does not match its task')
-                        loaded = self.client.get(f"/api/pilot-artifacts/{self.config.agent_id}/{message['in_reply_to']}")
-                        loaded.raise_for_status()
-                        artifact = loaded.json()
-                        digest = hashlib.sha256(json_bytes(artifact)).hexdigest()
-                        if digest != reference.get('sha256'):
-                            raise ValueError('pilot artifact review checksum mismatch')
-                        snapshot = review_snapshot(artifact, digest)
-                        self.check_credentials(snapshot)
-                        model_input['stored_pilot_evidence'] = snapshot
-                generated = self.responder.respond(model_input, self.context)
+                generated = ({"backend": "evidence_delivery_blocked", "answer": delivery_failure_answer()}
+                             if delivery_blocked else self.generate(row, model_input, operation))
                 answer = Answer.model_validate(generated["answer"]).model_dump()
                 self.check_credentials(generated)
             except SourceContextError as exc:
                 generated = {"backend": "source_context"}
                 answer = {"status": "needs_input", "summary": str(exc), "findings": [],
                           "questions": ["Register the approved source roots or correct the bounded source request locally."]}
+            except InputTooLarge:
+                generated = {"backend": "input_capacity"}
+                answer = {"status": "needs_input", "summary": "Assembled model input exceeds the 131072-byte limit; no evidence was silently removed.",
+                          "findings": [], "questions": ["Provide a smaller approved evidence set or static context."]}
             except Exception as exc:
-                # A bounded provider failure is durable and cannot consume tokens every poll.
-                if attempts < 2:
-                    self.update(row["id"], attempts=attempts, retry_at=time.time() + 60,
-                                error=type(exc).__name__)
+                attempts = len(self.invocation_history(row["id"]))
+                # Reservation failure and terminal control signals never dispatch a fallback.
+                if attempts < 2 and not isinstance(exc, OperationStopped):
+                    self.update(row["id"], retry_at=time.time() + 60, error=type(exc).__name__)
                     return
                 generated = {"backend": "unavailable"}
-                answer = {"status": "failed", "summary": "Report generation failed after two attempts. Check worker diagnostics and model availability.",
+                answer = {"status": "failed", "summary": "Report generation stopped or its backend invocation allowance was exhausted. Check worker diagnostics and model availability.",
                           "findings": [], "questions": []}
+            attempts = len(self.invocation_history(row["id"]))
             review = message["body"]["document_type"] == "labos_auto_result"
             body = {"protocol": PROTOCOL, "document_type": "labos_auto_review" if review else "labos_auto_result",
                     "task_id": message["body"]["task_id"], "executable": False,
                     "backend": generated["backend"], "answer": answer,
-                    "model_attempts": 0 if generated["backend"] in {"program", "source_context", "pilot"} else attempts}
+                    "model_attempts": attempts}
             if generated.get("pilot_result") is not None:
                 body["pilot_result"] = generated["pilot_result"]
             if source_evidence:
                 body["source_evidence"] = source_evidence
             response = {"id": "msg_auto_" + hashlib.sha256((self.config.role + ":" + row["id"]).encode()).hexdigest()[:40],
                         "kind": "reply", "in_reply_to": row["id"], "body": body}
-            if len(json_bytes(response)) > MAX_MESSAGE_BYTES:
-                response["body"]["answer"] = {"status": "failed", "summary": "Generated report exceeded the message size limit; request a shorter analysis.",
-                                               "findings": [], "questions": []}
-            self.update(row["id"], state="ready", response=json.dumps(response), attempts=attempts, retry_at=0)
+            self.bound_response(response)
+            self.update(row["id"], state="ready", response=json.dumps(response), retry_at=0)
         else:
             response = json.loads(row["response"])
         try:
             self.prepare_delivery(response)
+            # Prerequisites can add delivery metadata too. Persist the final bounded
+            # envelope before sending so retries/restarts retain the same diagnosis.
+            self.bound_response(response)
+            self.update(row["id"], response=json.dumps(response))
             result = self.client.post(self.path, json=response)
             result.raise_for_status()
             self.update(row["id"], state="sent", error=None)
@@ -307,6 +410,97 @@ class Worker:
             else:
                 self.update(row["id"], retry_at=time.time() + self.config.poll_s,
                             error="reply delivery failed; cached response retained")
+
+    @staticmethod
+    def bound_response(response):
+        if len(json_bytes(response)) <= MAX_MESSAGE_BYTES:
+            return
+        body = response["body"]
+        body["answer"] = {"status": "failed", "summary": "Generated report exceeded the message size limit; inspect the preserved local evidence.",
+                          "findings": [], "questions": []}
+        if len(json_bytes(response)) <= MAX_MESSAGE_BYTES:
+            return
+        # Metadata can itself exceed the cap. Retain only bounded binding references,
+        # never partial evidence or a successful/protected interpretation.
+        details = body.get("pilot_result")
+        compact = {key: body[key] for key in ("protocol", "document_type", "task_id", "executable", "model_attempts")}
+        compact.update(backend="pilot" if body.get("backend") == "pilot" else "evidence_delivery_blocked",
+                       answer=delivery_failure_answer())
+        if isinstance(details, dict):
+            reference = details.get("artifact", {})
+            reference = reference if isinstance(reference, dict) else {}
+            hashes = {key: value for key in ("plan_sha256", "config_sha256")
+                      if isinstance(value := details.get(key), str) and re.fullmatch("[0-9a-f]{64}", value)}
+            artifact = {"message_id": response["in_reply_to"]}
+            digest = reference.get("sha256")
+            if isinstance(digest, str) and re.fullmatch("[0-9a-f]{64}", digest):
+                artifact["sha256"] = digest
+            compact["pilot_result"] = evidence_delivery_blocked(
+                {**hashes, "artifact": artifact}, "correspondence_metadata_exceeds_capacity")
+            availability = reference.get("availability")
+            compact["pilot_result"]["artifact"]["availability"] = (
+                availability if availability in {"local_only", "central_indexed"} else "unknown")
+        response["body"] = compact
+        if len(json_bytes(response)) > MAX_MESSAGE_BYTES:
+            raise ValueError("minimal correspondence envelope exceeds capacity")
+
+    def evidence_failure(self, row, exc):
+        """Evidence transport has its own retry stage, never an inference attempt."""
+        code = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
+        if code is not None and code not in {408, 429} and code < 500:
+            self.update(row['id'], state='rejected',
+                        error=f'review evidence unavailable (HTTP {code}); local reconciliation required')
+        else:
+            self.update(row['id'], retry_at=time.time() + 60,
+                        error='review evidence temporarily unavailable; inference not attempted')
+
+    def review_input(self, message, operation_guard=None):
+        from .pilot import PilotPlan
+        from .pilot_artifacts import MAX_PILOT_ARTIFACT_BYTES, PilotArtifact, review_snapshot
+
+        parent = self.find_own_message(message['in_reply_to'], operation_guard.check if operation_guard else None)
+        if parent is None or parent['id'] != message['in_reply_to']:
+            raise ValueError('review task is unavailable')
+        task = Task.model_validate(parent['body'])
+        if task.task_id != message['body']['task_id']:
+            raise ValueError('review result does not match original task')
+        model_input = {**message, 'original_task': parent['body']}
+        self.check_credentials(model_input)
+        if message['body'].get('backend') != 'pilot':
+            if message['body'].get('backend') == 'evidence_delivery_blocked':
+                model_input['evidence_delivery_blocked'] = True
+            return model_input
+        pilot_result = message['body'].get('pilot_result')
+        if not isinstance(pilot_result, dict) or task.document_type != 'labos_pilot_task':
+            raise ValueError('pilot review requires its original pilot task')
+        reference = pilot_result.get('artifact', {})
+        if not isinstance(reference, dict) or reference.get('message_id') != parent['id']:
+            raise ValueError('pilot artifact does not match original message')
+        delivery = pilot_result.get('evidence_delivery', {})
+        if (reference.get('availability') in {'local_only', 'unknown'}
+                and isinstance(delivery, dict) and delivery.get('status') == 'blocked'):
+            model_input['evidence_delivery_blocked'] = True
+            return model_input
+        loaded = self.client.get(f"/api/pilot-artifacts/{self.config.agent_id}/{parent['id']}")
+        loaded.raise_for_status()
+        content = loaded.content
+        digest = hashlib.sha256(content).hexdigest()
+        if len(content) > MAX_PILOT_ARTIFACT_BYTES or digest != reference.get('sha256'):
+            raise ValueError('pilot artifact review checksum mismatch')
+        # Hash original HTTP content before parsing. Never try a canonical-hash fallback.
+        artifact = PilotArtifact.model_validate_json(content)
+        report = artifact.report
+        plan = PilotPlan.model_validate(report['plan'])
+        expected = PilotPlan.model_validate(task.pilot_plan)
+        plan_digest = hashlib.sha256(json_bytes(plan.model_dump(mode='json'))).hexdigest()
+        if (artifact.message_id != parent['id'] or report['task_id'] != task.task_id
+                or plan != expected or artifact.plan_sha256 != plan_digest):
+            raise ValueError('pilot artifact task/plan binding mismatch')
+        json_bytes(report)  # Reject non-finite values before building model evidence.
+        snapshot = review_snapshot(artifact.model_dump(), digest)
+        self.check_credentials(snapshot)
+        model_input['stored_pilot_evidence'] = snapshot
+        return model_input
 
     def prepare_delivery(self, response):
         """Optional deterministic prerequisite; subclasses preserve cached reply IDs."""
@@ -362,6 +556,7 @@ def main(argv=None):
     parser.add_argument("action", choices=["run", "once", "doctor", "status", "stop"])
     parser.add_argument("--config", required=True, type=Path)
     args = parser.parse_args(argv)
+    worker = None
     try:
         config = load_worker_config(args.config)
         if args.action == "status":
@@ -369,7 +564,7 @@ def main(argv=None):
             return 0
         if args.action == "stop":
             atomic_write(config.state_dir / "stop.request", b"stop\n")
-            print("Stop requested; an active model call may take up to its configured timeout.")
+            print("Stop requested; the active report operation will cancel and clean up its owned resources.")
             return 0
         if args.action == "doctor":
             worker = Worker(config)
@@ -397,6 +592,9 @@ def main(argv=None):
         # Print types, not provider output, URLs, configuration or request bodies.
         print(f"LabOS cooperation worker failed ({type(exc).__name__}). Check config paths, CLI login and HTTPS connectivity.")
         return 1
+    finally:
+        if worker is not None:
+            worker.client.close()
 
 
 if __name__ == "__main__":

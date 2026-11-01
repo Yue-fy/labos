@@ -14,6 +14,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, model_validator
 
+from labos.pilot_diagnostics import RunEvidence
+
 
 Positive = Annotated[float, Field(gt=0)]
 
@@ -92,16 +94,19 @@ class PilotEngine:
     suppress protection. Adapters can raise PilotCancelled for guarded I/O.
     """
 
-    def __init__(self, adapter, clock=time.monotonic, sleep=time.sleep):
+    def __init__(self, adapter, clock=time.monotonic, sleep=time.sleep, observer=None):
         self.adapter = adapter
         self.clock = clock
         self.sleep = sleep
+        self.observer = observer
 
     def run(self, plan, approval, cancel=None) -> dict:
         result = {"status": "FAILED", "samples": [], "rejected_samples": [],
                   "cleanup": [], "error": None,
                   "acquisition_complete": False, "protection_verified": False,
-                  "preflight": None, "close_error": None}
+                  "preflight": None, "close_error": None,
+                  "timing": {"stages": [], "dropped_count": 0, "total_elapsed_s": 0},
+                  "failure": None, "budget_checks": []}
         try:
             plan = PilotPlan.model_validate(plan.model_dump() if isinstance(plan, PilotPlan)
                                             else plan)
@@ -116,97 +121,170 @@ class PilotEngine:
                       plan_sha256=_digest(plan), approval_sha256=_digest(approval))
         start = self.clock()
         deadline = start + plan.max_run_s
+        evidence = RunEvidence(
+            result, self.clock, start, self.observer,
+            lambda: self._diagnostics(result, "before_cleanup") if opened else None)
+        evidence.run_deadline = deadline
+        baseline_max_read_s = 0
         opened = False
         owned = False
         try:
             self._check(cancel, deadline)
             self._set_guard(deadline, cancel)
             # Even a partial open must be closed, but open/preflight must not alter outputs.
-            opened = True
-            self.adapter.open()
-            self._check(cancel, deadline)
+            with evidence.stage("open"):
+                self._check(cancel, deadline)
+                opened = True
+                self.adapter.open()
+                self._check(cancel, deadline)
             self._set_guard(deadline, cancel)
-            preflight = _json_object(self.adapter.preflight(), "preflight")
-            result["preflight"] = preflight
-            if preflight.get("ready") is not True or preflight.get("laser_enabled") is not False:
-                raise ValueError("preflight refused local ownership or laser is not verified OFF")
-            owned = True
+            with evidence.stage("preflight"):
+                self._check(cancel, deadline)
+                preflight = _json_object(self.adapter.preflight(), "preflight")
+                result["preflight"] = preflight
+                if (preflight.get("ready") is not True
+                        or preflight.get("laser_enabled") is not False):
+                    raise ValueError("preflight refused local ownership or laser is not verified OFF")
+                owned = True
+                self._check(cancel, deadline)
             self._check(cancel, deadline)
             for phase in _phases(plan.mode):
+                evidence.phase_deadline = None
                 self._check(cancel, deadline)
                 self._set_guard(deadline, cancel)
-                phase_deadline = min(deadline, self.clock() + plan.phase_timeout_s)
+                evidence.phase_deadline = self.clock() + plan.phase_timeout_s
+                phase_deadline = min(deadline, evidence.phase_deadline)
                 try:
-                    self._set_guard(phase_deadline, cancel)
-                    self.adapter.configure(phase, plan)
-                    self._check(cancel, phase_deadline)
+                    with evidence.stage("configure", phase):
+                        self._check(cancel, phase_deadline)
+                        self._set_guard(phase_deadline, cancel)
+                        self.adapter.configure(phase, plan)
+                        self._check(cancel, phase_deadline)
                     if phase == "illuminated":
-                        self._set_guard(phase_deadline, cancel)
-                        self.adapter.laser_on(plan.laser_current_a)
-                        self._check(cancel, phase_deadline)
-                    self._pause(plan.settle_s, cancel, phase_deadline)
-                    for index in range(plan.samples_per_phase):
-                        self._check(cancel, phase_deadline)
-                        self._set_guard(phase_deadline, cancel)
-                        try:
-                            raw = self.adapter.read_sample(phase)
-                        except Exception as exc:
-                            if hasattr(exc, "raw_sample"):
-                                result["rejected_samples"].append(
-                                    self._rejected(exc.raw_sample, phase, index, start, exc))
-                            raise
-                        try:
-                            # A blocking call or validation can consume its remaining budget.
+                        with evidence.stage("illumination_budget", phase):
+                            self._illumination_budget(result, plan, cancel, deadline,
+                                                      evidence.phase_deadline, baseline_max_read_s)
+                        with evidence.stage("laser_on", phase):
+                            self._set_guard(phase_deadline, cancel)
+                            # A progress observer or guard setup can consume time too.
+                            self._illumination_budget(result, plan, cancel, deadline,
+                                                      evidence.phase_deadline, baseline_max_read_s)
+                            self.adapter.laser_on(plan.laser_current_a)
                             self._check(cancel, phase_deadline)
-                            sample = _sample(raw, phase, plan.power_limit_w)
-                            timestamp = self._check(cancel, phase_deadline)
-                        except Exception as exc:
-                            result["rejected_samples"].append(
-                                self._rejected(raw, phase, index, start, exc))
-                            raise
-                        sample.update(phase=phase, sample_index=index,
-                                      timestamp_monotonic_s=timestamp,
-                                      elapsed_s=timestamp - start)
-                        result["samples"].append(sample)
+                    with evidence.stage("settle", phase):
+                        self._pause(plan.settle_s, cancel, phase_deadline)
+                    for index in range(plan.samples_per_phase):
+                        with evidence.stage("sample", phase):
+                            self._check(cancel, phase_deadline)
+                            self._set_guard(phase_deadline, cancel)
+                            read_start = self.clock()
+                            try:
+                                raw = self.adapter.read_sample(phase)
+                            except Exception as exc:
+                                if hasattr(exc, "raw_sample"):
+                                    result["rejected_samples"].append(
+                                        self._rejected(exc.raw_sample, phase, index, start, exc))
+                                raise
+                            read_duration_s = self.clock() - read_start
+                            try:
+                                # Blocking I/O and validation both consume the budget.
+                                self._check(cancel, phase_deadline)
+                                sample = _sample(raw, phase, plan.power_limit_w)
+                                timestamp = self._check(cancel, phase_deadline)
+                            except Exception as exc:
+                                result["rejected_samples"].append(
+                                    self._rejected(raw, phase, index, start, exc))
+                                raise
+                            sample.update(phase=phase, sample_index=index,
+                                          timestamp_monotonic_s=timestamp,
+                                          elapsed_s=timestamp - start)
+                            result["samples"].append(sample)
+                            if phase == "dark_baseline":
+                                baseline_max_read_s = max(baseline_max_read_s, read_duration_s)
                         if index + 1 < plan.samples_per_phase:
-                            self._pause(plan.interval_s, cancel, phase_deadline)
+                            with evidence.stage("interval", phase):
+                                self._pause(plan.interval_s, cancel, phase_deadline)
                 finally:
-                    result["cleanup"].append(self._protect(phase, plan.excitation_v_rms))
-                if not result["cleanup"][-1]["verified"]:
-                    raise _ProtectionFailure("phase protection could not be verified")
-                self._check(cancel, phase_deadline)
+                    if result["failure"] is None:
+                        self._diagnostics(result, "before_cleanup")
+                    with evidence.stage("phase_protection", phase):
+                        result["cleanup"].append(self._protect(phase, plan.excitation_v_rms,
+                                                              evidence))
+                with evidence.stage("phase_complete", phase):
+                    if not result["cleanup"][-1]["verified"]:
+                        raise _ProtectionFailure("phase protection could not be verified")
+                    self._check(cancel, phase_deadline)
             result["acquisition_complete"] = True
             self._check(cancel, deadline)
             result["status"] = "COMPLETED"
         except PilotCancelled as exc:
+            evidence.fail(exc)
             result.update(status="CANCELLED", error=str(exc))
         except Exception as exc:
+            evidence.fail(exc)
             result.update(status="FAILED", error=f"{type(exc).__name__}: {exc}")
         finally:
             # Never protect a foreign owner when read-only preflight refuses the run.
             if owned:
-                result["cleanup"].append(self._protect("final", plan.excitation_v_rms))
+                evidence.phase_deadline = None
+                with evidence.stage("final_protection", "final"):
+                    result["cleanup"].append(self._protect("final", plan.excitation_v_rms,
+                                                          evidence))
                 result["protection_verified"] = all(item["verified"] for item in result["cleanup"])
                 if not result["protection_verified"]:
+                    evidence.fail(_ProtectionFailure("output protection could not be verified"),
+                                  "final_protection", "final")
                     result["status"] = "UNKNOWN"
                     if result["error"] is None:
                         result["error"] = "output protection could not be verified"
             if opened:
                 try:
-                    self.adapter.close()
+                    with evidence.stage("close"):
+                        self.adapter.close()
                 except BaseException as exc:
                     result["close_error"] = f"{type(exc).__name__}: {exc}"
                     result["status"] = "UNKNOWN"
                     result["error"] = result["error"] or "adapter close failed"
+                self._diagnostics(result, "after_cleanup")
+            evidence.finish()
         if result["status"] == "COMPLETED":
             # Finish every protection/release attempt even when the run budget expires.
             try:
-                self._check(cancel, deadline)
+                with evidence.stage("run_complete"):
+                    self._check(cancel, deadline)
             except PilotCancelled as exc:
                 result.update(status="CANCELLED", error=str(exc))
             except Exception as exc:
                 result.update(status="FAILED", error=f"{type(exc).__name__}: {exc}")
         return result
+
+    def _diagnostics(self, result, moment):
+        try:
+            diagnostics = getattr(self.adapter, "diagnostics", None)
+            if diagnostics is None:
+                return
+            result.setdefault("device_diagnostics", {})[moment] = None
+            result["device_diagnostics"][moment] = _json_object(diagnostics(), "device diagnostics")
+        except BaseException:
+            # Optional evidence must never replace the original fault or block protection.
+            pass
+
+    def _illumination_budget(self, result, plan, cancel, deadline, phase_deadline,
+                             baseline_max_read_s):
+        now = self._check(cancel, min(deadline, phase_deadline))
+        remaining = min(deadline - now, phase_deadline - now)
+        required = (plan.settle_s + plan.samples_per_phase * baseline_max_read_s
+                    + (plan.samples_per_phase - 1) * plan.interval_s)
+        admitted = required < remaining
+        result["budget_checks"].append({
+            "phase": "illuminated", "provenance": "observed_baseline_estimate",
+            "baseline_max_read_s": baseline_max_read_s, "sample_count": plan.samples_per_phase,
+            "settle_s": plan.settle_s, "interval_s": plan.interval_s,
+            "required_s": required, "remaining_run_s": deadline - now,
+            "remaining_phase_s": phase_deadline - now, "remaining_effective_s": remaining,
+            "admitted": admitted})
+        if not admitted:
+            raise TimeoutError("insufficient illumination budget for observed baseline estimate")
 
     def _rejected(self, raw, phase, index, start, error):
         timestamp = self.clock()
@@ -243,22 +321,24 @@ class PilotEngine:
                 return
             self.sleep(min(remaining, 0.1))
 
-    def _protect(self, scope, expected_v_rms):
+    def _protect(self, scope, expected_v_rms, evidence):
         """Attempt both protections even if either command/readback fails."""
         record = {"scope": scope}
         try:
-            laser = _json_object(self.adapter.laser_off(), "laser protection readback")
-            laser["laser_off_verified"] = laser.get("laser_off_verified") is True
+            with evidence.stage("laser_off", scope):
+                laser = _json_object(self.adapter.laser_off(), "laser protection readback")
+                laser["laser_off_verified"] = laser.get("laser_off_verified") is True
         except BaseException as exc:
             laser = {"laser_off_verified": False, "error": f"{type(exc).__name__}: {exc}"}
         record["laser_off"] = laser
         try:
-            excitation = _json_object(self.adapter.protect_excitation(),
-                                      "excitation protection readback")
-            actual = excitation.get("actual_v_rms")
-            excitation["minimum_excitation_verified"] = (
-                excitation.get("minimum_excitation_verified") is True
-                and _finite_number(actual) and actual == expected_v_rms)
+            with evidence.stage("protect_excitation", scope):
+                excitation = _json_object(self.adapter.protect_excitation(),
+                                          "excitation protection readback")
+                actual = excitation.get("actual_v_rms")
+                excitation["minimum_excitation_verified"] = (
+                    excitation.get("minimum_excitation_verified") is True
+                    and _finite_number(actual) and actual == expected_v_rms)
         except BaseException as exc:
             excitation = {"minimum_excitation_verified": False,
                           "error": f"{type(exc).__name__}: {exc}"}

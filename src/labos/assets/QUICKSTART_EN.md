@@ -2,11 +2,14 @@
 
 The interface, controls, runtime messages and installation tools use English.
 
-First follow your personalized bundle's `START_HERE_EN.md`. A **program-only**
-bundle uses `Install-Program-Connector.cmd` and requires no model or Tailscale.
-An **agent-assisted** bundle uses `Install-Cooperation.ps1` after runtime setup
-and requires authenticated Codex plus its configured network. The generic
-execution-Agent instructions below apply only when that component is intended.
+Choose the provisioned role before starting a component. Generic release ZIPs
+contain no live credentials; obtain PC-specific configuration through the
+operator. A **program-only** profile uses `Install-Program-Connector.cmd` without
+a local model. An **agent-assisted report** profile uses `Install-Cooperation.ps1`
+after runtime setup and requires authenticated Codex and its configured network.
+`Start-Agent.cmd` starts the separate generic simulated execution Agent only.
+See [NETWORK_EN.md](NETWORK_EN.md) for connectivity checks. A station-specific
+handoff may supplement these directions; no historical private bundle is required.
 
 ## Install on the laboratory PC
 
@@ -27,15 +30,25 @@ Once configuration is available, open PowerShell in the extracted folder and run
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Doctor.ps1
 ```
 
-Doctor checks the central connection and PC authentication; it does not access instruments. After a successful check, double-click **Start-Agent.cmd**. The Agent initiates HTTP(S) requests to the central server; SSH and inbound PC ports are not required.
+Doctor checks the central connection and PC authentication; it does not access instruments. For a provisioned generic execution Agent, double-click **Start-Agent.cmd** after this check. Report/program profiles use their own startup workflow. The Agent initiates HTTP(S) requests to the central server; SSH and inbound PC ports are not required.
 
 ## Current device support
 
-This release enables simulated instruments only. Real SMUs, lock-ins, choppers and vendor SDKs require model-specific integration and validation. Do not execute an entire reference Notebook as an installation or connection check.
+The generic execution Agent supports simulated laser/rotator/spectrometer devices.
+A separate opt-in physical pilot supports only fixed reviewed, locally commissioned
+finite scopes; see [PHYSICAL_PILOT_EN.md](PHYSICAL_PILOT_EN.md),
+[DARK_A_SHORT_TEST_EN.md](DARK_A_SHORT_TEST_EN.md) and
+[OPTICAL_READBACK_EN.md](OPTICAL_READBACK_EN.md). Identified devices are not
+automatically implemented drivers. The physical overlay includes root
+`ONSITE_COMMISSIONING_EN.md`, `PHYSICAL_AUTHORITY_EN.md`,
+`PORTABLE_UPDATE_RECOVERY_EN.md` and `RELIABILITY_IMPROVEMENTS_EN.md`; generic
+source releases include those guides under `docs/`. Wiring inspection, separate
+commissioning and a separately authorized new finite task are still required.
+Do not execute a reference Notebook as an installation or connection check.
 
 ## If this PC has a language-model assistant
 
-Ask it to read [AGENTS.md](AGENTS.md) and [README_AGENT_KIT_EN.md](README_AGENT_KIT_EN.md). The cooperation kit explains local inspection, reference-code review and coordination. A provisioned 0.2.2 package supports [HTTPS report send/receive](COOPERATION_HTTPS_EN.md); this does not require installing an LLM and does not automatically invoke one.
+Ask it to read [AGENTS.md](AGENTS.md) and [README_AGENT_KIT_EN.md](README_AGENT_KIT_EN.md). The cooperation kit explains local inspection, reference-code review and coordination. A provisioned installation with the correspondence tools supports [HTTPS report send/receive](COOPERATION_HTTPS_EN.md); this does not require installing an LLM and does not automatically invoke one.
 
 ## Repair an existing 0.2.0 installation
 

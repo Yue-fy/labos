@@ -242,3 +242,93 @@ def test_source_open_is_confined_even_if_path_changes_after_validation(tmp_path,
     with pytest.raises(SourceContextError):
         sources.collect([{"root": "src", "path": "nested/meter.py", "kind": "read"}])
     assert swapped
+
+
+@pytest.mark.parametrize("directories,count", [(False, 10020), (True, 1020)])
+def test_index_bounds_scanned_entries_and_directories(tmp_path, directories, count):
+    for i in range(count):
+        path = tmp_path / f"entry{i}"
+        path.mkdir() if directories else path.touch()
+    item = ReadOnlySources({"src": tmp_path}).collect(
+        [{"root": "src", "path": ".", "kind": "index"}])[0]
+    assert item["truncated"] is True
+    assert item["scan"]["entries"] <= 10000
+    assert item["scan"]["directories"] <= 1000
+    assert item["scan"]["limit"] in {"entries", "directories"}
+
+
+def test_source_guard_interrupts_scan_and_closes_iterator(tmp_path, monkeypatch):
+    import os
+    from labos.cooperation_budget import OperationStopped
+    for i in range(10):
+        (tmp_path / f"entry{i}").touch()
+    actual = os.scandir
+    opened = []
+    def scandir(path):
+        iterator = actual(path)
+        opened.append(iterator)
+        return iterator
+    monkeypatch.setattr(os, "scandir", scandir)
+    checks = []
+    def guard():
+        checks.append(1)
+        if len(checks) == 12:
+            raise OperationStopped("cancelled")
+    with pytest.raises(OperationStopped):
+        ReadOnlySources({"src": tmp_path}).collect(
+            [{"root": "src", "path": ".", "kind": "index"}], guard)
+    assert opened
+    assert list(opened[0]) == []
+
+
+def test_outline_bounds_traversal_and_retained_definitions(tmp_path):
+    code = "\n".join(f"def function_{i}(): pass" for i in range(3000))
+    (tmp_path / "many.py").write_text(code)
+    item = ReadOnlySources({"src": tmp_path}).collect(
+        [{"root": "src", "path": "many.py", "kind": "outline"}])[0]
+    assert item["truncated"]
+    assert item["scan"]["nodes"] <= 10000
+    assert item["scan"]["definitions"] <= 250
+    assert item["sha256"] == hashlib.sha256(code.encode()).hexdigest()
+
+
+def test_even_internal_source_symlinks_are_rejected(tmp_path):
+    (tmp_path / "real.py").write_text("pass")
+    (tmp_path / "alias.py").symlink_to(tmp_path / "real.py")
+    with pytest.raises(SourceContextError):
+        ReadOnlySources({"src": tmp_path}).collect([{"root": "src", "path": "alias.py"}])
+
+
+def test_outline_stops_on_large_expression_and_omits_large_signature(tmp_path):
+    (tmp_path / "nodes.py").write_text("items = [" + "0," * 20000 + "]")
+    (tmp_path / "signature.py").write_text("def many(" + ",".join(f"x{i}" for i in range(2000)) + "): pass")
+    evidence = ReadOnlySources({"src": tmp_path}).collect([
+        {"root": "src", "path": "nodes.py", "kind": "outline"},
+        {"root": "src", "path": "signature.py", "kind": "outline"}])
+    assert evidence[0]["scan"]["nodes"] == 10000
+    assert evidence[0]["scan"]["limit"] == "nodes"
+    assert evidence[0]["truncated"]
+    assert "signature omitted" in evidence[1]["content"]
+    assert evidence[1]["truncated"]
+
+
+def test_outline_omits_oversize_import_before_rendering(tmp_path, monkeypatch):
+    import ast
+    (tmp_path / "large.py").write_text("from " + "module" * 1000 + " import value")
+    original = ast.unparse
+    def bounded_unparse(node):
+        if isinstance(node, ast.ImportFrom) and len(node.module) > 4096:
+            pytest.fail("Oversize import was rendered before truncation")
+        return original(node)
+    monkeypatch.setattr(ast, "unparse", bounded_unparse)
+    evidence = ReadOnlySources({"src": tmp_path}).collect(
+        [{"root": "src", "path": "large.py", "kind": "outline"}])[0]
+    assert "import omitted" in evidence["content"]
+    assert evidence["truncated"]
+
+
+def test_outline_marks_shortened_definition_name(tmp_path):
+    (tmp_path / "name.py").write_text("def " + "a" * 5000 + "(): pass")
+    evidence = ReadOnlySources({"src": tmp_path}).collect(
+        [{"root": "src", "path": "name.py", "kind": "outline"}])[0]
+    assert evidence["truncated"]

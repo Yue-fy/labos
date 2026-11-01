@@ -104,40 +104,79 @@ class ReadOnlySources:
         if (relative.is_absolute() or PureWindowsPath(request.path).drive
                 or ".." in relative.parts or "\x00" in request.path):
             raise SourceContextError("Source paths must stay relative to a registered root")
-        path = (root / str(relative)).resolve()
+        candidate = root
+        for part in relative.parts:
+            candidate = candidate / part
+            if candidate.is_symlink():
+                raise SourceContextError("Source paths must not follow symlinks")
+        path = candidate.resolve()
         if not path.is_relative_to(root):
             raise SourceContextError("Source path leaves its registered root")
         return path
 
-    def one(self, request):
+    def one(self, request, guard=None):
+        check = guard or (lambda: None)
+        check()
         path = self.resolve(request)
+        check()
         evidence = {"root": request.root, "path": request.path.replace("\\", "/"),
                     "kind": request.kind, "truncated": False}
         if request.kind == "index":
             if not path.is_dir():
                 raise SourceContextError("Source index requires a directory")
-            listing = []
-            for directory, dirs, files in os.walk(path, followlinks=False):
-                dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d != "__pycache__"
-                                 and not (Path(directory)/d).is_symlink())
-                for name in sorted(files):
-                    file = Path(directory)/name
-                    if file.suffix.lower() in {".py", ".md"} and not file.is_symlink():
-                        with open_confined(file, self.roots[request.root]):
-                            pass
-                        listing.append(file.relative_to(self.roots[request.root]).as_posix())
-                    if len(listing) >= 250:
-                        break
-                if len(listing) >= 250:
-                    evidence["truncated"] = True
-                    break
-            evidence["content"] = "\n".join(listing)
+            listing, pending = [], [path]
+            scan = {"entries": 0, "directories": 1, "opened_directories": 0, "limit": None}
+            while pending and scan["limit"] is None:
+                check()
+                directory = pending.pop()
+                if directory.is_symlink() or not directory.resolve().is_relative_to(self.roots[request.root]):
+                    raise SourceContextError("Source index directory left its registered root")
+                check()
+                scan["opened_directories"] += 1
+                with os.scandir(directory) as entries:
+                    while True:
+                        check()
+                        if scan["entries"] >= 10000:
+                            scan["limit"] = "entries"
+                            break
+                        entry = next(entries, None)
+                        if entry is None:
+                            break
+                        scan["entries"] += 1
+                        check()
+                        if entry.is_symlink():
+                            continue
+                        check()
+                        if entry.is_dir(follow_symlinks=False):
+                            if entry.name.startswith(".") or entry.name == "__pycache__":
+                                continue
+                            if scan["directories"] >= 1000:
+                                scan["limit"] = "directories"
+                                break
+                            pending.append(Path(entry.path))
+                            scan["directories"] += 1
+                        elif Path(entry.name).suffix.lower() in {".py", ".md"}:
+                            check()
+                            file = Path(entry.path)
+                            with open_confined(file, self.roots[request.root]):
+                                check()
+                            listing.append(file.relative_to(self.roots[request.root]).as_posix())
+                            if len(listing) >= 250:
+                                scan["limit"] = "matches"
+                                break
+            evidence["scan"] = scan
+            evidence["truncated"] = scan["limit"] is not None
+            evidence["content"] = "\n".join(sorted(listing))
         else:
+            check()
             if path.suffix.lower() not in {".py", ".md"} or not path.is_file():
                 raise SourceContextError(f"Only existing .py/.md source files may be read: {request.path}")
             try:
+                check()
                 with open_confined(path, self.roots[request.root]) as handle:
+                    check()
                     data = handle.read(MAX_FILE_BYTES + 1)
+                    check()
                 if len(data) > MAX_FILE_BYTES:
                     raise SourceContextError("Source file exceeds the 1 MiB read limit")
                 text = data.decode("utf-8-sig")
@@ -147,38 +186,107 @@ class ReadOnlySources:
             if request.kind == "outline":
                 if path.suffix.lower() != ".py":
                     raise SourceContextError("AST outlines require a Python source file")
+                check()
                 try:
                     tree = ast.parse(text)
-                except SyntaxError:
+                except (SyntaxError, RecursionError):
                     raise SourceContextError(f"Source file did not parse; it was not executed: {request.path}") from None
-                lines = [ast.unparse(n) for n in ast.walk(tree) if isinstance(n, (ast.Import, ast.ImportFrom))][:80]
-
-                def definitions(nodes, prefix=""):
-                    for node in nodes:
-                        if isinstance(node, ast.ClassDef):
-                            lines.append(f"class {prefix}{node.name} [lines {node.lineno}-{node.end_lineno}]")
-                            definitions(node.body, prefix + node.name + ".")
-                        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                            lines.append(f"def {prefix}{node.name}({ast.unparse(node.args)}) [lines {node.lineno}-{node.end_lineno}]")
-                definitions(tree.body)
-                evidence["content"] = "\n".join(lines)
+                evidence.update(self.outline(tree, check))
             else:
+                check()
                 lines = text.splitlines()
                 end = min(request.end_line or request.start_line + 119, len(lines))
                 if request.start_line > end or end - request.start_line >= 200:
                     raise SourceContextError("Request an existing line range of at most 200 lines")
                 evidence.update(start_line=request.start_line, end_line=end)
                 evidence["content"] = "\n".join(f"{i+1}: {lines[i]}" for i in range(request.start_line - 1, end))
+        check()
         if len(evidence["content"].encode()) > 4096:
             evidence["content"] = shorten(evidence["content"], 4096)
             evidence["truncated"] = True
         return evidence
 
-    def collect(self, requests):
+    @staticmethod
+    def outline(tree, check):
+        # Iterator frames retain only the active depth, never an entire child queue.
+        stack = [(iter([tree]), "")]
+        lines, size, imports = [], 0, 0
+        scan = {"nodes": 0, "definitions": 0, "limit": None}
+        truncated = False
+        while stack:
+            check()
+            if scan["nodes"] >= 10000:
+                scan["limit"] = "nodes"
+                break
+            children, prefix = stack[-1]
+            node = next(children, None)
+            if node is None:
+                stack.pop()
+                continue
+            scan["nodes"] += 1
+            line = None
+            child_prefix = prefix
+            if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+                if scan["definitions"] >= 250:
+                    scan["limit"] = "definitions"
+                    break
+                scan["definitions"] += 1
+                full_name = prefix + node.name
+                name = shorten(full_name, 1024)
+                truncated |= name != full_name
+                child_prefix = name + "."
+                if isinstance(node, ast.ClassDef):
+                    line = f"class {name} [lines {node.lineno}-{node.end_lineno}]"
+                else:
+                    signature = ReadOnlySources.render_outline_node(node.args, check)
+                    truncated |= signature is None
+                    line = f"def {name}({signature if signature is not None else '<signature omitted: too large>'}) [lines {node.lineno}-{node.end_lineno}]"
+            elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                if imports < 80:
+                    imports += 1
+                    line = ReadOnlySources.render_outline_node(node, check)
+                    if line is None:
+                        line = "<import omitted: too large>"
+                        truncated = True
+                else:
+                    truncated = True
+            if line is not None:
+                remaining = 4096 - size
+                lines.append(shorten(line, remaining))
+                size += len(lines[-1].encode()) + 1
+                if size >= 4096:
+                    scan["limit"] = "content"
+                    break
+            stack.append((ast.iter_child_nodes(node), child_prefix))
+        return {"content": "\n".join(lines), "scan": scan,
+                "truncated": truncated or scan["limit"] is not None}
+
+    @staticmethod
+    def render_outline_node(node, check):
+        # Bound even the subtree sent to unparse; no giant argument/import rendering.
+        stack, count, text_size = [iter([node])], 0, 0
+        while stack:
+            check()
+            child = next(stack[-1], None)
+            if child is None:
+                stack.pop()
+                continue
+            count += 1
+            if count > 256 or len(stack) > 32:
+                return None
+            for _, value in ast.iter_fields(child):
+                if isinstance(value, (str, bytes)):
+                    text_size += len(value)
+            if text_size > 4096:
+                return None
+            stack.append(ast.iter_child_nodes(child))
+        return ast.unparse(node)
+
+    def collect(self, requests, guard=None):
         if not isinstance(requests, list) or not 1 <= len(requests) <= 6:
             raise SourceContextError("Request between one and six source excerpts")
         try:
-            evidence = [self.one(SourceRequest.model_validate(r)) for r in requests]
+            evidence = [self.one(SourceRequest.model_validate(r), guard) for r in requests]
         except ValidationError:
             raise SourceContextError("Invalid source request fields") from None
         while len(json.dumps(evidence, ensure_ascii=False).encode()) > MAX_EVIDENCE_BYTES:

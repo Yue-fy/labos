@@ -44,7 +44,7 @@ its strict chopper requirements with no automatic fault-driven fallback.
 3. Apply with the existing portable Python:
 
    ```powershell
-   & '<existing LabOS>\python\python.exe' -B '<extracted update>\Apply-Pilot-Update.py' --target '<existing LabOS>'
+   & '<existing LabOS>\python\python.exe' -I '<extracted update>\Apply-Pilot-Update.py' --target '<existing LabOS>'
    ```
 
    The updater verifies all payload hashes and locks report/original/dark/readback

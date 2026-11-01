@@ -8,11 +8,15 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import math
 import os
 import time
-from contextlib import contextmanager
+from collections import deque
+from contextlib import contextmanager, nullcontext
+from copy import deepcopy
 from datetime import datetime, timezone
+from functools import wraps
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -193,6 +197,7 @@ class ChopperReadback:
         )
         self.timeout = timeout_s
         self.guard = lambda: math.inf
+        self.trace = None
         try:
             pending = self.serial.read(self.serial.in_waiting)
             if pending.strip() not in {b"", b">"}:
@@ -202,6 +207,15 @@ class ChopperReadback:
             raise
 
     def query(self, key):
+        context = self.trace("query", "chopper", key + "?") if self.trace else nullcontext()
+        with context as event:
+            value = self._query(key)
+            if event is not None:
+                event.update(response=value[:128], response_truncated=len(value) > 128)
+            self.guard()
+            return value
+
+    def _query(self, key):
         remaining = self.guard()
         command = key + "?"
         pending = self.serial.read(self.serial.in_waiting)
@@ -237,6 +251,9 @@ class ChopperReadback:
     def set_guard(self, guard):
         self.guard = guard
 
+    def set_trace(self, trace):
+        self.trace = trace
+
     def snapshot(self):
         identity = self.query("id")
         if "MC2000B" not in identity:
@@ -259,6 +276,17 @@ class ChopperReadback:
         self.serial.close()
 
 
+def _acquisition_fault(method):
+    @wraps(method)
+    def recorded(self, *args, **kwargs):
+        try:
+            return method(self, *args, **kwargs)
+        except BaseException as exc:
+            self._capture_fault(exc)
+            raise
+    return recorded
+
+
 class CryostatAdapter:
     def __init__(self, settings, manager_factory=None, chopper_factory=None):
         self.config = CryostatConfig.model_validate(settings)
@@ -278,7 +306,74 @@ class CryostatAdapter:
         self.protecting = False
         self.active_sample = None
         self.last_io = None
+        self._events = deque()
+        self._event_bytes = 0
+        self._dropped_count = 0
+        self._first_acquisition_fault = None
+        self._last_acquisition_io = None
+        self._initialization_close_error = None
         self.effective_power_limit_w = self.config.power_limit_w
+
+    def diagnostics(self):
+        """Copied finite evidence, bounded below the engine's JSON admission limits."""
+        return deepcopy({
+            "events": list(self._events), "dropped_count": self._dropped_count,
+            "first_acquisition_fault": self._first_acquisition_fault,
+            "last_acquisition_io": self._last_acquisition_io,
+            "initialization_close_error": self._initialization_close_error,
+        })
+
+    def _deadline_exhausted(self):
+        return (not self.protecting and self.deadline is not None
+                and time.monotonic() >= self.deadline)
+
+    def _capture_fault(self, exc, deadline_exhausted=None):
+        if not self.protecting and self._first_acquisition_fault is None:
+            self._first_acquisition_fault = {
+                "exception_type": type(exc).__name__[:64], "message": str(exc)[:128],
+                "deadline_exhausted": (self._deadline_exhausted() if deadline_exhausted is None
+                                       else deadline_exhausted),
+                "io": deepcopy(self._last_acquisition_io),
+            }
+
+    @contextmanager
+    def _io_event(self, operation, role=None, command=None):
+        started = time.monotonic()
+        event = {"operation": operation, "role": role[:32] if role is not None else None,
+                 "command": command[:128] if command is not None else None,
+                 "protection": self.protecting, "outcome": "completed"}
+        error = None
+        try:
+            yield event
+        except BaseException as exc:
+            error = exc
+            if "deadline_exhausted" not in event:
+                event["deadline_exhausted"] = self._deadline_exhausted()
+            event.update(outcome="failed", exception_type=type(exc).__name__[:64],
+                         message=str(exc)[:128])
+            raise
+        finally:
+            duration = time.monotonic() - started
+            event["duration_s"] = max(0.0, duration) if math.isfinite(duration) else None
+            if "deadline_exhausted" not in event:
+                event["deadline_exhausted"] = self._deadline_exhausted()
+            # Only bounded scalar fields enter this recorder. Budget using ASCII
+            # escaping too, since the engine serializes Unicode that way.
+            self._events.append(event)
+            self._event_bytes += len(json.dumps(event, allow_nan=False))
+            while len(self._events) > 128 or self._event_bytes > 48000:
+                dropped = self._events.popleft()
+                self._event_bytes -= len(json.dumps(dropped, allow_nan=False))
+                self._dropped_count += 1
+            if not self.protecting:
+                self._last_acquisition_io = dict(event)
+            if error is not None:
+                self._capture_fault(error, event["deadline_exhausted"])
+
+    @staticmethod
+    def _clipped_timeout(original, remaining):
+        return (min(original, max(1, math.ceil(1000 * remaining)))
+                if math.isfinite(remaining) else original)
 
     def set_guard(self, deadline, cancel):
         self.deadline, self.cancel = deadline, cancel
@@ -311,31 +406,46 @@ class CryostatAdapter:
             self.protecting = old
 
     def transaction(self, role, command, query):
-        remaining = self.guard()
-        resource = self.resources[role]
-        original = resource.timeout
-        resource.timeout = (
-            min(original, max(1, math.ceil(1000 * remaining)))
-            if math.isfinite(remaining)
-            else original
-        )
-        self.last_io = {"role": role, "command": command, "state": "requested"}
-        try:
-            value = resource.query(command) if query else resource.write(command)
-            self.last_io = {
-                "role": role,
-                "command": command,
-                "response": value if query else "write returned",
-            }
-            self.guard()
-            return value
-        finally:
-            resource.timeout = original
+        with self._io_event("query" if query else "write", role, command) as event:
+            remaining = self.guard()
+            resource = self.resources[role]
+            original = resource.timeout
+            primary_error = None
+            try:
+                resource.timeout = self._clipped_timeout(original, remaining)
+                event["timeout_ms"] = resource.timeout
+                self.last_io = {"role": role, "command": command, "state": "requested"}
+                value = resource.query(command) if query else resource.write(command)
+                self.last_io = {
+                    "role": role, "command": command,
+                    "response": value if query else "write returned",
+                }
+                response = value if query else "write returned"
+                event["response"] = response[:128] if isinstance(response, str) else None
+                event["response_truncated"] = isinstance(response, str) and len(response) > 128
+                self.guard()
+                return value
+            except BaseException as exc:
+                # Capture the native/post-call fault before fallible timeout
+                # restoration can advance the clock or raise another exception.
+                primary_error = exc
+                event["deadline_exhausted"] = self._deadline_exhausted()
+                raise
+            finally:
+                try:
+                    resource.timeout = original
+                except BaseException as exc:
+                    event["timeout_restore_fault"] = {
+                        "exception_type": type(exc).__name__[:64], "message": str(exc)[:128]}
+                    if primary_error is None:
+                        raise
 
     def w(self, role, command):
         return self.transaction(role, command, False)
 
+    @_acquisition_fault
     def open(self):
+        self.guard()
         c = validate_adapter_config(self.config.model_dump())
         if not c.station_config.is_file():
             raise ValueError("Existing station config path is unavailable")
@@ -347,38 +457,58 @@ class CryostatAdapter:
                 import pyvisa
 
                 factory = pyvisa.ResourceManager
-            self.manager = factory()
+            with self._io_event("manager"):
+                self.guard()
+                self.manager = factory()
+                self.guard()
             for role, address in c.resources.items():
-                resource = self.manager.open_resource(
-                    address, access_mode=1, open_timeout=c.io_timeout_ms
-                )
-                self.resources[role] = resource
-                resource.timeout = c.io_timeout_ms
-                resource.read_termination = resource.write_termination = "\n"
+                with self._io_event("open", role) as event:
+                    timeout = self._clipped_timeout(c.io_timeout_ms, self.guard())
+                    event["timeout_ms"] = timeout
+                    resource = self.manager.open_resource(
+                        address, access_mode=1, open_timeout=timeout
+                    )
+                    self.resources[role] = resource
+                    self.guard()
+                    resource.timeout = c.io_timeout_ms
+                    resource.read_termination = resource.write_termination = "\n"
             if c.experiment_scope == "optical_transport":
-                self.chopper = self.chopper_factory(c.chopper_port, c.io_timeout_ms / 1000)
-                if hasattr(self.chopper, "set_guard"):
-                    self.chopper.set_guard(self.guard)
+                with self._io_event("open", "chopper") as event:
+                    timeout = self._clipped_timeout(c.io_timeout_ms, self.guard())
+                    event["timeout_ms"] = timeout
+                    self.chopper = self.chopper_factory(c.chopper_port, timeout / 1000)
+                    if hasattr(self.chopper, "set_guard"):
+                        self.chopper.set_guard(self.guard)
+                    if hasattr(self.chopper, "set_trace"):
+                        self.chopper.set_trace(self._io_event)
+                    self.guard()
         except BaseException:
-            self.close()
+            try:
+                self.close()
+            except BaseException as exc:
+                self._initialization_close_error = type(exc).__name__[:64]
             raise
 
+    @_acquisition_fault
     def q(self, role, command):
         value = self.transaction(role, command, True)
         if not isinstance(value, str) or len(value) > 4096:
             raise ValueError("Invalid instrument response")
         return value.strip()
 
+    @_acquisition_fault
     def number(self, role, command):
         value = float(self.q(role, command))
         if not math.isfinite(value) or abs(value) >= 9e37:
             raise ValueError("Invalid/overflow instrument number")
         return value
 
+    @_acquisition_fault
     def integer(self, role, command):
         text = self.q(role, command)
         return int(text)
 
+    @_acquisition_fault
     def flag(self, role, command):
         value = self.q(role, command).upper()
         if value not in {"0", "+0", "OFF", "1", "+1", "ON"}:
@@ -548,6 +678,7 @@ class CryostatAdapter:
             raise ValueError("Lock-in fundamental frequency differs from pilot profile")
         return {"time_constant_s": tau, "reference_hz": frequency}
 
+    @_acquisition_fault
     def preflight(self):
         for role in self.resources:
             identity = self.q(role, "*IDN?")
@@ -673,6 +804,7 @@ class CryostatAdapter:
             "errors": errors,
         }
 
+    @_acquisition_fault
     def configure(self, phase, plan):
         self.require_owned()
         dark = self.config.experiment_scope == "dark_a"
@@ -718,6 +850,7 @@ class CryostatAdapter:
                 raise ValueError("Excitation changed while configuring harmonic detection")
         self.phase = phase
 
+    @_acquisition_fault
     def laser_on(self, current_a):
         self.require_owned()
         c = self.config
@@ -748,6 +881,7 @@ class CryostatAdapter:
         if int(reply.split(",", 1)[0]) != 0:
             raise ValueError("CLD error queue is not clear: " + reply)
 
+    @_acquisition_fault
     def read_sample(self, phase):
         self.active_sample = {"channels": {}, "simulated": False}
         try:
@@ -934,6 +1068,7 @@ def main(argv=None):
         "executable": False,
         "observed_at_utc": datetime.now(timezone.utc).isoformat(),
         "device_observation": None,
+        "device_diagnostics": None,
         "output_enable_performed": False,
         "source": "LabOS-owned SCPI adapter",
         "error": None,
@@ -944,8 +1079,8 @@ def main(argv=None):
 
         config = load_pilot_worker_config(args.config)
         adapter = create_adapter(config.adapter_config)
-        adapter.open()
         adapter.set_guard(time.monotonic() + 60, None)
+        adapter.open()
         result["device_observation"] = adapter.preflight()
         result["status"] = "PASSED"
     except Exception as exc:
@@ -965,6 +1100,7 @@ def main(argv=None):
             except Exception as exc:
                 result["close_error"] = type(exc).__name__ + ": " + str(exc)[:1000]
                 result["status"] = "FAILED"
+            result["device_diagnostics"] = adapter.diagnostics()
     atomic_write(args.output, json_bytes(result))
     print(
         f"Output-preserving preflight {result['status']}; evidence saved. No output enable command was sent."

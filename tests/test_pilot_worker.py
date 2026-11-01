@@ -47,7 +47,7 @@ def transport(api, *, drop_reply=False):
         ):
             dropped = True
             raise httpx.ReadTimeout("reply response lost after storage")
-        return httpx.Response(response.status_code, json=response.json())
+        return httpx.Response(response.status_code, content=response.content, headers=response.headers)
 
     return httpx.MockTransport(request)
 
@@ -104,6 +104,7 @@ def task(task_id="pilot_1", **overrides):
         "context": {},
         "executable": False,
         "pilot_plan": plan(),
+        "experiment_scope": "optical_transport",
         **overrides,
     }
 
@@ -116,6 +117,17 @@ def send(api, message_id, body):
     )
     assert response.status_code == 200, response.text
     return response.json()["message"]
+
+
+def commission_profile(api, config):
+    from labos.pilot_authority import config_fingerprint
+    response = api.post('/api/pilot-authority/pc-a/commission',
+                        headers={'Authorization': 'Bearer ' + 'O' * 40}, json={
+        'config_sha256': config_fingerprint(config),
+        'experiment_scope': config.adapter_config.get('experiment_scope', 'optical_transport'),
+        'note': 'Offline test fixture: legacy workers retired; physical states reconciled.',
+        'legacy_workers_retired': True, 'physical_states_reconciled': True})
+    assert response.status_code == 200, response.text
 
 
 def messages(api):
@@ -227,7 +239,8 @@ class SimulatedBench:
     def laser_off(self):
         self.laser_enabled = False
         self.events.append("laser_off")
-        return {"laser_off_verified": True}
+        return {"laser_off_verified": True, "emission_off_readback": True,
+                "zero_current_setpoint_verified": True}
 
     def protect_excitation(self):
         self.excitation_v_rms = 0.004
@@ -263,6 +276,7 @@ def test_intent_precedes_factory_and_real_data_is_persisted_before_delivery(
         return bench
 
     with TestClient(create_app(central_config)) as api:
+        commission_profile(api, config)
         send(api, "pilot_task", task())
         worker = module().PilotWorker(config, transport(api), commissioned_factory)
         worker.tick()
@@ -302,6 +316,7 @@ def test_lost_reply_response_uses_finished_artifact_and_never_repeats_io(tmp_pat
     bench = SimulatedBench()
     config = configuration(tmp_path, approval=approval())
     with TestClient(create_app(central_config)) as api:
+        commission_profile(api, config)
         send(api, "pilot_task", task())
         worker = module().PilotWorker(config, transport(api, drop_reply=True), lambda _: bench)
         worker.tick()
@@ -332,6 +347,7 @@ def test_interrupted_intent_latches_unknown_across_distinct_task_ids(tmp_path, c
         raise AssertionError("an unresolved physical outcome must never replay")
 
     with TestClient(create_app(central_config)) as api:
+        commission_profile(api, config)
         send(api, "pilot_task", task())
         worker = module().PilotWorker(config, transport(api), process_dies_after_committed_intent)
         with pytest.raises(KeyboardInterrupt):
@@ -349,9 +365,10 @@ def test_interrupted_intent_latches_unknown_across_distinct_task_ids(tmp_path, c
             m["body"] for m in messages(api) if m["body"]["document_type"] == "labos_auto_result"
         ]
         assert len(results) == 2
-        assert all(r["pilot_result"]["status"] == "UNKNOWN" for r in results)
+        assert all(r["answer"]["status"] == "needs_input" and "pilot_result" not in r for r in results)
         assert all(r["model_attempts"] == 0 for r in results)
-        assert results[0]["pilot_result"]["config_sha256"] == original_config_hash
+        with restarted.physical_db() as db:
+            assert db.execute("SELECT config_sha256 FROM executions").fetchone()[0] == original_config_hash
         assert restarted.status()["physical_blocked"] is True
         again = module().PilotWorker(config, transport(api), forbidden)
         assert again.status()["physical_blocked"] is True
@@ -362,6 +379,7 @@ def test_failed_physical_protection_preserves_partial_data_and_blocks_next_task(
 ):
     bench = SimulatedBench(protection_ok=False)
     with TestClient(create_app(central_config)) as api:
+        commission_profile(api, configuration(tmp_path, approval=approval()))
         send(api, "pilot_task", task())
         send(api, "next_task", task("pilot_2"))
         worker = module().PilotWorker(
@@ -373,7 +391,8 @@ def test_failed_physical_protection_preserves_partial_data_and_blocks_next_task(
         assert artifact(worker, first)["report"]["samples"]
         assert worker.status()["physical_blocked"] is True
         worker.tick()
-        assert messages(api)[-1]["body"]["pilot_result"]["status"] == "UNKNOWN"
+        assert messages(api)[-1]["body"]["answer"]["status"] == "needs_input"
+        assert "pilot_result" not in messages(api)[-1]["body"]
         assert bench.events.count("open") == 1
 
 
@@ -387,6 +406,7 @@ def test_artifact_delivery_failure_retains_finished_report_without_reply_or_reru
     bench = SimulatedBench()
     config = configuration(tmp_path, approval=approval())
     with TestClient(create_app(central_config)) as api:
+        commission_profile(api, config)
         send(api, "pilot_task", task())
 
         def failed_upload(req):
@@ -409,7 +429,7 @@ def test_artifact_delivery_failure_retains_finished_report_without_reply_or_reru
             response = api.request(
                 req.method, str(req.url), content=req.content, headers=req.headers
             )
-            return httpx.Response(response.status_code, json=response.json())
+            return httpx.Response(response.status_code, content=response.content, headers=response.headers)
 
         worker = module().PilotWorker(config, httpx.MockTransport(failed_upload), lambda _: bench)
         worker.tick()
@@ -436,6 +456,7 @@ def test_finished_execution_survives_crash_before_correspondence_cache(tmp_path,
     bench = SimulatedBench()
     config = configuration(tmp_path, approval=approval())
     with TestClient(create_app(central_config)) as api:
+        commission_profile(api, config)
         envelope = send(api, "pilot_task", task())
         worker = module().PilotWorker(config, transport(api), lambda _: bench)
         # Execution finishes durably before the outer correspondence ready transition.
@@ -462,6 +483,7 @@ def test_reused_task_identity_is_rejected_and_next_new_task_still_runs(tmp_path,
         return bench
 
     with TestClient(create_app(central_config)) as api:
+        commission_profile(api, configuration(tmp_path, approval=approval()))
         send(api, "pilot_task", task())
         send(api, "reused_task", task(pilot_plan=plan(laser_current_a=0.02)))
         send(api, "new_task", task("pilot_2"))
@@ -493,6 +515,7 @@ def test_cli_stop_signals_engine_while_vendor_io_is_blocked(tmp_path, central_co
     path = tmp_path / "pilot.json"
     path.write_text(config.model_dump_json())
     with TestClient(create_app(central_config)) as api:
+        commission_profile(api, config)
         send(api, "pilot_task", task())
         worker = module().PilotWorker(config, transport(api), lambda _: bench)
 
@@ -569,6 +592,7 @@ def test_adapter_construction_failure_becomes_unknown_and_blocks_other_task_ids(
         raise RuntimeError("partial driver initialization might have occurred")
 
     with TestClient(create_app(central_config)) as api:
+        commission_profile(api, configuration(tmp_path, approval=approval()))
         send(api, "pilot_task", task())
         worker = module().PilotWorker(
             configuration(tmp_path, approval=approval()), transport(api), fails
@@ -599,7 +623,9 @@ def test_doctor_validates_default_profile_without_constructing_adapter(
         worker = module().PilotWorker(
             configuration(tmp_path, approval=approval(enabled=enable)), transport(api)
         )
-        assert worker.doctor()["physical_enabled"] is enable
+        assert worker.doctor()["physical_enabled"] is False
+        assert worker.doctor()["configured_approval_enabled"] is enable
+        assert worker.doctor()["profile_ready"] is enable
         checks = worker.doctor()
         assert checks["instrument_access_performed"] is False
         assert checks["hardware_access"] == ("possible_when_commissioned" if enable else False)
@@ -644,6 +670,7 @@ def test_credential_bearing_driver_error_stays_local_without_model_fallback(
 
     bench = PrivateErrorSimulation()
     with TestClient(create_app(central_config)) as api:
+        commission_profile(api, configuration(tmp_path, approval=approval()))
         send(api, "pilot_task", task())
         worker = module().PilotWorker(
             configuration(tmp_path, approval=approval()), transport(api), lambda _: bench
@@ -707,6 +734,7 @@ def test_central_review_loads_uploaded_raw_data_and_stops_the_reply_cycle(tmp_pa
             }
 
     with TestClient(create_app(central_config)) as api:
+        commission_profile(api, configuration(tmp_path, approval=approval()))
         send(api, "pilot_task", task())
         pc = module().PilotWorker(
             configuration(tmp_path, approval=approval()), transport(api), lambda _: SimulatedBench()
@@ -741,6 +769,7 @@ def test_unverified_protection_is_never_reported_as_verified(tmp_path, central_c
             return super().preflight()
     bench = FailingBench(protection_ok=failure != 'cleanup')
     with TestClient(create_app(central_config)) as api:
+        commission_profile(api, configuration(tmp_path, approval=approval()))
         send(api, 'pilot_task', task())
         worker = module().PilotWorker(configuration(tmp_path, approval=approval()),
                                       transport(api), lambda _: bench)
@@ -765,6 +794,7 @@ def test_failed_acquisition_with_verified_cleanup_reports_protection_truthfully(
             raise ValueError('invalid reading')
     bench = FailedReading()
     with TestClient(create_app(central_config)) as api:
+        commission_profile(api, configuration(tmp_path, approval=approval()))
         send(api, 'pilot_task', task())
         worker = module().PilotWorker(configuration(tmp_path, approval=approval()),
                                       transport(api), lambda _: bench)
@@ -777,3 +807,371 @@ def test_failed_acquisition_with_verified_cleanup_reports_protection_truthfully(
         assert result['answer']['questions'] == []
         assert bench.events.count('laser_off') == 2
         assert bench.events.count('minimum_excitation') == 2
+
+
+def test_readiness_and_terminal_snapshots_are_not_running(tmp_path):
+    worker = module().PilotWorker(configuration(tmp_path, approval=approval()),
+                                  adapter_factory=lambda _: SimulatedBench())
+    try:
+        status = worker.status()
+        assert status['configured_approval_enabled'] is True
+        assert status['profile_validated'] is True
+        assert status['phase'] == 'ready'
+        assert status['physical_enabled'] is False
+        for phase in ('started', 'stopping', 'stopped', 'failed'):
+            snapshot = worker.write_status(phase)
+            assert snapshot['physical_enabled'] is False
+            assert snapshot['authority_ready'] is False
+            assert snapshot['snapshot_only'] is True
+            assert snapshot['instrument_output_state'] == 'unknown'
+            assert snapshot['updated_at_utc'].endswith('Z')
+        assert len(status['instance_id']) == 32
+        assert status['config_sha256'] == hashlib.sha256(json_bytes(worker.config.model_dump(mode='json'))).hexdigest()
+    finally:
+        worker.client.close()
+
+
+@pytest.mark.parametrize('launch_id', ['abc', 'A' * 32, 'g' * 32, '0' * 33, ''])
+def test_launch_id_rejects_invalid_handshake_before_state_creation(tmp_path, monkeypatch, launch_id):
+    config = configuration(tmp_path)
+    monkeypatch.setenv('LABOS_PILOT_LAUNCH_ID', launch_id)
+    with pytest.raises(ValueError, match='launch'):
+        module().PilotWorker(config)
+    assert not config.state_dir.exists()
+
+
+def test_launch_and_instance_identity_in_status_and_events(tmp_path, monkeypatch):
+    monkeypatch.setenv('LABOS_PILOT_LAUNCH_ID', 'a' * 32)
+    config = configuration(tmp_path)
+    worker = module().PilotWorker(config)
+    try:
+        status = worker.write_status('started')
+        worker.write_status('stopped')
+        records = [json.loads(line) for line in (config.state_dir / 'events.jsonl').read_text().splitlines()]
+        assert status['launch_id'] == 'a' * 32
+        assert all(record['instance_id'] == status['instance_id'] for record in records)
+        assert all(record['config_sha256'] == status['config_sha256'] for record in records)
+        assert all(record['launch_id'] == status['launch_id'] for record in records)
+    finally:
+        worker.client.close()
+
+
+def test_cached_status_is_read_only_and_does_not_claim_pid_liveness(tmp_path, monkeypatch, capsys):
+    config = configuration(tmp_path)
+    config.state_dir.mkdir()
+    snapshot = {'phase': 'listening', 'physical_enabled': True, 'pid': 1234}
+    path = config.state_dir / 'status.json'
+    path.write_text(json.dumps(snapshot))
+    config_path = tmp_path / 'pilot.json'
+    config_path.write_text(config.model_dump_json())
+    def forbidden(*args, **kwargs):
+        raise AssertionError('cached status must not instantiate a worker')
+    monkeypatch.setattr(module(), 'PilotWorker', forbidden)
+    assert module().main(['status', '--config', str(config_path)]) == 0
+    status = json.loads(capsys.readouterr().out)
+    assert status['snapshot_only'] is True
+    assert status['process_liveness'] == 'unknown'
+    assert status['readiness_uncertain'] is True
+    assert status['physical_enabled'] is False
+    assert status['instrument_output_state'] == 'unknown'
+    assert json.loads(path.read_text()) == snapshot
+    assert not (config.state_dir / 'physical.sqlite').exists()
+    assert not (config.state_dir / 'instance.lock').exists()
+
+
+@pytest.mark.parametrize('failure,code,phase', [(None, 0, 'stopped'), (RuntimeError('A' * 40), 1, 'failed'),
+                                             (KeyboardInterrupt(), 130, 'stopped')])
+def test_owned_cli_terminal_snapshot_and_close_before_lock_release(tmp_path, central_config, monkeypatch, failure, code, phase):
+    config = configuration(tmp_path, approval=approval())
+    path = tmp_path / 'pilot.json'
+    path.write_text(config.model_dump_json())
+    with TestClient(create_app(central_config)) as api:
+        worker = module().PilotWorker(config, transport(api), lambda _: SimulatedBench())
+        monkeypatch.setattr(module(), 'PilotWorker', lambda _: worker)
+        original = worker.write_status
+        terminal_lock_checks = []
+        def write_status(value):
+            if value in {'stopped', 'failed'}:
+                with pytest.raises(RuntimeError, match='another LabOS process'):
+                    with InstanceLock(config.state_dir):
+                        pass
+                terminal_lock_checks.append(value)
+            return original(value)
+        monkeypatch.setattr(worker, 'write_status', write_status)
+        def tick():
+            if failure is not None:
+                raise failure
+            worker.request_stop()
+        monkeypatch.setattr(worker, 'tick', tick)
+        assert module().main(['run', '--config', str(path)]) == code
+        status = json.loads((config.state_dir / 'status.json').read_text())
+        assert status['phase'] == phase
+        assert status['physical_enabled'] is False
+        assert status['exit_status'] == code
+        assert status['failure_class'] == (type(failure).__name__ if failure else None)
+        assert terminal_lock_checks == [phase]
+        assert worker.client.is_closed
+        records = [json.loads(line) for line in (config.state_dir / 'events.jsonl').read_text().splitlines()]
+        assert records[0]['event'] == 'begin'
+        assert records[-1]['event'] == 'end'
+        assert 'A' * 40 not in json.dumps(records)
+
+
+def test_journal_observes_stages_failure_and_end_without_sensitive_exception(tmp_path, central_config):
+    class BrokenBench(SimulatedBench):
+        def read_sample(self, phase):
+            raise RuntimeError('secret=' + 'A' * 40)
+    bench = BrokenBench()
+    with TestClient(create_app(central_config)) as api:
+        commission_profile(api, configuration(tmp_path, approval=approval()))
+        worker = module().PilotWorker(configuration(tmp_path, approval=approval()), transport(api), lambda _: bench)
+        send(api, 'journal_failure', task())
+        worker.tick()
+        records = [json.loads(line) for line in (worker.config.state_dir / 'events.jsonl').read_text().splitlines()]
+        assert records[0]['event'] == 'begin'
+        assert records[-1]['event'] == 'end'
+        assert any(row['event'] == 'progress' and row['outcome'] == 'started' for row in records)
+        assert any(row['event'] == 'failure' and row['failure_class'] == 'RuntimeError' for row in records)
+        assert 'A' * 40 not in json.dumps(records)
+        assert bench.events[-3:] == ['laser_off', 'minimum_excitation', 'close']
+
+
+@pytest.mark.parametrize('error', [OSError('disk full'), KeyboardInterrupt()])
+def test_journal_failure_during_owned_io_does_not_skip_protection_or_close(tmp_path, central_config, monkeypatch, error):
+    events = importlib.import_module('labos.pilot_events')
+    bench = SimulatedBench()
+    with TestClient(create_app(central_config)) as api:
+        commission_profile(api, configuration(tmp_path, approval=approval()))
+        worker = module().PilotWorker(configuration(tmp_path, approval=approval()), transport(api), lambda _: bench)
+        def broken(*args, **kwargs):
+            raise error
+        monkeypatch.setattr(events.EventJournal, 'append', broken)
+        send(api, 'journal_full', task())
+        worker.tick()
+        assert bench.events[-3:] == ['laser_off', 'minimum_excitation', 'close']
+        assert messages(api)[-1]['body']['pilot_result']['status'] == 'COMPLETED'
+        assert worker.status()['journal_failures'] > 0
+
+
+def test_event_journal_rotation_is_bounded_and_private(tmp_path):
+    import os
+    import stat
+    events = importlib.import_module('labos.pilot_events')
+    journal = events.EventJournal(tmp_path)
+    for index in range(5000):
+        journal.append({'event': 'progress', 'sequence': index, 'padding': 'x' * 500})
+    active = tmp_path / 'events.jsonl'
+    rotated = tmp_path / 'events.jsonl.1'
+    assert rotated.exists()
+    assert active.stat().st_size <= 1024 * 1024
+    assert rotated.stat().st_size <= 1024 * 1024
+    assert len(list(tmp_path.iterdir())) == 2
+    for path in (active, rotated):
+        assert all(isinstance(json.loads(line), dict) for line in path.read_text().splitlines())
+        if os.name != 'nt':
+            assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
+def test_pending_stop_and_active_intent_remain_visible(tmp_path):
+    worker = module().PilotWorker(configuration(tmp_path, approval=approval()),
+                                  adapter_factory=lambda _: SimulatedBench())
+    try:
+        with worker.physical_db() as db:
+            db.execute("INSERT INTO executions VALUES(?,?,?,?, 'intent',NULL)",
+                       ('active_task', 'active_message', '0' * 64, '1' * 64))
+        worker.write_status('started')
+        worker.request_stop()
+        status = worker.status()
+        assert status['phase'] == 'stopping'
+        assert status['active_intent'] is True
+        assert status['physical_enabled'] is False
+        worker.write_status('failed')
+        with worker.physical_db() as db:
+            assert db.execute("SELECT state FROM executions").fetchone()[0] == 'intent'
+        restarted = module().PilotWorker(worker.config, adapter_factory=lambda _: SimulatedBench())
+        try:
+            assert restarted.status()['physical_blocked'] is True
+        finally:
+            restarted.client.close()
+    finally:
+        worker.client.close()
+
+
+def test_late_observer_cannot_overwrite_terminal_snapshot(tmp_path):
+    worker = module().PilotWorker(configuration(tmp_path))
+    try:
+        worker.write_status('stopped')
+        path = worker.config.state_dir / 'status.json'
+        terminal = path.read_bytes()
+        worker._observe_engine({'stage': 'close', 'phase': None, 'started_elapsed_s': 0,
+                                'duration_s': 0, 'outcome': 'completed'})
+        worker.request_stop()
+        assert path.read_bytes() == terminal
+    finally:
+        worker.client.close()
+
+
+def test_cli_once_finishes_with_stopped_snapshot(tmp_path, central_config, monkeypatch):
+    config = configuration(tmp_path)
+    path = tmp_path / 'pilot.json'
+    path.write_text(config.model_dump_json())
+    with TestClient(create_app(central_config)) as api:
+        worker = module().PilotWorker(config, transport(api))
+        monkeypatch.setattr(module(), 'PilotWorker', lambda _: worker)
+        assert module().main(['once', '--config', str(path)]) == 0
+        status = json.loads((config.state_dir / 'status.json').read_text())
+        assert status['phase'] == 'stopped'
+        assert status['exit_status'] == 0
+        assert status['physical_enabled'] is False
+        assert worker.client.is_closed
+
+
+def test_terminal_snapshot_waits_for_inflight_stop_snapshot(tmp_path, monkeypatch):
+    import threading
+    worker = module().PilotWorker(configuration(tmp_path))
+    entered = threading.Event()
+    release = threading.Event()
+    terminal_done = threading.Event()
+    errors = []
+    original = module().atomic_write
+    def delayed(path, content):
+        if path.name == 'status.json' and json.loads(content)['phase'] == 'stopping':
+            entered.set()
+            assert release.wait(3)
+        return original(path, content)
+    monkeypatch.setattr(module(), 'atomic_write', delayed)
+    def write(phase):
+        try:
+            worker.write_status(phase)
+        except BaseException as exc:
+            errors.append(exc)
+        finally:
+            if phase == 'stopped':
+                terminal_done.set()
+    stop_thread = threading.Thread(target=write, args=('stopping',))
+    terminal_thread = threading.Thread(target=write, args=('stopped',))
+    try:
+        stop_thread.start()
+        assert entered.wait(2)
+        terminal_thread.start()
+        assert not terminal_done.wait(0.1)
+    finally:
+        release.set()
+        stop_thread.join(3)
+        if terminal_thread.ident:
+            terminal_thread.join(3)
+        worker.client.close()
+    assert not errors
+    assert json.loads((worker.config.state_dir / 'status.json').read_text())['phase'] == 'stopped'
+
+
+@pytest.mark.parametrize('failure', [RuntimeError('private failure'), KeyboardInterrupt()])
+def test_owned_exit_preserves_unresolved_intent(tmp_path, central_config, monkeypatch, failure):
+    config = configuration(tmp_path, approval=approval())
+    path = tmp_path / 'pilot.json'
+    path.write_text(config.model_dump_json())
+    with TestClient(create_app(central_config)) as api:
+        worker = module().PilotWorker(config, transport(api), lambda _: SimulatedBench())
+        monkeypatch.setattr(module(), 'PilotWorker', lambda _: worker)
+        def tick():
+            with worker.physical_db() as db:
+                db.execute("INSERT INTO executions VALUES(?,?,?,?, 'intent',NULL)",
+                           ('active_task', 'active_message', '0' * 64, '1' * 64))
+            raise failure
+        monkeypatch.setattr(worker, 'tick', tick)
+        assert module().main(['run', '--config', str(path)]) in {1, 130}
+        status = json.loads((config.state_dir / 'status.json').read_text())
+        assert status['active_intent'] is True
+        assert status['physical_enabled'] is False
+        with worker.physical_db() as db:
+            assert db.execute("SELECT state FROM executions").fetchone()[0] == 'intent'
+        restarted = type(worker)(config, transport(api), lambda _: SimulatedBench())
+        try:
+            assert restarted.status()['physical_blocked'] is True
+        finally:
+            restarted.client.close()
+
+
+@pytest.mark.parametrize('error', [OSError('status disk full'), KeyboardInterrupt()])
+def test_status_logging_failure_after_ownership_cannot_skip_cleanup_or_client_close(tmp_path, central_config, monkeypatch, error):
+    config = configuration(tmp_path, approval=approval())
+    path = tmp_path / 'pilot.json'
+    path.write_text(config.model_dump_json())
+    original = module().atomic_write
+    class StatusFailureBench(SimulatedBench):
+        def configure(self, phase, requested):
+            super().configure(phase, requested)
+            def fail_status(destination, content):
+                if destination.name == 'status.json':
+                    raise error
+                return original(destination, content)
+            monkeypatch.setattr(module(), 'atomic_write', fail_status)
+    bench = StatusFailureBench()
+    with TestClient(create_app(central_config)) as api:
+        commission_profile(api, config)
+        worker = module().PilotWorker(config, transport(api), lambda _: bench)
+        monkeypatch.setattr(module(), 'PilotWorker', lambda _: worker)
+        send(api, 'status_logging_failure', task())
+        assert module().main(['once', '--config', str(path)]) == 0
+        assert bench.events[-3:] == ['laser_off', 'minimum_excitation', 'close']
+        assert messages(api)[-1]['body']['pilot_result']['status'] == 'COMPLETED'
+        assert worker.client.is_closed
+        assert worker.status()['status_failures'] > 0
+
+
+@pytest.mark.parametrize(
+    'primary,close_failure,code,phase,failure_class',
+    [
+        (None, RuntimeError('private close failure'), 1, 'failed', 'RuntimeError'),
+        (None, KeyboardInterrupt(), 130, 'stopped', 'KeyboardInterrupt'),
+        (ValueError('private primary failure'), RuntimeError('private close failure'), 1, 'failed', 'ValueError'),
+        (ValueError('private primary failure'), KeyboardInterrupt(), 1, 'failed', 'ValueError'),
+        (KeyboardInterrupt(), RuntimeError('private close failure'), 130, 'stopped', 'KeyboardInterrupt'),
+        (KeyboardInterrupt(), KeyboardInterrupt(), 130, 'stopped', 'KeyboardInterrupt'),
+    ],
+)
+def test_client_close_failure_is_in_terminal_outcome_and_preserves_primary(
+    tmp_path, central_config, monkeypatch, capsys, primary, close_failure, code, phase, failure_class
+):
+    config = configuration(tmp_path)
+    path = tmp_path / 'pilot.json'
+    path.write_text(config.model_dump_json())
+    with TestClient(create_app(central_config)) as api:
+        worker = module().PilotWorker(config, transport(api))
+        monkeypatch.setattr(module(), 'PilotWorker', lambda _: worker)
+        original_close = worker.client.close
+        close_owned = []
+        def close():
+            try:
+                with InstanceLock(config.state_dir):
+                    close_owned.append(False)
+            except RuntimeError:
+                close_owned.append(True)
+            if len(close_owned) == 1:
+                raise close_failure
+            original_close()
+        monkeypatch.setattr(worker.client, 'close', close)
+        def tick():
+            if primary is not None:
+                raise primary
+            return worker.status()
+        monkeypatch.setattr(worker, 'tick', tick)
+        try:
+            assert module().main(['once', '--config', str(path)]) == code
+            snapshot = json.loads((config.state_dir / 'status.json').read_text())
+            assert snapshot['phase'] == phase
+            assert snapshot['exit_status'] == code
+            assert snapshot['failure_class'] == failure_class
+            assert snapshot['physical_enabled'] is False
+            assert close_owned == [True]
+            records = [json.loads(line) for line in (config.state_dir / 'events.jsonl').read_text().splitlines()]
+            assert records[-1]['event'] == 'end'
+            assert records[-1]['exit_status'] == code
+            assert records[-1]['failure_class'] == failure_class
+            assert 'private' not in json.dumps(records)
+            output = capsys.readouterr().out
+            if code == 1:
+                assert f'failed ({failure_class})' in output
+            assert 'private' not in output
+        finally:
+            original_close()

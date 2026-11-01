@@ -1,24 +1,23 @@
-param([string]$Config = 'pilot-worker.yaml')
+param([string]$Config = 'pilot-worker.yaml', [ValidateRange(1, 120)][int]$ReadinessTimeoutSeconds = 15)
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
-. (Join-Path $PSScriptRoot 'Resolve-Python.ps1')
-$Python = Get-LabOSPython $PSScriptRoot
-$ConfigPath = (Resolve-Path -LiteralPath $Config).Path
-$env:PYTHONPATH = Join-Path $PSScriptRoot 'src'
-& $Python -B (Join-Path $PSScriptRoot 'Check-Pilot-Runtime.py')
-if ($LASTEXITCODE -ne 0) { throw 'Physical runtime imports failed. Use the supplied portable dependency overlay.' }
-& $Python -B -m labos.pilot_worker doctor --config $ConfigPath
-if ($LASTEXITCODE -ne 0) { throw 'Pilot Doctor failed. Check local commissioning and HTTPS.' }
+. (Join-Path $PSScriptRoot 'Pilot-Startup.ps1')
+$Identity = Get-LabOSPilotIdentity $PSScriptRoot $Config
 $Startup = [Environment]::GetFolderPath('Startup')
-$ScriptPath = Join-Path $PSScriptRoot 'Start-Pilot.ps1'
-$Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $ScriptPath + '" -Config "' + $ConfigPath + '"'
+$ShortcutPath = Join-Path $Startup ('LabOS-Physical-Pilot-' + $Identity.Id + '.lnk')
 $Shell = New-Object -ComObject WScript.Shell
-$Shortcut = $Shell.CreateShortcut((Join-Path $Startup 'LabOS-Physical-Pilot.lnk'))
-$Shortcut.TargetPath = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-$Shortcut.Arguments = $Arguments
-$Shortcut.WorkingDirectory = $PSScriptRoot
+if ((Test-Path -LiteralPath $ShortcutPath) -and -not (Test-LabOSPilotShortcut ($Shell.CreateShortcut($ShortcutPath)) $Identity)) {
+    throw 'Startup entry has different ownership; refusing to overwrite it.'
+}
+& (Join-Path $PSScriptRoot 'Start-Pilot.ps1') -Config $Identity.Config -ReadinessTimeoutSeconds $ReadinessTimeoutSeconds
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$Shortcut = $Shell.CreateShortcut($ShortcutPath)
+$Shortcut.TargetPath = $Identity.Target
+$Shortcut.Arguments = $Identity.Arguments
+$Shortcut.WorkingDirectory = $Identity.Root
 $Shortcut.WindowStyle = 7
 $Shortcut.Description = 'LabOS locally commissioned finite physical pilot'
 $Shortcut.Save()
-Start-Process -FilePath $Shortcut.TargetPath -ArgumentList $Arguments -WorkingDirectory $PSScriptRoot -WindowStyle Hidden
-Write-Host 'Physical worker launch requested. Review physical-pilot.log and its separate status/ledger directory.'
+$Legacy = Join-Path $Startup 'LabOS-Physical-Pilot.lnk'
+if ((Test-Path -LiteralPath $Legacy) -and (Test-LabOSPilotShortcut ($Shell.CreateShortcut($Legacy)) $Identity)) { Remove-Item -LiteralPath $Legacy }
+Write-Host 'Profile startup entry installed after child readiness verification. Inspect logs and independent protection readbacks.'

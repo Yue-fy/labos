@@ -1,14 +1,17 @@
 # LabOS MVP
 
-Central planning, local execution and traceable experimental data. The current release supports one central server, outbound Windows/Linux PC Agents and three types of **simulated instruments**.
+Central planning, local execution and traceable experimental data. The current software supports a central server, outbound Windows/Linux components,
+generic simulated instruments and a separate opt-in finite physical pilot.
+Report cooperation, approved-program execution, the generic Agent and physical
+pilot have separate startup, state and authority boundaries.
 
 The product interface, controls, installation tools, diagnostics and runtime messages use **English**. Existing Chinese deployment guides and bilingual presentation materials remain available.
 
 Implemented: independent PC credentials, session isolation, preflight checks, exclusive device ownership, scans, pause/resume/stop, UNKNOWN outcome handling, local watchdogs, cached data upload, HDF5 export, an operator console and optional OpenAI plan drafts.
 
-Version 0.2 adds acquisition quality checks, retained rejected data, plan/configuration fingerprints, reviewed references and existing test-code retrieval, source-linked drafts and versioned run reviews. See the [improvement guide (Chinese)](docs/QUANTA_IMPROVEMENTS_ZH.md).
+Version 0.2 adds acquisition quality checks, retained rejected data, plan/configuration fingerprints, reviewed references and existing test-code retrieval, source-linked drafts and versioned run reviews. See the [reliability guide](docs/RELIABILITY_IMPROVEMENTS_EN.md).
 
-Version **0.2.1** fixes Windows PowerShell installation quoting, saves installation logs, checks actual Agent/CLI imports and provides an English console and quick start. [Installation repair](docs/WINDOWS_INSTALL_FIX_EN.md) · [Chinese repair guide](docs/WINDOWS_INSTALL_FIX_ZH.md).
+Version **0.2.1** fixes Windows PowerShell installation quoting, saves installation logs, checks actual Agent/CLI imports and provides an English console and quick start. [Installation repair](docs/WINDOWS_INSTALL_FIX_EN.md).
 
 Version **0.2.2** adds durable, authenticated assistant correspondence with `labos cooperate send/pull`. Reports use the central HTTPS origin and per-PC credentials; they never execute hardware. See [HTTPS cooperation](src/labos/assets/COOPERATION_HTTPS_EN.md).
 
@@ -44,15 +47,19 @@ Download `LabOS-Agent-Windows-x64-0.2.8.zip` from the public release, extract th
 
 The generic package has no `config.yaml` or live credentials. First obtain the PC-specific configuration from the central server, run **Doctor.ps1**, and then double-click **Start-Agent.cmd**. Doctor checks connectivity and authentication; it does not access instruments. SSH is not a runtime dependency.
 
-For the first physical laboratory PC, see the [server/PC pilot guide (Chinese)](docs/PC_PILOT_ZH.md). Existing working instrument environments can remain on the PC; the server needs only the relevant reference code and device/environment information.
+For later physical cutover, follow the [onsite checklist](docs/ONSITE_COMMISSIONING_EN.md),
+[physical authority](docs/PHYSICAL_AUTHORITY_EN.md) and
+[update recovery](docs/PORTABLE_UPDATE_RECOVERY_EN.md). Preserve working vendor
+environments and journals. Wiring inspection and separate commissioning precede
+any separately authorized new finite task; this maintenance authorizes none.
 
 ## Collaborate with a PC's language-model assistant
 
 The optional local LLM assistant can inspect its PC, understand working instrument code and prepare integration evidence. The persistent PC execution Agent remains the runtime executor. Read the [English agent cooperation kit](src/labos/assets/README_AGENT_KIT_EN.md), with [PC-side instructions](src/labos/assets/PC_AGENT_GUIDE_EN.md), [central-side instructions](src/labos/assets/SERVER_AGENT_GUIDE_EN.md), [handoff conventions](src/labos/assets/AGENT_HANDOFF_EN.md), blank JSON reports and a cavity reference card.
 
-Refreshed delivery bundles include `AGENTS.md` and the guides at their root. With a provisioned 0.2.2 package, assistants can send and retrieve sanitized reports over HTTPS. Operator file relay remains a fallback. Report transport does not automatically wake a chat session or invoke an LLM.
+Refreshed delivery bundles include `AGENTS.md` and the guides at their root. With provisioned correspondence tools, assistants can send and retrieve sanitized reports over HTTPS. Operator file relay remains a fallback. Report transport does not automatically wake a chat session or invoke an LLM.
 
-For unattended report processing, use the full 0.2.3 package and start the optional [background worker](src/labos/assets/AUTOMATIC_COOPERATION_EN.md). One-time PC startup configuration is required; subsequent explicit tasks and replies need no operator relay. It does not resume the IDE's private conversation or operate instruments.
+For unattended report processing, use the verified installed software and start the optional [background worker](src/labos/assets/AUTOMATIC_COOPERATION_EN.md). One-time PC startup configuration is required; subsequent explicit tasks and replies need no operator relay. It does not resume the IDE's private conversation or operate instruments.
 
 ## Development and local acceptance
 
@@ -67,7 +74,10 @@ uv pip install --python .venv/bin/python -e '.[central,ai,dev]'
 
 ## Provisioning and deployment
 
-Read the [deployment guide](docs/DEPLOYMENT_ZH.md), [network design](docs/NETWORK_ZH.md) and [hardware integration requirements](docs/HARDWARE_ZH.md), currently available in Chinese.
+Read the [PC profiles](docs/PC_PROFILES_EN.md),
+[English network guide](src/labos/assets/NETWORK_EN.md) and
+[onsite commissioning checklist](docs/ONSITE_COMMISSIONING_EN.md).
+Archived Chinese guides and bilingual evidence remain in the repository.
 
 For a simulation deployment on a trusted LAN/VPN, replace the example address with the central server's actual reachable address:
 

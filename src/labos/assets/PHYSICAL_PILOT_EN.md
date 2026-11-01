@@ -69,7 +69,7 @@ only and must remain unchanged.
 3. Use the existing portable Python to apply the extracted update:
 
    ```powershell
-   & '<existing LabOS>\python\python.exe' -B '<extracted update>\Apply-Pilot-Update.py' --target '<existing LabOS>'
+   & '<existing LabOS>\python\python.exe' -I '<extracted update>\Apply-Pilot-Update.py' --target '<existing LabOS>'
    ```
 
    The updater verifies payload hashes and worker locks, backs up replaced files
@@ -161,14 +161,37 @@ status, operator confirmation note and worker-start status. Do not send bearer
 tokens, full private configuration, or unredacted credential-bearing logs.
 
 After a PASSED preflight within the established scope, set approval.enabled true
-and run Install-Pilot.ps1. This adds a separate sign-in shortcut and hidden worker.
+and run Install-Pilot.ps1 -Config .\pilot-worker.yaml. Doctor must confirm local
+approval, a validated profile and central commissioning for the selected canonical
+configuration hash. The scripts never change approval. A hidden Python child must
+publish a fresh status matching its PID, launch nonce, instance ID and configuration
+hash before startup installation succeeds. The default readiness wait is 15 seconds
+(`-ReadinessTimeoutSeconds`, 1–120). Duplicate ownership, child exit or a readiness
+timeout returns nonzero with diagnostic log paths. A timeout leaves the child
+untouched; inspect status and request a cooperative stop if needed.
+
+Verified Start/Install requires the supplied embedded python\python.exe runtime.
+A .venv\Scripts\python.exe runtime is refused before worker launch or shortcut
+creation: the [CPython Windows virtual-environment launcher](https://github.com/python/cpython/blob/3.14/PC/venvlauncher.c)
+creates another process, so its PID cannot prove the actual worker's identity.
+Doctor, metadata inspection and cooperative Stop still support the existing
+virtual-environment runtime. Use the supplied portable package for verified pilot
+startup; the scripts do not weaken process matching or terminate an existing worker.
+
+Startup names include a stable hash of the resolved installation and profile paths;
+each profile has its own logs. This separates bookkeeping and does not authorize
+multiple controllers. Only a legacy LabOS-Physical-Pilot.lnk whose target and
+arguments match this installation/profile is migrated or removed. Start-Pilot.ps1
+uses the same bounded launch verification as installation.
 It does not enqueue a measurement. The central operator queues exactly one finite
 pilot after checking the returned evidence; the local worker preflights again.
 The report worker cannot promote a report or model output to a physical task.
 
 ## Pilot result and stop behavior
 
-- Local physical state: data/physical-pilot; log: physical-pilot.log.
+- Local physical state: the profile's state_dir (default data/physical-pilot).
+  Launch logs: logs/physical-pilot-<identity>/<launch-id>.stdout.log and .stderr.log.
+  Earlier physical-pilot.log files remain historical evidence.
 - Raw immutable JSON: data/physical-pilot/artifacts, including partial/rejected
   samples, plan/config hashes, status readbacks and independent cleanup results.
 - Full raw file uploads through the PC-scoped HTTPS endpoint before the reply.
@@ -177,7 +200,13 @@ The report worker cannot promote a report or model output to a physical task.
 - Stop-Pilot.ps1 requests cancellation between device operations and during
   settling. It is not a hardware emergency stop. Inspect the cleanup readbacks.
   After the first pilot, disable approval and the pilot startup shortcut until
-  another test is deliberately commissioned. Do not delete the ledger or faults.
+  another test is deliberately commissioned. Use Stop-Pilot.ps1 -Config <profile>
+  -DisableStartup to remove only matching startup entries. Removal is attempted
+  even when Python, profile parsing or cooperative stopping fails; a nonzero result
+  still requires inspection. Do not delete the ledger or faults.
+- A successful startup check establishes a fresh child snapshot, not instrument
+  output state or completed protection. Linux PowerShell fixtures mock the Windows
+  shell boundary; native Windows PowerShell 5.1 acceptance remains a separate check.
 - Software cannot shut an output down after loss of the controlling process,
   power or physical instrument link; retain existing local hardware protections.
 

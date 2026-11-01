@@ -100,6 +100,21 @@ def main(argv=None):
             command.add_argument("--output", type=Path, required=True)
         if name == "control":
             command.add_argument("action", choices=["pause", "resume", "stop", "reconcile"])
+    authority = sub.add_parser("pilot-authority", help="inspect or commission physical authority")
+    actions = authority.add_subparsers(dest="authority_action", required=True)
+    for name in ("status", "commission"):
+        command = actions.add_parser(name)
+        command.add_argument("--config", type=Path, required=True)
+        command.add_argument("--server-url")
+        command.add_argument("--agent-id", required=True)
+        if name == "commission":
+            selection = command.add_mutually_exclusive_group(required=True)
+            selection.add_argument("--worker-config", type=Path)
+            selection.add_argument("--config-sha256")
+            command.add_argument("--experiment-scope", choices=["optical_transport", "optical_readback", "dark_a"])
+            command.add_argument("--note", required=True)
+            command.add_argument("--legacy-workers-retired", action="store_true", required=True)
+            command.add_argument("--physical-states-reconciled", action="store_true", required=True)
     bundle = sub.add_parser("bundle", help="create one PC ZIP with only that PC's credential")
     bundle.add_argument("--config", type=Path, required=True)
     bundle.add_argument("--output", type=Path, required=True)
@@ -113,6 +128,30 @@ def main(argv=None):
     try:
         if args.command == "cooperate":
             return cooperate(args)
+        elif args.command == "pilot-authority":
+            from .pilot_authority import Commission, config_fingerprint
+            from .pilot_worker import load_pilot_worker_config
+            with operator_client(args.config, args.server_url) as client:
+                path = f"/api/pilot-authority/{args.agent_id}"
+                if args.authority_action == "status":
+                    response = client.get(path)
+                else:
+                    digest, scope = args.config_sha256, args.experiment_scope
+                    if args.worker_config:
+                        selected = load_pilot_worker_config(args.worker_config)
+                        if selected.agent_id != args.agent_id or not (selected.approval and selected.approval.enabled):
+                            raise ValueError("Select an enabled worker configuration for this agent")
+                        digest = config_fingerprint(selected)
+                        configured_scope = selected.adapter_config.get("experiment_scope", "optical_transport")
+                        if scope is not None and scope != configured_scope:
+                            raise ValueError("Scope differs from selected worker configuration")
+                        scope = configured_scope
+                    body = Commission(config_sha256=digest, experiment_scope=scope, note=args.note,
+                                      legacy_workers_retired=args.legacy_workers_retired,
+                                      physical_states_reconciled=args.physical_states_reconciled)
+                    response = client.post(path + "/commission", json=body.model_dump())
+                response.raise_for_status()
+                print(json.dumps(response.json(), indent=2))
         elif args.command == "init":
             paths = provision(args.directory, args.server_url, args.allow_http, args.host, args.port)
             print(json.dumps({name: str(path) for name, path in paths.items()}, indent=2))
@@ -160,7 +199,7 @@ def main(argv=None):
         return 130
     except (ValueError, OSError, RuntimeError, httpx.HTTPError) as exc:
         # HTTP exception text may contain credential-bearing proxy URLs.
-        message = f"network request failed ({type(exc).__name__}); see NETWORK_ZH.md" if isinstance(exc, httpx.HTTPError) else str(exc)
+        message = f"network request failed ({type(exc).__name__}); see NETWORK_EN.md" if isinstance(exc, httpx.HTTPError) else str(exc)
         print(f"LabOS: {message}", file=sys.stderr)
         return 1
     return 0

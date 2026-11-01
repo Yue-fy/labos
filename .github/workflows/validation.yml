@@ -1,0 +1,128 @@
+name: Validation
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validation-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit and lint (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.11', '3.14']
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install test dependencies
+        run: |
+          set -o pipefail
+          mkdir -p validation-logs
+          python -m pip install '.[central,dev]' 2>&1 | tee validation-logs/dependencies.log
+      - name: Lint
+        run: |
+          set -o pipefail
+          python -m ruff check src tests scripts 2>&1 | tee validation-logs/lint.log
+      - name: Unit tests (including platform skip reasons)
+        if: ${{ !cancelled() }}
+        run: |
+          set -o pipefail
+          python -m pytest -ra --junitxml=validation-logs/pytest.xml 2>&1 | tee validation-logs/pytest.log
+      - name: Retain test and install logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: unit-${{ matrix.os }}-python-${{ matrix.python }}
+          path: validation-logs/
+          retention-days: 7
+          if-no-files-found: warn
+
+  windows-delivery:
+    name: Native Windows embedded delivery (PowerShell 5.1)
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.14'
+      - name: Prepare native validation and dependencies
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($PSVersionTable.PSVersion.Major -ne 5 -or $PSVersionTable.PSVersion.Minor -ne 1) {
+              throw 'This job must run under Windows PowerShell 5.1.'
+          }
+          New-Item -ItemType Directory -Path validation-logs -Force | Out-Null
+          cmd.exe /d /c "python -m pip install . > validation-logs\dependencies.log 2>&1"
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed; see dependencies.log.' }
+      - name: Build verified Python 3.14.8 embedded runtime
+        run: |
+          cmd.exe /d /c "python scripts/build_windows_runtime.py > validation-logs\runtime-build.log 2>&1"
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime build failed; see runtime-build.log.' }
+      - name: Record exact runtime provenance and checksum
+        run: |
+          @'
+          import hashlib
+          from pathlib import Path
+          import zipfile
+
+          runtime = Path('dist/delivery/windows-x64-runtime.zip')
+          with zipfile.ZipFile(runtime) as archive:
+              Path('validation-logs/RUNTIME_PROVENANCE.json').write_bytes(
+                  archive.read('python/RUNTIME_PROVENANCE.json'))
+          digest = hashlib.sha256(runtime.read_bytes()).hexdigest()
+          Path('validation-logs/runtime-SHA256SUMS').write_text(
+              digest + '  windows-x64-runtime.zip\n', encoding='utf-8')
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { throw 'Could not retain runtime provenance and checksum.' }
+      - name: Build current generic Windows delivery and checksums
+        run: |
+          cmd.exe /d /c "python scripts/build_delivery.py --output dist/ci --windows-runtime dist/delivery/windows-x64-runtime.zip > validation-logs\delivery-build.log 2>&1"
+          if ($LASTEXITCODE -ne 0) { throw 'Generic delivery build failed; see delivery-build.log.' }
+      - name: Parse and smoke test the exact new ZIP under Windows PowerShell 5.1
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Version = python -c "from labos import __version__; print(__version__)"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not read the source candidate version.' }
+          $Archive = Join-Path $PWD ("dist/ci/LabOS-Agent-Windows-x64-" + $Version + '.zip')
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/verify_windows_delivery.ps1 -Archive $Archive -LogDirectory (Join-Path $PWD 'validation-logs')
+          if ($LASTEXITCODE -ne 0) { throw 'Native delivery smoke check failed; see retained logs.' }
+      - name: Retain only generic packages, checksums, and validation logs
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: generic-windows-delivery
+          path: |
+            dist/ci/LabOS-*.zip
+            dist/ci/SHA256SUMS
+            dist/delivery/windows-x64-runtime.zip
+            validation-logs/
+          retention-days: 7
+          if-no-files-found: warn

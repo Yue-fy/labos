@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import sqlite3
 import subprocess
 import sys
 import threading
@@ -20,6 +19,7 @@ from pydantic import Field, model_validator
 
 from .config import AgentConfig, load_config
 from .cooperation_worker import PROTOCOL, Task, Worker, WorkerConfig
+from .sqlite_state import owned_connection
 from .files import InstanceLock, atomic_write, json_bytes
 from .models import Identifier, Model
 
@@ -226,13 +226,15 @@ def run_bounded(program, parameters, check_credentials):
 class ProgramResponder:
     """Execution ledger survives crashes and transport-journal replay independently."""
 
+    deterministic = True
+
     def __init__(self, owner):
         self.owner = owner
 
     def respond(self, message, context):
         owner = self.owner
         message_id = message["id"]
-        with sqlite3.connect(owner.execution_database) as db:
+        with owned_connection(owner.execution_database) as db:
             db.execute("PRAGMA synchronous=FULL")
             db.execute("BEGIN IMMEDIATE")
             row = db.execute(
@@ -263,7 +265,7 @@ class ProgramResponder:
                 "needs_input",
                 "Program outcome requires local reconciliation. Inspect the local execution ledger before any new request.",
             )
-        with sqlite3.connect(owner.execution_database) as db:
+        with owned_connection(owner.execution_database) as db:
             db.execute("PRAGMA synchronous=FULL")
             db.execute(
                 "UPDATE executions SET state='finished',result=? WHERE message_id=?",
@@ -319,7 +321,7 @@ class ProgramConnector(Worker):
         )
         self.execution_database = config.state_dir / "program-executions.sqlite"
         super().__init__(worker_config, transport=transport, responder=ProgramResponder(self))
-        with sqlite3.connect(self.execution_database) as db:
+        with owned_connection(self.execution_database) as db:
             db.execute("PRAGMA synchronous=FULL")
             db.execute(
                 "CREATE TABLE IF NOT EXISTS executions(message_id TEXT PRIMARY KEY, state TEXT NOT NULL, result TEXT)"

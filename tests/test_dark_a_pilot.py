@@ -230,3 +230,42 @@ def test_dark_cleanup_attempts_harmonic_restore_after_amplitude_read_failure(tmp
     assert result['measurement_harmonic_restored'] is True
     assert xx.values['HARM?'] == '1'
     a.close()
+
+
+def test_dark_cleanup_faults_do_not_replace_acquisition_fault_after_deadline(tmp_path, monkeypatch):
+    cfg = dark_settings(tmp_path)
+    manager = Manager(cfg)
+    adapter = CryostatAdapter(cfg, manager_factory=lambda: manager)
+    adapter.open()
+    adapter.preflight()
+    adapter.configure("dark_a_2f", dark_plan())
+    xx = adapter.resources["xx"]
+    original = xx.query
+
+    cleanup = [False]
+
+    def failed(command):
+        if command.startswith("SNAP?"):
+            raise OSError("snapshot lost")
+        if cleanup[0] and command == "SLVL?":
+            raise TimeoutError("cleanup amplitude lost")
+        return original(command)
+
+    xx.query = failed
+    with pytest.raises(OSError, match="snapshot lost"):
+        adapter.read_sample("dark_a_2f")
+    before = adapter.diagnostics()
+    cleanup[0] = True
+    monkeypatch.setattr("labos.cryostat_pilot.time.monotonic", lambda: 10.0)
+    adapter.set_guard(1.0, lambda: True)
+    assert adapter.laser_off()["laser_off_verified"]
+    result = adapter.protect_excitation()
+    assert result["minimum_excitation_verified"] is False
+    assert result["measurement_harmonic_restored"] is True
+    adapter.close()
+    after = adapter.diagnostics()
+    assert after["first_acquisition_fault"] == before["first_acquisition_fault"]
+    assert after["last_acquisition_io"] == before["last_acquisition_io"]
+    assert after["first_acquisition_fault"]["io"]["command"] == "SNAP? 1,2,3,4,9"
+    assert any(event.get("exception_type") == "TimeoutError" and event["protection"]
+               for event in after["events"])

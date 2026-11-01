@@ -6,10 +6,10 @@ port. Each physical PC receives its own identity and credential.
 
 | | Agent-assisted PC | Program-only PC |
 | --- | --- | --- |
-| Intended PC | Has Codex and can join the private tailnet | No Codex or local LLM; cannot join the tailnet |
+| Intended PC | Has authenticated Codex and an approved central route | Requires no local model; uses an approved central route |
 | Local component | Report cooperation worker | Deterministic program connector |
 | Network | Private HTTPS through Tailscale, port 443 | Public HTTPS through the restricted gateway, port 8443 |
-| Required installation | LabOS portable Python, Tailscale, authenticated Codex CLI | LabOS portable Python only |
+| Required installation | LabOS portable Python, authenticated Codex CLI; VPN if required | LabOS portable Python only |
 | Local interpretation | Report-only Codex runs on explicit tasks | None; central server interprets returned results |
 | Task document | `labos_auto_task` | `labos_program_task` with a local `program_id` |
 | Local configuration | `config.yaml` + `cooperation.yaml` | `config.yaml` + `program-connector.yaml` |
@@ -17,8 +17,8 @@ port. Each physical PC receives its own identity and credential.
 | Current shipped operations | Report analysis and registered source excerpts | Runtime check, registered source excerpts, locally approved offline programs |
 
 An agent-assisted PC could also use the public gateway, and a program-only PC
-could use a private network if available. The profiles above match this lab's
-present deployment needs. Internet HTTPS access must allow the selected port;
+could use a private network if available. These routes are example deployment
+choices, not provisioned settings. Internet HTTPS access must allow the selected port;
 some institutional networks permit only outbound 443. If 8443 is blocked, use
 an institution-approved domain/reverse proxy on public 443 pointing to the same
 restricted gateway, then update only that PC's `server_url`.
@@ -40,42 +40,38 @@ flowchart TB
   B --> Sources
 ```
 
-## Current server addresses
+## Endpoint examples and provisioning
 
-- Private: `https://aalto-trx50-ai-top.tailaec1b5.ts.net`
-- Public PC API: `https://aalto-trx50-ai-top.tailaec1b5.ts.net:8443`
-- Central API: loopback `127.0.0.1:18080`; public gateway: loopback `127.0.0.1:18081`.
-- Server-local model remains on port 8000 and is not exposed by the PC gateway.
-
-The public gateway permits only health and scoped PC endpoints. The central
-operator uses the private endpoint or loopback. A PC credential cannot read
-another PC's conversation; the operator credential is rejected at the public
-gateway. See [gateway operation](PUBLIC_HTTPS_GATEWAY_EN.md).
+Use the operator-provisioned URL. Reserved examples are
+`https://central.example.org` for a private central origin and
+`https://pc-api.example.org` for a restricted public PC gateway. They are not
+live addresses. Keep model/admin endpoints private. The public gateway permits
+only health and scoped PC endpoints; a PC credential cannot read another PC's
+conversation and the public gateway rejects the operator credential. See
+[gateway operation](PUBLIC_HTTPS_GATEWAY_EN.md) and
+[network diagnosis](../src/labos/assets/NETWORK_EN.md).
 
 ## First deployment
 
-For the already commissioned cryostat PC, keep its existing identity, token,
-native Codex path and journals. Use the 0.2.4 source-context overlay instructions
-to add the two production source roots. Do not replace its working package with
-the generic program-only PC configuration.
+Extract a verified complete generic ZIP to a permanent directory. Obtain a
+unique PC identity/credential, connection configuration and the intended profile
+through the operator. Generic releases contain no live credential or queued
+demonstration task. No historical private delivery bundle is required. Preserve
+existing production environments, working Codex paths, source registration and
+journals when maintaining an installation; never transplant another PC's identity.
 
-For the first program-only PC, the private delivery bundle is
-`deployments/lab-01/LabOS-Program-PC-01-Windows-x64-0.2.4.zip`. Extract the whole
-ZIP to a permanent directory. Double-click `Install-Program-Connector.cmd`.
-It validates the bundled runtime, checks authenticated HTTPS, installs a
-current-user sign-in shortcut and launches the connector. No model login or
-Tailscale client is needed. Do not start `Start-Agent.cmd` for this profile.
+For report-only work, follow
+[automatic cooperation](../src/labos/assets/AUTOMATIC_COOPERATION_EN.md).
+For a program-only profile, `Install-Program-Connector.cmd` validates the runtime,
+checks authenticated HTTPS and installs current-user startup. It needs no local
+model. Do not start the generic `Start-Agent.cmd` for either profile unless that
+separate simulated execution component is explicitly intended.
 
-The bundle's identity is `program-pc-01`. Deploy it to one physical PC only;
-provision a fresh identity and credential before installing a second PC. Treat
-this personalized ZIP as a credential-bearing private file. The generic release
-ZIPs contain no live credentials and need separate provisioning.
-
-The central queue already contains a deterministic runtime-check task. Once the
-PC connector starts, it returns its Python runtime result and the central
-background worker reviews the result automatically. Inspect
-`data/program-connector/status.json` and `program-connector.log`. A server-only
-smoke check does not establish that the new Windows PC has connected.
+Inspect `data/program-connector/status.json` and `program-connector.log` for the
+program profile, or the report profile's own configured state/log paths. A fresh
+listening snapshot establishes only its last check. A separately authorized new
+offline/report task and matching result can establish the relevant round trip;
+a server-only smoke check does not prove that the Windows PC is connected.
 
 ## Normal cooperation
 
@@ -108,19 +104,25 @@ device ownership, physical limits, abort/cleanup and result schema. Keep the
 working instrument environment separate from the portable network runtime.
 Do not label a hardware program as an offline check to bypass commissioning.
 
-The current cryostat acceptance target is a LabOS-orchestrated 730 nm
-photoresponse followed by dark second-harmonic transport, with prompt verified
-laser/excitation shutdown after each segment. Existing code provides driver and
-historical-parameter evidence; the old complete procedure must not be launched
-as the run. See the [physical pilot requirements](../subComputer/cryostat/LABOS_BVPE_NLH_PILOT_EN.md).
-Source review and local commissioning come first; no physical acquisition has
-been performed by this deployment work.
+The separate finite physical pilot supports only fixed commissioned scopes.
+Read the [physical pilot guide](PHYSICAL_PILOT_EN.md),
+[onsite checklist](ONSITE_COMMISSIONING_EN.md),
+[authority guide](PHYSICAL_AUTHORITY_EN.md),
+[update recovery](PORTABLE_UPDATE_RECOVERY_EN.md) and
+[reliability limits](RELIABILITY_IMPROVEMENTS_EN.md). These guides ship at the
+physical overlay root; generic source releases include them under `docs/`.
+Report-only Codex cannot install code, change approval or operate instruments.
+Onsite wiring inspection, legacy-worker retirement, physical reconciliation and
+commissioning of the same frozen enabled profile remain mandatory before a
+separately authorized new finite task. All historical pilot IDs retire at the
+new cutoff; neither old tasks nor unknown operations may replay.
 
 ## Verification scope
 
-Public-route acceptance is stored privately in
-`deployments/lab-01/PUBLIC_HTTPS_ACCEPTANCE_EN.json`. It records HTTPS certificate
-verification against a public DNS relay, authenticated PC reads, rejected
-cross-PC/operator credentials and denied operator/model routes. This is a
-server-initiated public-route test. A real non-Tailscale Windows installation
-must still be observed separately.
+Record the actual package/source version, component configuration identity,
+route/authentication result and remaining gaps in a sanitized local handoff.
+A report connection pass, synthetic rehearsal or historical version capability
+is not proof of physical commissioning. Local stage/status events are not a
+continuous central telemetry stream. Broad memory/RAG, arbitrary MCP/skills,
+theory-guided adaptation, autonomous calibration and coordinated cross-PC
+physical barriers remain planned.

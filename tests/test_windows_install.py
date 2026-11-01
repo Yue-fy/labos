@@ -95,7 +95,6 @@ def test_doctor_explains_missing_pc_configuration(windows_package):
     [
         ("Start-Cooperation.ps1", "cooperation.yaml", "labos.cooperation_worker"),
         ("Start-Program-Connector.ps1", "program-connector.yaml", "labos.program_connector"),
-        ("Start-Pilot.ps1", "pilot-worker.yaml", "labos.pilot_worker"),
     ],
 )
 def test_worker_start_passes_complex_config_path_as_one_argument(
@@ -155,3 +154,64 @@ def test_physical_runtime_check_uses_a_file_and_legacy_quoting(windows_package):
     assert result.returncode == 0, result.stdout + result.stderr
     assert "no instruments opened" in result.stdout
     assert "-c " not in (package_dir / "Install-Pilot.ps1").read_text()
+
+
+@pytest.mark.parametrize("runtime", ["embedded", "venv"])
+def test_pilot_startup_metadata_loads_real_profile_without_constructing_worker(
+    windows_package, runtime
+):
+    from labos.pilot_authority import config_fingerprint
+    from labos.pilot_worker import load_pilot_worker_config
+
+    package_dir, run = windows_package
+    config = package_dir / "synthetic profile 中文.json"
+    config.write_text(
+        json.dumps(
+            {
+                "agent_id": "pc-a",
+                "connection_config": "missing.yaml",
+                "state_dir": "custom state",
+                "adapter_config": {"experiment_scope": "dark_a"},
+            }
+        )
+    )
+    if runtime == "venv":
+        venv = package_dir / ".venv/Scripts"
+        venv.mkdir(parents=True)
+        (package_dir / "python/python.exe").rename(venv / "python.exe")
+    wrapper = package_dir / "Pilot-Metadata-Test.ps1"
+    wrapper.write_text(
+        "$ErrorActionPreference = 'Stop'\n"
+        ". (Join-Path $PSScriptRoot 'Pilot-Startup.ps1')\n"
+        ". (Join-Path $PSScriptRoot 'Resolve-Python.ps1')\n"
+        "$env:PYTHONPATH = Join-Path $PSScriptRoot 'src'\n"
+        "Get-LabOSPilotLaunchMetadata (Get-LabOSPython $PSScriptRoot) (Join-Path $PSScriptRoot 'synthetic profile 中文.json') | ConvertTo-Json\n"
+    )
+    result = run(wrapper.name)
+    assert result.returncode == 0, result.stdout + result.stderr
+    metadata = json.loads(result.stdout)
+    assert metadata == {
+        "state_dir": str(package_dir / "custom state"),
+        "config_sha256": config_fingerprint(load_pilot_worker_config(config)),
+        "experiment_scope": "dark_a",
+    }
+    assert not (package_dir / "custom state").exists()
+
+
+def test_pilot_stop_remains_available_with_venv_runtime(windows_package):
+    package_dir, run = windows_package
+    venv = package_dir / ".venv/Scripts"
+    venv.mkdir(parents=True)
+    (package_dir / "python/python.exe").rename(venv / "python.exe")
+    (package_dir / "pilot-worker.yaml").write_text(
+        json.dumps(
+            {
+                "agent_id": "pc-a",
+                "connection_config": "missing.yaml",
+                "state_dir": "synthetic state",
+            }
+        )
+    )
+    result = run("Stop-Pilot.ps1")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (package_dir / "synthetic state/stop.request").read_text().strip() == "stop"

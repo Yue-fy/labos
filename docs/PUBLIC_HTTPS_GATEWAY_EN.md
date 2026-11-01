@@ -1,5 +1,10 @@
 # Public HTTPS for PCs outside Tailscale
 
+All example service hostnames below use the reserved `.example` domain. Replace them with your
+own verified Serve/Funnel URL obtained from the server operator and checked
+against `tailscale serve status` and `tailscale funnel status`. These examples
+do not identify a running installation.
+
 The public PC endpoint is separate from the private operator endpoint. A remote
 PC needs ordinary DNS and **outbound HTTPS on TCP 8443**; it does not need to join
 the tailnet, install Tailscale, accept inbound connections, or open a local port.
@@ -8,9 +13,9 @@ that destination before the PC can connect.
 
 | Purpose | HTTPS origin / local destination | Access |
 | --- | --- | --- |
-| Existing operator dashboard and full central API | `https://aalto-trx50-ai-top.tailaec1b5.ts.net` (443) → `127.0.0.1:18080` | Private Tailscale Serve |
-| Restricted PC API | `https://aalto-trx50-ai-top.tailaec1b5.ts.net:8443` → `127.0.0.1:18081` → central `127.0.0.1:18080` | Public HTTPS after Funnel activation |
-| Existing vLLM service | Local port 8000 | Private; unrelated to this gateway |
+| Operator dashboard and full central API | `https://labos-gateway.example` (443) → `127.0.0.1:18080` | Private Tailscale Serve |
+| Restricted PC API | `https://labos-gateway.example:8443` → `127.0.0.1:18081` → central `127.0.0.1:18080` | Public HTTPS after Funnel activation |
+| Optional local model service | Local port 8000 | Private; unrelated to this gateway |
 
 Funnel supports public ports 443, 8443, and 10000. A port cannot simultaneously
 be private Serve and public Funnel, so use **8443** for this gateway and retain
@@ -29,18 +34,22 @@ From the LabOS checkout, with the central optional dependencies installed:
 
 Run the gateway as a separate supervised process using the **same private central
 configuration** as the running central service. The config's `port` must be
-18080 for this deployment. The gateway derives its upstream exclusively from
+18080 for the example below. The gateway derives its upstream exclusively from
 `http://127.0.0.1:<config.port>`; it does not start another central instance or
 open central's database.
 
 ```bash
 .venv/bin/python -m labos.public_gateway \
-  --config deployments/lab-01/central/config.yaml \
-  --host 127.0.0.1 --port 18081
+  --config /path/to/private-central.yaml \
+  --host 127.0.0.1 --port 18081 --max-inflight 32
 ```
 
-The defaults are `--host 127.0.0.1 --port 18081`. Keep the central configuration
-and all its credentials on the server. Restart this gateway when enrollments or
+The defaults are `--host 127.0.0.1 --port 18081 --max-inflight 32`.
+Choose `--max-inflight` from 1 through 256 for the deployment; excess concurrent
+requests receive a fixed 503 before their body is read. The limit applies per
+gateway process, including health requests, and bounds upstream connections.
+Size it for agent foreground/heartbeat and correspondence traffic together.
+Keep the central configuration and all its credentials on the server. Restart this gateway when enrollments or
 credentials change so its credential snapshot matches central.
 
 In another terminal, check the local boundary before exposing it:
@@ -74,7 +83,7 @@ Inspect the resulting listeners, including the existing private listener:
 ```bash
 tailscale funnel status
 tailscale serve status
-curl --fail --silent --show-error https://aalto-trx50-ai-top.tailaec1b5.ts.net:8443/health
+curl --fail --silent --show-error https://labos-gateway.example:8443/health
 ```
 
 Verify that 8443 points to `127.0.0.1:18081` and private 443 retains its existing
@@ -92,7 +101,7 @@ sudo tailscale funnel --https=8443 off
 Provision each PC with its own enrollment credential and set its `server_url` to:
 
 ```yaml
-server_url: https://aalto-trx50-ai-top.tailaec1b5.ts.net:8443
+server_url: https://labos-gateway.example:8443
 ```
 
 Use the normal system certificate trust and the PC's existing `agent_id` and
@@ -122,6 +131,8 @@ require `Authorization: Bearer <that PC's token>` and an exact matching enrolled
 | `/api/agents/{agent_id}/poll` | POST |
 | `/api/agents/{agent_id}/results` | POST |
 | `/api/agents/{agent_id}/artifacts` | POST |
+| `/api/agents/{agent_id}/pilot-artifacts` | POST |
+| `/api/agents/{agent_id}/pilot-claims` | GET, POST |
 | `/api/agents/{agent_id}/disconnect` | POST |
 
 Other paths return 404; other methods on the listed paths return 405. The
@@ -130,18 +141,42 @@ OpenAPI schema, or interactive documentation. Operator credentials, another
 PC's credential, duplicate authorization headers, unknown tokens, and missing
 credentials cannot access the authenticated PC routes.
 
-Authenticated bodies are capped at 8 MiB, including streamed bodies; upstream
-central retains its tighter correspondence and artifact limits. Request query
-strings, including message cursors, are preserved. Only authorization,
+Authenticated bodies are capped before forwarding, including requests without
+Content-Length: generic requests allow 8,388,608 bytes; message POSTs allow
+65,536 bytes; artifact and pilot-artifact POSTs allow 2,000,000 bytes; pilot-claim
+POSTs allow 4,096 bytes. A receive deadline of 15 seconds covers the whole body
+and returns a fixed 408 on timeout. Central retains its established limits
+on private upload routes. Request query strings, including message cursors,
+are preserved. Only authorization,
 content type, artifact hash, and boot ID headers are passed to the fixed
 loopback upstream. Proxy environment settings and request-supplied host,
 forwarding, cookie, or proxy authorization headers cannot select another
 upstream. Redirects are rejected and credentials are never followed elsewhere.
 
 Errors are JSON, responses carry `Cache-Control: no-store`, and upstream
-failures have a 15-second total deadline. Public error responses omit upstream
-diagnostics and validation inputs; ordinary successful correspondence responses
+operations have a 15-second total deadline including sending, headers, and the
+complete response body. Transfer timeouts and transport failures return a fixed
+503. The gateway never retries an upstream POST. Public error responses omit
+upstream diagnostics and validation inputs; ordinary successful correspondence responses
 still contain the messages requested by the authenticated PC. The standalone
 server disables access URL logging and does not print private configuration
 validation details. Keep any additional process supervisor or reverse proxy
 logging free of credentials and request bodies.
+
+Every successful upstream response has an 8,388,608-byte ceiling. The gateway
+requests identity encoding, rejects unexpected encodings and redirects, checks
+each raw chunk before retaining it, and returns a fixed 502 when the response
+exceeds the ceiling. It closes the upstream stream on success, rejection,
+timeout, cancellation, and downstream disconnect. Redirect bodies and ordinary
+error bodies are not drained; only a 409 may be inspected, under a separate
+4,096-byte ceiling. Only the exact known invalid-session object is reconstructed
+as `{"detail":"invalid agent session","code":"invalid_agent_session"}` so an
+Agent can re-register using its existing boot ID. Other errors stay sanitized.
+
+The response ceiling admits maximum-size correspondence receipts and pages of
+100 maximum-size messages without changing message cursors. It is an explicit
+resource contract, not a guarantee that historically unbounded heartbeat
+cancellation lists, configuration inventories, or open status dictionaries
+always fit. An oversized heartbeat fails explicitly with 502; cancellation IDs
+are never silently truncated. Operators must resolve such an oversized response
+through the private service rather than treating an error as an empty stop list.
